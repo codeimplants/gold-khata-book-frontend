@@ -1220,9 +1220,19 @@ export default {
       totalBills: 'एकूण बिल्स',
     },
 
+    dues: {
+      totalCash: 'एकूण रोख बाकी',
+      totalGold: 'एकूण सोने बाकी',
+      listTitle: 'रिटेलर बाकी यादी',
+      all: 'सर्व',
+      cash: 'रोख',
+      gold: 'सोने',
+      empty: 'कोणतीही बाकी आढळली नाही.',
+    },
+
     fab: {
       newOrder: 'नवीन ऑर्डर',
-      newCustomer: 'नवीन ग्राहक',
+      newRetailer: 'नवीन रिटेलर',
     },
 
     ratesModal: {

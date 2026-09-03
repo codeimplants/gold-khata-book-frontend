@@ -63,6 +63,14 @@ const mapBackendOrder = (ord: any): any => ({
     items: ord.items || [],
     totalWeight: ord.totalWeight || 0,
     weightPaid: ord.weightPaid || 0,
+    // Grams still owed on the order. Server-computed and stored
+    // (max(0, totalWeight - weightPaid)); carried rather than re-derived here so
+    // one definition of "still owed" serves everywhere. Every other write path
+    // already set it - createOrder from the API response, and
+    // updateOrderStatus.fulfilled, which patches it explicitly - so leaving it
+    // out here meant an order fetched from the server had no remainingWeight
+    // until something happened to change its status.
+    remainingWeight: ord.remainingWeight || 0,
     payments: ord.payments || [],
     totalPaid: ord.totalPaid || 0,
     estimatedBalance: ord.estimatedBalance || 0,

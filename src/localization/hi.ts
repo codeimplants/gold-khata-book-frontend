@@ -1117,9 +1117,19 @@ export default {
       totalBills: 'कुल बिल',
     },
 
+    dues: {
+      totalCash: 'कुल नकद बकाया',
+      totalGold: 'कुल सोना बकाया',
+      listTitle: 'रिटेलर बकाया सूची',
+      all: 'सभी',
+      cash: 'नकद',
+      gold: 'सोना',
+      empty: 'कोई बकाया नहीं मिला।',
+    },
+
     fab: {
       newOrder: 'नया ऑर्डर',
-      newCustomer: 'नया ग्राहक',
+      newRetailer: 'नया रिटेलर',
     },
 
     ratesModal: {

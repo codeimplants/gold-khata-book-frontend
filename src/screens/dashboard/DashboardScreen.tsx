@@ -15,14 +15,13 @@ import {
 } from '@gluestack-ui/themed';
 import {
   TrendingUp,
-  Clock,
-  CheckCircle,
   Plus,
   Users,
   ChevronRight,
   FileText,
   Globe,
-  Scale,
+  Wallet,
+  Coins,
 } from 'lucide-react-native';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -35,7 +34,6 @@ import {
   fetchCustomers,
   fetchOrders,
   fetchMetalRates,
-  fetchPurchaseOldGold,
 } from '../../store/data/dataSlice';
 import OrderTypeModal from '../../components/OrderTypeModal';
 import AddCustomerModal from '../../components/AddCustomerModal';
@@ -45,7 +43,6 @@ import RateAppCard from '../../components/common/RateAppCard';
 import LanguagePopover, { type PopoverAnchor } from '../../components/common/LanguagePopover';
 import { LAYOUT, useContentContainerStyle } from '../../constants/layout';
 import { BannerHeightContext } from '../../navigation/MainTabs';
-import { standalonePurchases } from '../../utils/oldGoldPurchases';
 
 type NavProp = NativeStackNavigationProp<AppStackParamList>;
 
@@ -170,91 +167,188 @@ const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 /**
- * One of the order tiles on the dashboard — Pending, Completed, Sold to Us.
+ * Grams below which an order counts as weight-settled.
  *
- * The three were separate copies of the same markup and had drifted into a row
- * that did not line up. Three things were wrong, and all three only show up at a
- * third of the screen width:
- *
- * - The label sat in an HStack with no width constraint, so instead of wrapping
- *   inside the tile it ran past the rounded border.
- * - The inner Box sized to its own content rather than filling the stretched
- *   Pressable, so a tile whose label fitted on one line ("Sold to Us") was
- *   visibly shorter than its neighbours and the row's bottom edge stepped.
- * - With the labels on different line counts, the figures below them sat at
- *   different heights, so the numbers did not line up across the row either.
- *
- * `labelMinHeight` is what keeps the figures aligned: the label block always
- * occupies two lines whether or not the translation needs them. Marathi, Hindi
- * and Gujarati labels are longer than the English ones and wrap here even when
+ * Mirrors WEIGHT_SETTLED_EPSILON_GM in the backend's order.model.ts, which is
+ * what decides there that an order's weight is paid off. Weights carry full
+ * float precision deliberately, so a fully-settled order routinely lands at
+ * ~1e-13 rather than exactly 0 — without this, every settled order would show
+ * its retailer as still owing a sliver of gold. It is also exactly where a
+ * 3-decimal display stops rounding to "0.000", so the threshold and what the
+ * screen shows agree.
+ */
+const WEIGHT_SETTLED_EPSILON_GM = 0.0005;
+
+/**
+ * Half a rupee — the cash counterpart of the weight epsilon above. Dues render
+ * with no decimals, so anything below this shows as ₹0; counting it would list
+ * a retailer as owing while displaying nothing owed.
+ */
+const CASH_SETTLED_EPSILON = 0.5;
+
+/**
+ * Forces the label under each dues-tile icon to reserve two lines' height,
+ * whether or not the translation needs them, so the figure below always
+ * starts at the same y across a row of tiles. The Marathi, Hindi and Gujarati
+ * labels here ("एकूण रोख बाकी") are longer than the English and wrap even where
  * English does not, so two lines is the normal case rather than the exception.
+ * Without it, a tile whose label fits on one line sits visibly shorter than
+ * its neighbour and the row's bottom edge steps.
  */
 const LABEL_LINE_HEIGHT = 18;
 
-const OrderStatTile = ({
+/** One of the two totals above the dues list — cash owed, or gold owed. */
+const DuesTile = ({
   icon,
   label,
-  count,
-  total,
+  value,
   bg,
   borderColor,
   fg,
   iconColor,
-  onPress,
 }: {
   icon: any;
   label: string;
-  count: number;
-  total: number;
+  value: string;
   bg: string;
   borderColor: string;
   fg: string;
   iconColor: string;
+}) => (
+  <Box
+    flex={1}
+    bg={bg}
+    rounded="$2xl"
+    p="$4"
+    borderWidth={1}
+    borderColor={borderColor}
+    alignItems="center"
+  >
+    <Icon as={icon} color={iconColor} size="sm" />
+    <Text
+      color={fg}
+      fontWeight="$medium"
+      fontSize={13}
+      lineHeight={LABEL_LINE_HEIGHT}
+      numberOfLines={2}
+      mt="$1"
+      textAlign="center"
+      style={{ minHeight: LABEL_LINE_HEIGHT * 2 }}
+    >
+      {label}
+    </Text>
+    {/* adjustsFontSizeToFit rather than wrapping: a lakh-plus figure in a
+        half-width tile ("₹12,45,600") has nowhere to break that reads as a
+        number, so it shrinks instead. */}
+    <Text
+      fontSize={22}
+      fontWeight="$bold"
+      mt="$2"
+      color={fg}
+      textAlign="center"
+      numberOfLines={1}
+      adjustsFontSizeToFit
+    >
+      {value}
+    </Text>
+  </Box>
+);
+
+/** All / Cash / Gold. Which dimension of the dues list is being looked at. */
+type DuesFilter = 'all' | 'cash' | 'gold';
+
+const DuesFilterTabs = ({
+  value,
+  onChange,
+  labels,
+}: {
+  value: DuesFilter;
+  onChange: (next: DuesFilter) => void;
+  labels: Record<DuesFilter, string>;
+}) => (
+  <HStack bg="#F3F4F6" rounded="$full" p="$0.5">
+    {(['all', 'cash', 'gold'] as DuesFilter[]).map(key => {
+      const active = value === key;
+      return (
+        <Pressable
+          key={key}
+          onPress={() => onChange(key)}
+          px="$3"
+          py="$1.5"
+          rounded="$full"
+          bg={active ? '$white' : 'transparent'}
+          style={active ? styles.card : undefined}
+          accessibilityRole="button"
+          accessibilityState={{ selected: active }}
+        >
+          <Text
+            fontSize={13}
+            fontWeight={active ? '$bold' : '$medium'}
+            color={active ? '#4338CA' : '$coolGray500'}
+          >
+            {labels[key]}
+          </Text>
+        </Pressable>
+      );
+    })}
+  </HStack>
+);
+
+/**
+ * One retailer's outstanding position.
+ *
+ * Cash and gold are shown as separate figures rather than combined into a
+ * rupee total: converting grams to rupees needs a rate, and the rate on the
+ * day the metal is actually returned is not the rate today. Showing "owes
+ * 3.250 gm" is a fact; showing its rupee equivalent would be a guess that
+ * changes every time the rate does.
+ */
+const RetailerDuesRow = ({
+  name,
+  code,
+  cash,
+  gold,
+  gramShort,
+  onPress,
+}: {
+  name: string;
+  code?: string;
+  cash: number;
+  gold: number;
+  gramShort: string;
   onPress: () => void;
 }) => (
-  <Pressable flex={1} onPress={onPress}>
-    <Box
-      flex={1}
-      bg={bg}
-      rounded="$2xl"
-      p="$4"
-      borderWidth={1}
-      borderColor={borderColor}
-      alignItems="center"
-    >
-      {/* The icon sits above the label rather than beside it. Inline, it took
-          enough of a third-width tile that "Completed Orders" had nowhere to
-          break and split mid-word as "Complete / d Orders"; on its own row the
-          label gets the full tile width and breaks between words. Longer
-          Marathi and Gujarati labels need that width even more than English. */}
-      <Icon as={icon} color={iconColor} size="sm" />
-      {/* textAlign as well as the parent's alignItems: centring the box centres
-          a wrapped label's two lines as a block, not the text within them. */}
-      <Text
-        color={fg}
-        fontWeight="$medium"
-        fontSize={13}
-        lineHeight={LABEL_LINE_HEIGHT}
-        numberOfLines={2}
-        mt="$1"
-        textAlign="center"
-        style={{ minHeight: LABEL_LINE_HEIGHT * 2 }}
-      >
-        {label}
-      </Text>
-      <Text fontSize={26} fontWeight="$bold" mt="$2" color={fg} textAlign="center">
-        {count}
-      </Text>
-      <Text
-        fontSize={12}
-        color={fg}
-        opacity={0.8}
-        numberOfLines={1}
-        textAlign="center"
-      >
-        {inr(total)}
-      </Text>
-    </Box>
+  <Pressable onPress={onPress}>
+    <HStack alignItems="center" justifyContent="space-between" py="$3">
+      <VStack flex={1} pr="$3">
+        <Text fontWeight="$medium" fontSize={15} color="#111827" numberOfLines={1}>
+          {name}
+        </Text>
+        {!!code && (
+          <Text fontSize={12} color="$coolGray500" numberOfLines={1}>
+            {code}
+          </Text>
+        )}
+      </VStack>
+
+      {/* Only the dimensions actually owed are printed. A retailer who owes
+          cash but no metal shows one figure, not a "0.000 gm" that reads as a
+          debt of nothing. */}
+      <VStack alignItems="flex-end">
+        {cash > 0 && (
+          <Text fontWeight="$bold" fontSize={15} color="#4338CA" numberOfLines={1}>
+            {inr(cash)}
+          </Text>
+        )}
+        {gold > 0 && (
+          <Text fontWeight="$bold" fontSize={15} color="#B45309" numberOfLines={1}>
+            {`${gold.toFixed(3)} ${gramShort}`}
+          </Text>
+        )}
+      </VStack>
+
+      <Icon as={ChevronRight} size="sm" color="$coolGray400" ml="$1" />
+    </HStack>
   </Pressable>
 );
 
@@ -270,12 +364,12 @@ const DashboardScreen = () => {
   const customers = useAppSelector(state => state.data.customers);
   const orders = useAppSelector(state => state.data.orders);
   const metalRates = useAppSelector(state => state.data.metalRates);
-  const purchaseOldGold = useAppSelector(state => state.data.purchaseOldGold);
 
   const { t, language } = useTranslation();
   const insets = useSafeAreaInsets();
 
   const [fabOpen, setFabOpen] = React.useState(false);
+  const [duesFilter, setDuesFilter] = React.useState<DuesFilter>('all');
   const [refreshing, setRefreshing] = React.useState(false);
   const [orderModalOpen, setOrderModalOpen] = React.useState(false);
   const [customerModalOpen, setCustomerModalOpen] = React.useState(false);
@@ -310,7 +404,6 @@ const DashboardScreen = () => {
       dispatch(fetchCustomers({ force: true })),
       dispatch(fetchOrders({ force: true })),
       dispatch(fetchMetalRates({ force: true })),
-      dispatch(fetchPurchaseOldGold({ force: true })),
     ]);
     setRefreshing(false);
   }, [dispatch]);
@@ -319,63 +412,86 @@ const DashboardScreen = () => {
     dispatch(fetchCustomers());
     dispatch(fetchOrders());
     dispatch(fetchMetalRates());
-    // Only for the "Sold to Us" tile's count — cached, so a no-op once loaded.
-    dispatch(fetchPurchaseOldGold());
   }, [dispatch]);
 
-  const stats = React.useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const monthStr = now.toISOString().slice(0, 7);
-    let pendingCountLocal = 0;
-    let pendingTotalLocal = 0;
-    let completedCountLocal = 0;
-    let completedTotalLocal = 0;
-    let todayTotalLocal = 0;
-    let monthTotalLocal = 0;
-
-    orders.forEach(o => {
-      const amount = Number(o.amount || 0);
-      if (o.status === 'pending') {
-        pendingCountLocal += 1;
-        pendingTotalLocal += amount;
-      } else if (o.status === 'completed') {
-        completedCountLocal += 1;
-        completedTotalLocal += amount;
-      }
-
-      const dateStr = String(o.date || '');
-      if (dateStr.startsWith(todayStr)) todayTotalLocal += amount;
-      if (dateStr.startsWith(monthStr)) monthTotalLocal += amount;
-    });
-
-    // Old gold bought outright, counted separately from orders: it is money
-    // going the other way, so folding it into either total above would misstate
-    // sales.
-    //
-    // Standalone purchases only. An exchange declaration is not a second
-    // transaction — its gold was already deducted inside the invoice it came
-    // from, so counting it here added the same metal twice, once as a sale and
-    // once as a purchase, and the tile's total was wrong by that amount for
-    // every shop that took gold in against a bill.
-    const standalone = standalonePurchases(purchaseOldGold);
-    const soldToUsCount = standalone.length;
-    const soldToUsTotal = standalone.reduce(
-      (sum, d) => sum + (Number(d.totalAmount) || 0),
-      0,
+  /**
+   * What every retailer still owes, from the orders already in the store.
+   *
+   * Both figures come from fields the server maintains on an advance order:
+   * `estimatedBalance` is the cash still to be paid, `remainingWeight` the
+   * grams still to be settled. They are read rather than recomputed here so
+   * that "still owed" has one definition, on the server, where the payment and
+   * old-gold arithmetic that produces it already lives.
+   *
+   * Only `pending` orders count. The server zeroes estimatedBalance the moment
+   * an order completes, and a cancelled order is not owed at all — so filtering
+   * on status is what keeps a finished order from lingering in the list.
+   */
+  const dues = React.useMemo(() => {
+    const customerById = new Map<string, any>(
+      customers.map((c: any) => [String(c.id), c]),
     );
 
-    return {
-      pendingCount: pendingCountLocal,
-      pendingTotal: pendingTotalLocal,
-      completedCount: completedCountLocal,
-      completedTotal: completedTotalLocal,
-      todayTotal: todayTotalLocal,
-      monthTotal: monthTotalLocal,
-      soldToUsCount,
-      soldToUsTotal,
-    };
-  }, [orders, purchaseOldGold]);
+    const byRetailer = new Map<
+      string,
+      { id: string; name: string; code?: string; cash: number; gold: number }
+    >();
+    let totalCash = 0;
+    let totalGold = 0;
+
+    orders.forEach(o => {
+      if (o.status !== 'pending') return;
+
+      const cash = Number(o.estimatedBalance || 0);
+      const gold = Number(o.remainingWeight || 0);
+      const hasCash = cash >= CASH_SETTLED_EPSILON;
+      const hasGold = gold >= WEIGHT_SETTLED_EPSILON_GM;
+      if (!hasCash && !hasGold) return;
+
+      if (hasCash) totalCash += cash;
+      if (hasGold) totalGold += gold;
+
+      const id = String(o.customerId || '');
+      const existing = byRetailer.get(id);
+      if (existing) {
+        if (hasCash) existing.cash += cash;
+        if (hasGold) existing.gold += gold;
+        return;
+      }
+
+      const customer = customerById.get(id);
+      byRetailer.set(id, {
+        id,
+        // Same fallback the orders list uses for an order whose customer record
+        // is missing or has not loaded yet.
+        name: customer?.name || 'Unknown',
+        code: customer?.customerCode,
+        cash: hasCash ? cash : 0,
+        gold: hasGold ? gold : 0,
+      });
+    });
+
+    return { totalCash, totalGold, list: [...byRetailer.values()] };
+  }, [orders, customers]);
+
+  /**
+   * The dues list under the active filter, biggest exposure first.
+   *
+   * Sorted by whichever dimension is being filtered on, so the order of the
+   * rows always matches the figures the filter is showing — sorting the Gold
+   * tab by cash would put the largest gold debt anywhere in the list.
+   */
+  const visibleDues = React.useMemo(() => {
+    const rows = dues.list.filter(r =>
+      duesFilter === 'cash' ? r.cash > 0 : duesFilter === 'gold' ? r.gold > 0 : true,
+    );
+
+    return rows.sort((a, b) =>
+      duesFilter === 'gold'
+        ? b.gold - a.gold || b.cash - a.cash
+        : b.cash - a.cash || b.gold - a.gold,
+    );
+  }, [dues.list, duesFilter]);
 
   return (
     <Box flex={1} bg="$coolGray50">
@@ -441,71 +557,88 @@ const DashboardScreen = () => {
               dashboard to read. Renders nothing unless the SDK says it is due. */}
           <RateAppCard />
 
-          {/* Pending + Completed. alignItems stretch (the default) only equalises
-              the Pressables; each tile's Box carries flex={1} so it fills the one
-              it sits in, which is what keeps the row's bottom edge straight. */}
+          {/* Totals. alignItems stretch (the default) only equalises the
+              Pressables; each tile's Box carries flex={1} so it fills the one it
+              sits in, which is what keeps the row's bottom edge straight. */}
           <HStack space="md" alignItems="stretch">
-            <OrderStatTile
-              icon={Clock}
-              label={t('dashboard.pendingOrders')}
-              count={stats.pendingCount}
-              total={stats.pendingTotal}
+            <DuesTile
+              icon={Wallet}
+              label={t('dashboard.dues.totalCash')}
+              value={inr(dues.totalCash)}
+              bg="#EEF2FF"
+              borderColor="#C7D2FE"
+              fg="#4338CA"
+              iconColor="#6366F1"
+            />
+
+            <DuesTile
+              icon={Coins}
+              label={t('dashboard.dues.totalGold')}
+              value={`${dues.totalGold.toFixed(3)} ${t('common.gramShort') || 'gm'}`}
               bg="#FFFBEB"
               borderColor="#FDE68A"
               fg="#B45309"
               iconColor="#D97706"
-              onPress={() => navigation.navigate('Orders', { filter: 'pending' })}
             />
+          </HStack>
 
-            <OrderStatTile
-              icon={CheckCircle}
-              label={t('dashboard.completedOrders')}
-              count={stats.completedCount}
-              total={stats.completedTotal}
-              bg="#F0FDF4"
-              borderColor="#BBF7D0"
-              fg="#15803D"
-              iconColor="#16A34A"
-              onPress={() => navigation.navigate('Orders', { filter: 'completed' })}
-            />
+          {/* Retailer dues */}
+          <Box
+            bg="$white"
+            p="$4"
+            rounded="$2xl"
+            borderWidth={1}
+            borderColor="#E5E7EB"
+            style={styles.card}
+          >
+            <HStack alignItems="center" justifyContent="space-between" mb="$2">
+              <HStack space="sm" alignItems="center" flexShrink={1}>
+                <Icon as={Users} size="sm" />
+                <Text fontWeight="$bold" numberOfLines={1}>
+                  {t('dashboard.dues.listTitle')}
+                </Text>
+              </HStack>
 
-            {/* Old gold bought from customers. Hidden at zero rather than shown
-                empty: most shops never buy old gold, and a permanent "0" would
-                take a third of this row to say nothing.
-
-                Indigo rather than a second green: it picks up the header
-                gradient's #6366F1 and the Today Sales figure, so it reads as
-                part of this page instead of a variant of Completed. */}
-            {stats.soldToUsCount > 0 && (
-              <OrderStatTile
-                icon={Scale}
-                label={t('dashboard.soldToUs')}
-                count={stats.soldToUsCount}
-                total={stats.soldToUsTotal}
-                bg="#EEF2FF"
-                borderColor="#C7D2FE"
-                fg="#4338CA"
-                iconColor="#6366F1"
-                onPress={() => navigation.navigate('Customers', { filter: 'sellers' })}
+              <DuesFilterTabs
+                value={duesFilter}
+                onChange={setDuesFilter}
+                labels={{
+                  all: t('dashboard.dues.all'),
+                  cash: t('dashboard.dues.cash'),
+                  gold: t('dashboard.dues.gold'),
+                }}
               />
-            )}
-          </HStack>
+            </HStack>
 
-          {/* Stats */}
-          <HStack space="md" style={{ display: 'flex', flexDirection: 'column' }}>
-            <Box flex={1} bg="$white" p="$3" rounded="$xl" alignItems="center" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
-              <Text fontSize={12} color="$coolGray500">{t('dashboard.stats.todaySales')}</Text>
-              <Text fontSize={18} fontWeight="$bold" color="#6366F1">{inr(stats.todayTotal)}</Text>
-            </Box>
-            <Box flex={1} bg="$white" p="$3" rounded="$xl" alignItems="center" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
-              <Text fontSize={12} color="$coolGray500">{t('dashboard.stats.month')}</Text>
-              <Text fontSize={18} fontWeight="$bold" color="#D946EF">{inr(stats.monthTotal)}</Text>
-            </Box>
-            <Box flex={1} bg="$white" p="$3" rounded="$xl" alignItems="center" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
-              <Text fontSize={12} color="$coolGray500">{t('dashboard.stats.totalBills')}</Text>
-              <Text fontSize={18} fontWeight="$bold" color="#111827">{orders.length}</Text>
-            </Box>
-          </HStack>
+            {visibleDues.length === 0 ? (
+              <Center py="$6">
+                <Text fontSize={14} color="$coolGray500" textAlign="center">
+                  {t('dashboard.dues.empty')}
+                </Text>
+              </Center>
+            ) : (
+              <VStack>
+                {visibleDues.map((r, index) => (
+                  <Box
+                    key={r.id || String(index)}
+                    borderTopWidth={index === 0 ? 0 : 1}
+                    borderColor="#F3F4F6"
+                  >
+                    <RetailerDuesRow
+                      name={r.name}
+                      code={r.code}
+                      cash={r.cash}
+                      gold={r.gold}
+                      gramShort={t('common.gramShort') || 'gm'}
+                      onPress={() =>
+                        navigation.navigate('CustomerDetails', { customerId: r.id })
+                      }
+                    />
+                  </Box>
+                ))}
+              </VStack>
+            )}
+          </Box>
         </VStack>
       </ScrollView>
 
@@ -531,7 +664,7 @@ const DashboardScreen = () => {
           <VStack space="md" mb="$4">
             <Pressable onPress={() => { setFabOpen(false); setCustomerModalOpen(true); }}>
               <HStack bg="$white" px="$4" py="$3" rounded="$full" alignItems="center" space="md" style={{ elevation: 4 }}>
-                <Text fontWeight="$medium">{t('dashboard.fab.newCustomer')}</Text>
+                <Text fontWeight="$medium">{t('dashboard.fab.newRetailer')}</Text>
                 <Box w={40} h={40} rounded="$full" justifyContent="center" alignItems="center" bg="#14B8A6">
                   <Icon as={Users} color="$white" />
                 </Box>

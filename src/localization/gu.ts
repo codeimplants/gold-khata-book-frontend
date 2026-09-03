@@ -1178,9 +1178,19 @@ export default {
       totalBills: 'કુલ બિલ',
     },
 
+    dues: {
+      totalCash: 'કુલ રોકડ બાકી',
+      totalGold: 'કુલ સોનું બાકી',
+      listTitle: 'રિટેલર બાકી યાદી',
+      all: 'બધા',
+      cash: 'રોકડ',
+      gold: 'સોનું',
+      empty: 'કોઈ બાકી મળી નથી.',
+    },
+
     fab: {
       newOrder: 'નવો ઑર્ડર',
-      newCustomer: 'નવો ગ્રાહક',
+      newRetailer: 'નવો રિટેલર',
     },
 
     ratesModal: {

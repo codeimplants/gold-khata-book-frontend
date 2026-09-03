@@ -1201,9 +1201,19 @@ export default {
       totalBills: 'Total Bills',
     },
 
+    dues: {
+      totalCash: 'Total Cash Dues',
+      totalGold: 'Total Gold Dues',
+      listTitle: 'Retailer Dues List',
+      all: 'All',
+      cash: 'Cash',
+      gold: 'Gold',
+      empty: 'No outstanding dues found.',
+    },
+
     fab: {
       newOrder: 'New Order',
-      newCustomer: 'New Customer',
+      newRetailer: 'New Retailer',
     },
 
     ratesModal: {
