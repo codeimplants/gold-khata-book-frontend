@@ -1,0 +1,23 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`thermal receipt renders the expected receipt layout 1`] = `
+"Shree Jewellers
+Thergaon, Pune
+9850929634
+GSTIN: 27ABCDE1234F1Z5
+--------------------------------
+Invoice #INV-001      02/08/2026
+Ramesh Patel
+9850929634
+--------------------------------
+Gold Ring
+  22K  1 Pcs  5.500 gm
+  @ 7,000.00       Rs. 39,000.00
+--------------------------------
+Total Amount       Rs. 38,500.00
+Making (Fixed)        Rs. 500.00
+Subtotal           Rs. 39,000.00
+GST (3%)            Rs. 1,170.00
+Total              Rs. 40,170.00
+Thank you for your business"
+`;

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		<key>NSFaceIDUsageDescription</key>
+		<string>Gold Khata Book uses Face ID to unlock the app securely.</string>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true />
+		<key>CFBundleDevelopmentRegion</key>
+		<string>en</string>
+		<key>CFBundleDisplayName</key>
+		<string>Gold Khata Book</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>$(PRODUCT_NAME)</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(MARKETING_VERSION)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(CURRENT_PROJECT_VERSION)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true />
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsArbitraryLoads</key>
+			<false />
+			<key>NSAllowsLocalNetworking</key>
+			<true />
+		</dict>
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false />
+		<key>RCTNewArchEnabled</key>
+		<true />
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Gold Khata Book uses your photo library so you can choose a shop logo or signature image to
+			appear on your invoices in Shop Details.</string>
+		<key>NSCameraUsageDescription</key>
+		<string>Gold Khata Book uses the camera so you can photograph old ornaments a customer is selling
+			or exchanging, kept as a record with the declaration.</string>
+		<key>NSContactsUsageDescription</key>
+		<string>Gold Khata Book uses your contacts to quickly fill in a customer's name and phone number.</string>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>Gold Khata Book uses Bluetooth to connect to your thermal receipt printer.</string>
+		<!-- iOS returns false from canOpenURL for any scheme not listed here,
+		     with no error. react-native-share's shareSingle for WhatsApp checks
+		     canOpenURL('whatsapp://') first, so without this the WhatsApp button
+		     silently falls through to the generic share sheet on every iPhone —
+		     the feature appears to work while never actually reaching WhatsApp.
+		     Android covers the same ground with <queries> in AndroidManifest. -->
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>whatsapp</string>
+		</array>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Gold Khata Book connects to thermal receipt printers on your WiFi network to print bills.</string>
+		<key>UIRequiredDeviceCapabilities</key>
+		<array>
+			<string>arm64</string>
+		</array>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+		</array>
+		<!--
+		iPad multitasking requires ALL FOUR orientations (ITMS-90474). Omitting
+		UIInterfaceOrientationPortraitUpsideDown fails upload validation, even
+		though iPhone deliberately stays portrait-only above.
+	-->
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>UIViewControllerBasedStatusBarAppearance</key>
+		<false />
+		<key>UIAppFonts</key>
+		<array>
+			<string>Outfit-Bold.ttf</string>
+			<string>Outfit-Light.ttf</string>
+			<string>Outfit-Medium.ttf</string>
+			<string>Outfit-Regular.ttf</string>
+			<string>Outfit-SemiBold.ttf</string>
+			<string>SpaceGrotesk-Bold.ttf</string>
+			<string>SpaceGrotesk-Light.ttf</string>
+			<string>SpaceGrotesk-Medium.ttf</string>
+			<string>SpaceGrotesk-Regular.ttf</string>
+			<string>SpaceGrotesk-SemiBold.ttf</string>
+		</array>
+	</dict>
+</plist>

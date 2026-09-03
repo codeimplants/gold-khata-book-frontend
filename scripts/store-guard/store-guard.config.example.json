@@ -1,0 +1,30 @@
+{
+  "app": {
+    "name": "My App",
+    "iosScheme": null,
+    "bundleId": "com.example.app",
+    "androidPackage": "com.example.app",
+    "srcDirs": ["src", "app"]
+  },
+
+  "profile": {
+    "hasAccounts": false,
+    "hasAccountCreationInApp": false,
+    "collectsPersonalData": false,
+    "hasUserGeneratedContent": false,
+    "sellsDigitalGoods": false,
+    "usesThirdPartyLogin": false,
+    "isFinancialServices": false,
+    "usesAds": false,
+    "supportsTablet": false
+  },
+
+  "liveVersions": {
+    "ios": { "version": null, "build": null },
+    "android": { "versionCode": null, "versionName": null }
+  },
+
+  "allowedPermissions": [],
+
+  "ignore": {}
+}

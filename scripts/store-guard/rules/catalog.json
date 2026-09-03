@@ -1,0 +1,624 @@
+{
+  "catalogVersion": "1.1.0",
+  "reviewed": "2026-07-20",
+  "note": "This file is the reference. Every rule cites the guideline it comes from so a human can verify it against the source. Store policies change; re-read the sources and bump `reviewed` at least twice a year. A rule with mode `auto` is enforced by code in rules/checks/. A rule with mode `manual` cannot be decided from the repo — it is a store-console or human-judgement item, and must be attested by a person. Each manual rule carries a `validity` block saying what makes its answer go stale — the version moving on (`always`), a fingerprint changing (`signal`), or time passing (`expiry`). An answer is carried forward until then, so a release only re-asks what actually changed. See lib/validity.js.",
+  "sources": [
+    {
+      "id": "apple-review",
+      "title": "App Store Review Guidelines",
+      "url": "https://developer.apple.com/app-store/review/guidelines/"
+    },
+    {
+      "id": "apple-privacy-manifest",
+      "title": "Privacy manifest files",
+      "url": "https://developer.apple.com/documentation/bundleresources/privacy-manifest-files"
+    },
+    {
+      "id": "play-policy",
+      "title": "Google Play Developer Program Policy",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9899234"
+    },
+    {
+      "id": "play-target-api",
+      "title": "Target API level requirements for Google Play apps",
+      "url": "https://support.google.com/googleplay/android-developer/answer/11926878"
+    },
+    {
+      "id": "play-data-safety",
+      "title": "Provide information for Google Play's Data safety section",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10787469"
+    }
+  ],
+  "rules": [
+    {
+      "id": "apple.2.1.placeholder-content",
+      "store": "apple",
+      "ref": "2.1 App Completeness",
+      "title": "No placeholder or unfinished content",
+      "requires": "Submissions must be final. Placeholder text, 'coming soon' screens and dead-end buttons read as an incomplete app and are rejected.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#2.1",
+      "severity": "warn",
+      "mode": "auto",
+      "check": "common/placeholderContent"
+    },
+    {
+      "id": "apple.2.1.demo-account",
+      "store": "apple",
+      "ref": "2.1 App Completeness",
+      "title": "Working demo account for review",
+      "requires": "If any part of the app is behind a login, App Review Information must carry credentials that work at submission time, or the reviewer cannot get in and rejects under 2.1.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#2.1",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "hasAccounts"
+      },
+      "prompt": "Confirm the demo account in App Store Connect > App Review Information signs in RIGHT NOW on the build being submitted, and that any OTP path a reviewer hits is documented in the notes.",
+      "validity": {
+        "mode": "always",
+        "expiresDays": 30
+      }
+    },
+    {
+      "id": "apple.2.3.7.metadata-accurate",
+      "store": "apple",
+      "ref": "2.3.7 Accurate Metadata",
+      "title": "App name, subtitle and keywords describe the app",
+      "requires": "Name, subtitle, screenshots and description must reflect what the app actually does. Irrelevant keywords or competitor names are rejected.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#2.3",
+      "severity": "warn",
+      "mode": "manual",
+      "prompt": "Confirm the App Store listing name, subtitle, description and keywords match what this build actually does — no unshipped features described, no competitor names in keywords.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "screens",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "apple.2.3.10.no-other-platforms",
+      "store": "apple",
+      "ref": "2.3.10 Accurate Metadata",
+      "title": "No mention of other mobile platforms",
+      "requires": "App metadata and in-app content must not reference Android or other platforms.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#2.3",
+      "severity": "warn",
+      "mode": "auto",
+      "check": "common/otherPlatformMentions"
+    },
+    {
+      "id": "apple.3.1.1.iap-for-digital-goods",
+      "store": "apple",
+      "ref": "3.1.1 In-App Purchase",
+      "title": "Digital goods must use In-App Purchase",
+      "requires": "Unlocking features or content inside the app must go through IAP. Linking out to an external payment page for digital content is rejected.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#3.1.1",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/externalPayment",
+      "when": {
+        "config": "sellsDigitalGoods"
+      }
+    },
+    {
+      "id": "apple.3.2.2.loan-terms-disclosure",
+      "store": "apple",
+      "ref": "3.2.2(vii) Unacceptable Business Model",
+      "title": "Consumer lending apps must disclose loan terms",
+      "requires": "Apps offering personal loans must disclose the maximum APR, repayment period and a representative cost example, and must not exceed 36% APR.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#3.2.2",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "isFinancialServices"
+      },
+      "prompt": "This app touches lending. Confirm whether it offers loans TO the end user (consumer lending — triggers 3.2.2(vii) disclosure and the 36% APR cap) or is a back-office record-keeping tool for a lender's own books (does not). Record which, and the reasoning, in the submission notes.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "apple.4.2.minimum-functionality",
+      "store": "apple",
+      "ref": "4.2 Minimum Functionality",
+      "title": "More than a repackaged website",
+      "requires": "An app that is only a web view of an existing site, with no native capability, is rejected.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#4.2",
+      "severity": "warn",
+      "mode": "auto",
+      "check": "common/webviewOnly"
+    },
+    {
+      "id": "apple.4.8.sign-in-with-apple",
+      "store": "apple",
+      "ref": "4.8 Login Services",
+      "title": "Sign in with Apple offered alongside other social logins",
+      "requires": "An app using a third-party social login (Google, Facebook) as its only or primary sign-in must also offer an equivalent privacy-preserving option such as Sign in with Apple.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#4.8",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/signInWithApple",
+      "when": {
+        "config": "usesThirdPartyLogin"
+      }
+    },
+    {
+      "id": "apple.5.1.1.i.privacy-policy",
+      "store": "apple",
+      "ref": "5.1.1(i) Data Collection and Storage",
+      "title": "Privacy policy link present and reachable",
+      "requires": "Every app must link to a privacy policy, both in App Store Connect and inside the app where it collects data.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#5.1.1",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/privacyPolicyLink"
+    },
+    {
+      "id": "apple.5.1.1.ii.purpose-strings",
+      "store": "apple",
+      "ref": "5.1.1(ii) Permission",
+      "title": "Permission purpose strings describe real, app-specific use",
+      "requires": "Every NS*UsageDescription must explain in the app's own words what the app does with the data. Framework defaults and vague one-liners are rejected.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#5.1.1",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/purposeStrings",
+      "history": "Sone Taran 2.0.0 was rejected for shipping Expo's default 'Allow $(PRODUCT_NAME) to access your camera'."
+    },
+    {
+      "id": "apple.5.1.1.v.account-deletion",
+      "store": "apple",
+      "ref": "5.1.1(v) Account Sign-In",
+      "title": "In-app account deletion",
+      "requires": "An app that supports account creation must let the user start account deletion from inside the app — not only deactivation, and not only via a support email.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#5.1.1",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/accountDeletion",
+      "when": {
+        "config": "hasAccountCreationInApp"
+      }
+    },
+    {
+      "id": "apple.5.1.2.privacy-labels-match",
+      "store": "apple",
+      "ref": "5.1.2 Data Use and Sharing",
+      "title": "App Store privacy labels match actual behaviour",
+      "requires": "The privacy 'nutrition label' in App Store Connect must match what the app and its SDKs actually collect. A mismatch is grounds for removal.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#5.1.2",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "collectsPersonalData"
+      },
+      "prompt": "Open App Store Connect > App Privacy and confirm every data type this build collects is declared — including anything third-party SDKs collect on your behalf. Cross-check against the analytics events this app sends.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "iosUsageDescriptions",
+          "sdks",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "apple.privacy-manifest.present",
+      "store": "apple",
+      "ref": "PrivacyInfo.xcprivacy",
+      "title": "Privacy manifest present and populated",
+      "requires": "Apps must ship a privacy manifest declaring collected data types and any required-reason APIs. An empty manifest in an app that collects data contradicts its own privacy labels.",
+      "url": "https://developer.apple.com/documentation/bundleresources/privacy-manifest-files",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/privacyManifest"
+    },
+    {
+      "id": "apple.export-compliance",
+      "store": "apple",
+      "ref": "Export compliance",
+      "title": "ITSAppUsesNonExemptEncryption declared",
+      "requires": "Without this key every upload halts and waits for a manual answer to the encryption question.",
+      "url": "https://developer.apple.com/documentation/security/complying-with-encryption-export-regulations",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/exportCompliance"
+    },
+    {
+      "id": "apple.itms-90062.build-number",
+      "store": "apple",
+      "ref": "ITMS-90062",
+      "title": "Build number is unique and consistent",
+      "requires": "The build number must be higher than any previously uploaded build for this version, and identical across all build configurations.",
+      "url": "https://developer.apple.com/documentation/xcode/build-settings-reference",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/versioning",
+      "history": "Builds 1 and 2 of SoneBill were consumed by failed attempts; build 3 was rejected on upload for reuse."
+    },
+    {
+      "id": "apple.itms-90048.ascii-executable",
+      "store": "apple",
+      "ref": "ITMS-90048",
+      "title": "Bundle executable name is ASCII",
+      "requires": "CFBundleExecutable / PRODUCT_NAME must be ASCII. The user-visible CFBundleDisplayName may be localised.",
+      "url": "https://developer.apple.com/library/archive/qa/qa1823/_index.html",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/bundleNaming",
+      "history": "Rejected for a Devanagari CFBundleExecutable."
+    },
+    {
+      "id": "apple.itms-90023.ipad-icons",
+      "store": "apple",
+      "ref": "ITMS-90023",
+      "title": "iPad icons present when iPad is enabled",
+      "requires": "An iPad-enabled app must include the 76x76 and 83.5x83.5 icons in its asset catalog.",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/app-icons",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/ipadIcons",
+      "when": {
+        "config": "supportsTablet"
+      }
+    },
+    {
+      "id": "apple.itms-90474.ipad-orientations",
+      "store": "apple",
+      "ref": "ITMS-90474",
+      "title": "iPad declares all four orientations",
+      "requires": "An iPad-enabled app must declare all four interface orientations, including PortraitUpsideDown.",
+      "url": "https://developer.apple.com/design/human-interface-guidelines/layout",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/ipadOrientations",
+      "when": {
+        "config": "supportsTablet"
+      }
+    },
+    {
+      "id": "apple.ats.no-cleartext",
+      "store": "apple",
+      "ref": "App Transport Security",
+      "title": "No cleartext HTTP or dev-server plumbing in a shipping build",
+      "requires": "NSAllowsArbitraryLoads, Expo Bonjour discovery and http:// endpoints must not ship in a release build.",
+      "url": "https://developer.apple.com/documentation/security/preventing-insecure-network-connections",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "ios/appTransportSecurity"
+    },
+    {
+      "id": "apple.screenshots-required-sizes",
+      "store": "apple",
+      "ref": "App Store Connect media requirements",
+      "title": "Screenshots for every required device size",
+      "requires": "Screenshots must be supplied for the required iPhone display sizes, and for iPad if the app is iPad-enabled. They must show the real app, not marketing mockups of unshipped features.",
+      "url": "https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications/",
+      "severity": "fail",
+      "mode": "manual",
+      "prompt": "Confirm App Store Connect has screenshots for every required size (including iPad if supportsTablet is on), taken from THIS build, showing features that actually ship.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "screens",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "apple.age-rating",
+      "store": "apple",
+      "ref": "App Store Connect age rating",
+      "title": "Age rating questionnaire matches app content",
+      "requires": "The age rating questionnaire must reflect actual app content and any user-generated or web content.",
+      "url": "https://developer.apple.com/help/app-store-connect/reference/age-ratings",
+      "severity": "warn",
+      "mode": "manual",
+      "prompt": "Confirm the age rating questionnaire still matches what this build contains.",
+      "validity": {
+        "mode": "expiry",
+        "signals": [
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "apple.1.2.ugc-moderation",
+      "store": "apple",
+      "ref": "1.2 User-Generated Content",
+      "title": "UGC apps need filtering, reporting and blocking",
+      "requires": "Apps with user-generated content must provide a content filter, a report mechanism, a way to block abusive users, and published contact information.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#1.2",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "hasUserGeneratedContent"
+      },
+      "prompt": "Confirm the app ships content reporting, user blocking and a moderation path — all three are required, not just one.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "screens",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "play.target-api-level",
+      "store": "play",
+      "ref": "Target API level requirement",
+      "title": "targetSdkVersion meets Play's current floor",
+      "requires": "New apps and updates must target a recent API level. Play refuses the upload outright below the floor.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/11926878",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/targetSdk"
+    },
+    {
+      "id": "play.version-code-increment",
+      "store": "play",
+      "ref": "Play Console versioning",
+      "title": "versionCode is higher than the live release",
+      "requires": "Every upload needs a versionCode strictly greater than any already released on the track. Play rejects duplicates and regressions.",
+      "url": "https://developer.android.com/studio/publish/versioning",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/versioning"
+    },
+    {
+      "id": "play.manifest-declared-permissions",
+      "store": "play",
+      "ref": "Permissions and APIs that Access Sensitive Information",
+      "title": "No undeclared or unexpected permissions in the merged manifest",
+      "requires": "Permissions must be justified by app functionality. Autolinked libraries commonly inject permissions the app never intended to request.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9888170",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/permissions"
+    },
+    {
+      "id": "play.sensitive-permissions",
+      "store": "play",
+      "ref": "Permissions and APIs that Access Sensitive Information",
+      "title": "Restricted permissions require a declaration",
+      "requires": "SYSTEM_ALERT_WINDOW, QUERY_ALL_PACKAGES, MANAGE_EXTERNAL_STORAGE, SMS/Call Log, background location and AD_ID each need a Play Console declaration and an approved use case.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9888170",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/sensitivePermissions"
+    },
+    {
+      "id": "play.cleartext-traffic",
+      "store": "play",
+      "ref": "Device and Network Abuse / security best practice",
+      "title": "Cleartext traffic disabled in release",
+      "requires": "usesCleartextTraffic must be false in a release build, and no http:// endpoints should ship.",
+      "url": "https://developer.android.com/privacy-and-security/security-config",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/cleartextTraffic"
+    },
+    {
+      "id": "play.data-safety-form",
+      "store": "play",
+      "ref": "Data safety section",
+      "title": "Data safety form matches actual behaviour",
+      "requires": "The Data safety form must declare every data type collected or shared, including by third-party SDKs, and must match the app's privacy policy.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10787469",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "collectsPersonalData"
+      },
+      "prompt": "Open Play Console > App content > Data safety and confirm every collected/shared data type in this build is declared, matches the privacy policy, and matches the iOS privacy labels.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "androidPermissions",
+          "sdks",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "play.account-deletion",
+      "store": "play",
+      "ref": "User Data — account deletion",
+      "title": "In-app deletion plus a public web deletion URL",
+      "requires": "Apps allowing account creation must offer in-app deletion AND a web-accessible deletion request URL declared in Play Console — the web URL is a Play-only requirement Apple does not have.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13327111",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/accountDeletion",
+      "when": {
+        "config": "hasAccountCreationInApp"
+      }
+    },
+    {
+      "id": "play.account-deletion-url",
+      "store": "play",
+      "ref": "User Data — account deletion",
+      "title": "Deletion URL declared in Play Console",
+      "requires": "The web deletion URL must be reachable without installing the app and declared under Data safety.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13327111",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "hasAccountCreationInApp"
+      },
+      "prompt": "Confirm the public account-deletion URL is live, reachable while logged out, and entered in Play Console > Data safety.",
+      "validity": {
+        "mode": "expiry",
+        "signals": [
+          "profile"
+        ],
+        "expiresDays": 180
+      }
+    },
+    {
+      "id": "play.privacy-policy",
+      "store": "play",
+      "ref": "User Data",
+      "title": "Privacy policy URL in Play Console and in the app",
+      "requires": "A privacy policy URL is required in the store listing and must be reachable in-app.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9859455",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/privacyPolicyLink"
+    },
+    {
+      "id": "play.financial-services",
+      "store": "play",
+      "ref": "Financial Services policy",
+      "title": "Lending apps need a Financial Services declaration",
+      "requires": "Personal loan apps must complete the Financial Features declaration and, in some regions including India, supply licensing documentation. Undeclared lending apps are suspended.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9876821",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "isFinancialServices"
+      },
+      "prompt": "Play Console > App content > Financial features. Declare whether this app offers personal loans to consumers or is a business record-keeping tool. Leaving it blank on a lending-adjacent app risks suspension.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "play.content-rating",
+      "store": "play",
+      "ref": "Content ratings",
+      "title": "IARC content rating questionnaire completed",
+      "requires": "An app without a completed content rating questionnaire is removed from Play.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9859655",
+      "severity": "fail",
+      "mode": "manual",
+      "prompt": "Confirm the IARC questionnaire is complete and still accurate for this build.",
+      "validity": {
+        "mode": "expiry",
+        "signals": [
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "play.ads-id-declaration",
+      "store": "play",
+      "ref": "Advertising ID",
+      "title": "AD_ID permission matches the ads declaration",
+      "requires": "Apps targeting API 33+ that use the advertising ID must declare AD_ID; apps that do not use ads must not request it.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/6048248",
+      "severity": "warn",
+      "mode": "auto",
+      "check": "android/adsDeclaration"
+    },
+    {
+      "id": "play.store-listing-accurate",
+      "store": "play",
+      "ref": "Deceptive Behavior / Store Listing",
+      "title": "Listing, screenshots and feature graphic reflect the app",
+      "requires": "Store listing assets must depict actual app functionality. Misleading screenshots are a Deceptive Behavior violation.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9898659",
+      "severity": "warn",
+      "mode": "manual",
+      "prompt": "Confirm Play listing screenshots, feature graphic and description match what this build actually does.",
+      "validity": {
+        "mode": "signal",
+        "signals": [
+          "screens",
+          "profile"
+        ],
+        "expiresDays": 365
+      }
+    },
+    {
+      "id": "play.testing-credentials",
+      "store": "play",
+      "ref": "App access instructions",
+      "title": "Reviewer sign-in instructions provided",
+      "requires": "If content sits behind a login, Play Console > App access must carry working credentials and steps.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9859455",
+      "severity": "fail",
+      "mode": "manual",
+      "when": {
+        "config": "hasAccounts"
+      },
+      "prompt": "Confirm Play Console > App content > App access has working credentials for this build, including how to get past any OTP.",
+      "validity": {
+        "mode": "always",
+        "expiresDays": 30
+      }
+    },
+    {
+      "id": "play.foreground-service-types",
+      "store": "play",
+      "ref": "Foreground services",
+      "title": "Foreground services declare a type and justification",
+      "requires": "Apps targeting API 34+ must declare a foregroundServiceType for every foreground service and justify it in Play Console.",
+      "url": "https://developer.android.com/about/versions/14/changes/fgs-types-required",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "android/foregroundServices"
+    },
+    {
+      "id": "both.no-hardcoded-secrets",
+      "store": "both",
+      "ref": "Security review / Play Device and Network Abuse",
+      "title": "No API keys or secrets committed in source",
+      "requires": "Shipping credentials in the bundle exposes them to anyone who unpacks the app. Both stores treat leaked backend credentials as a security defect.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9888379",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/hardcodedSecrets"
+    },
+    {
+      "id": "both.version-control-key-present",
+      "store": "both",
+      "ref": "Release engineering / internal",
+      "title": "Version-control API key is set for the release build",
+      "requires": "The Nexus API key lives in a gitignored secrets.ts whose template defaults to an empty string, so a release can be built with no key at all. That is what happened to 1.0.15: version checks were rejected and engagement telemetry disabled itself for twelve days, and neither could be fixed without another store release. A build that cannot authenticate cannot be told anything.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/9888379",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/versionControlKeyPresent"
+    },
+    {
+      "id": "both.no-pii-in-analytics",
+      "store": "both",
+      "ref": "Apple 5.1.2 / Play User Data",
+      "title": "No personal data in analytics event payloads",
+      "requires": "Sending names, phone numbers or emails as analytics parameters must be declared on both stores' privacy forms — and usually should not happen at all.",
+      "url": "https://support.google.com/googleplay/android-developer/answer/10144311",
+      "severity": "warn",
+      "mode": "auto",
+      "check": "common/piiInAnalytics",
+      "history": "Flagged during the SoneBill 1.0.10 review and deferred to the next release."
+    },
+    {
+      "id": "both.debug-code-stripped",
+      "store": "both",
+      "ref": "Apple 2.1 / general release hygiene",
+      "title": "No dev endpoints or debug switches in a release build",
+      "requires": "localhost URLs, staging endpoints and debug menus reaching production are a common cause of a reviewer seeing a broken or blank app.",
+      "url": "https://developer.apple.com/app-store/review/guidelines/#2.1",
+      "severity": "fail",
+      "mode": "auto",
+      "check": "common/devEndpoints"
+    }
+  ]
+}

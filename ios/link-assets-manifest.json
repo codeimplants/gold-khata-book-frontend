@@ -1,0 +1,45 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "assets/fonts/Outfit-Bold.ttf",
+      "sha1": "7f80cab803c7eafec1d4deb10ba9a9699a9af552"
+    },
+    {
+      "path": "assets/fonts/Outfit-Light.ttf",
+      "sha1": "a77023c81b705a918fae825e957aef80252e7e80"
+    },
+    {
+      "path": "assets/fonts/Outfit-Medium.ttf",
+      "sha1": "9e9a094b61389254add0df9536fe962a9d668926"
+    },
+    {
+      "path": "assets/fonts/Outfit-Regular.ttf",
+      "sha1": "3024f9b4f58fd6769d8634b6352a423b5cf73647"
+    },
+    {
+      "path": "assets/fonts/Outfit-SemiBold.ttf",
+      "sha1": "7b4dd31fa1c9ada8f879b12f2fff5663115734d2"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Bold.ttf",
+      "sha1": "a9c030e3ebcd8ce7284f8382da8590609f1803c4"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Light.ttf",
+      "sha1": "b614ae7d6f3d19a31004d0ceec7727743262552a"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Medium.ttf",
+      "sha1": "cf888825e5dc27fb90422350958924f6048381b5"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-Regular.ttf",
+      "sha1": "a9f73f295d771a183ab23260d4406b7f33b53b18"
+    },
+    {
+      "path": "assets/fonts/SpaceGrotesk-SemiBold.ttf",
+      "sha1": "7a845daa4f73dace30a8035876a361d350c2d740"
+    }
+  ]
+}

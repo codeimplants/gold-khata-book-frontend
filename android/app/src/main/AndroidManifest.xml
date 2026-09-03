@@ -1,0 +1,100 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.USE_BIOMETRIC" />
+    <!-- expo-modules-filesystem (pulled in by the Expo modules runtime) declares this
+         same permission with maxSdkVersion=32, which fails the manifest merge against
+         our 28. Keep 28: PDFs go to app-private external storage, which needs no
+         storage permission on any Android version (see utils/pdfService.ts), so
+         widening to 32 would request it on more OS versions for no benefit. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28"
+        tools:replace="android:maxSdkVersion" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <!-- Bluetooth (thermal receipt printer pairing/printing over BLE) -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN"
+        android:usesPermissionFlags="neverForLocation" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30" />
+    <!-- rxandroidble (via react-native-ble-plx) declares the same permission as
+         <uses-permission-sdk-23> with no maxSdkVersion. Play counts that as a second
+         declaration of ACCESS_FINE_LOCATION and rejects the upload with "Duplicate
+         declarations of <uses-permission> element ... with different maxSdkVersions".
+         Replace its node so both carry maxSdkVersion=30. Location is only needed for
+         BLE scanning up to Android 11; from 12 we use BLUETOOTH_SCAN neverForLocation. -->
+    <uses-permission-sdk-23 android:name="android.permission.ACCESS_FINE_LOCATION"
+        android:maxSdkVersion="30"
+        tools:node="replace" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- Advertising identifiers, removed deliberately.
+
+         Google Play Services (analytics/measurement) injects these transitively
+         into the merged manifest. This app shows no ads and never reads an
+         advertising ID — store-guard.config.json declares usesAds: false.
+
+         Shipping them anyway would oblige a Play Data safety declaration for
+         advertising-ID collection the app does not actually perform, which is
+         precisely the data-minimisation mismatch Play flags. Removing is
+         Google's own documented remedy for apps that do not need AD_ID.
+
+         If advertising is ever added, delete this block and declare the
+         collection in Play Console > App content > Data safety in the same
+         change — not afterwards. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+        tools:node="remove" />
+    <uses-permission android:name="android.permission.ACCESS_ADSERVICES_AD_ID"
+        tools:node="remove" />
+
+    <!-- Package visibility (Android 11+ / API 30+): required so react-native-share
+         can resolve WhatsApp for direct sharing and so Linking.canOpenURL works. -->
+    <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
+        <intent>
+            <action android:name="android.intent.action.SEND" />
+            <data android:mimeType="*/*" />
+        </intent>
+    </queries>
+
+    <application
+      android:name=".MainApplication"
+      android:label="@string/app_name"
+      android:icon="@mipmap/ic_launcher"
+      android:roundIcon="@mipmap/ic_launcher_round"
+      android:allowBackup="false"
+      android:theme="@style/AppTheme"
+      android:usesCleartextTraffic="${usesCleartextTraffic}"
+      android:supportsRtl="true">
+      <activity
+        android:name=".MainActivity"
+        android:label="@string/app_name"
+        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+        android:launchMode="singleTask"
+        android:windowSoftInputMode="adjustResize"
+        android:exported="true">
+        <intent-filter>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent-filter>
+      </activity>
+
+      <!-- Required by react-native-html-to-pdf to share PDF files on Android 7+ -->
+      <provider
+        android:name="androidx.core.content.FileProvider"
+        android:authorities="${applicationId}.provider"
+        android:exported="false"
+        android:grantUriPermissions="true">
+        <meta-data
+          android:name="android.support.FILE_PROVIDER_PATHS"
+          android:resource="@xml/file_provider_paths" />
+      </provider>
+    </application>
+</manifest>

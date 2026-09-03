@@ -1,0 +1,64 @@
+{
+  "app": {
+    "name": "Gold Khata Book",
+    "iosScheme": "GoldKhataBook",
+    "bundleId": "com.goldkhatabook.app",
+    "androidPackage": "com.goldkhatabook.app",
+    "srcDirs": ["src"]
+  },
+
+  "profile": {
+    "hasAccounts": true,
+    "hasAccountCreationInApp": true,
+    "collectsPersonalData": true,
+    "hasUserGeneratedContent": false,
+    "sellsDigitalGoods": false,
+    "usesThirdPartyLogin": false,
+    "isFinancialServices": false,
+    "usesAds": false,
+    "supportsTablet": true
+  },
+
+  "liveVersions": {
+    "ios": { "version": "1.0.15", "build": 10 },
+    "android": { "versionCode": 15, "versionName": "1.0.15" }
+  },
+
+  "allowedPermissions": [
+    "android.permission.INTERNET",
+    "android.permission.USE_BIOMETRIC",
+    "android.permission.WRITE_EXTERNAL_STORAGE",
+    "android.permission.READ_EXTERNAL_STORAGE",
+
+    "android.permission.READ_CONTACTS",
+
+    "android.permission.BLUETOOTH_SCAN",
+    "android.permission.BLUETOOTH_CONNECT",
+    "android.permission.BLUETOOTH",
+    "android.permission.BLUETOOTH_ADMIN",
+    "android.permission.ACCESS_FINE_LOCATION",
+    "android.permission.ACCESS_COARSE_LOCATION",
+
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.ACCESS_WIFI_STATE",
+    "android.permission.CHANGE_NETWORK_STATE",
+    "android.permission.WAKE_LOCK",
+    "android.permission.USE_FINGERPRINT",
+    "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE",
+    "com.goldkhatabook.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+
+  "allowedPermissionsNotes": {
+    "android.permission.READ_CONTACTS": "Customer picker imports a phone contact when creating an invoice or order. User-initiated, runtime-prompted.",
+    "android.permission.BLUETOOTH_SCAN / _CONNECT / BLUETOOTH / _ADMIN": "Thermal receipt printer pairing and printing over BLE. The two legacy names are injected by rxandroidble for pre-Android-12 devices.",
+    "android.permission.ACCESS_FINE_LOCATION / ACCESS_COARSE_LOCATION": "Required by Android for BLE scanning up to Android 11 only, hence maxSdkVersion=30 in the manifest. From Android 12 the app uses BLUETOOTH_SCAN with neverForLocation and never receives location.",
+    "android.permission.ACCESS_NETWORK_STATE / ACCESS_WIFI_STATE / CHANGE_NETWORK_STATE / WAKE_LOCK / USE_FINGERPRINT": "Injected by React Native, Firebase and the biometrics library. Standard infrastructure, no user data.",
+    "com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE": "Injected by Play Services for install attribution.",
+    "com.goldkhatabook.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION": "AndroidX self-permission for the app's own runtime receivers. Not granted to any other app.",
+    "_removed": "Advertising permissions (AD_ID, ACCESS_ADSERVICES_*) are deliberately stripped with tools:node=remove in AndroidManifest.xml rather than allowlisted here — the app shows no ads and usesAds is false."
+  },
+
+  "ignore": {
+    "both.no-hardcoded-secrets": "Both remaining matches are client-embedded keys that cannot be truly hidden in a shipped app bundle regardless of where they live in source: (1) src/config/firebaseWeb.ts's Firebase Web apiKey is Google's documented public client identifier — Firebase access control is enforced server-side by Security Rules, not by hiding this value (see the comment in that file); (2) src/config/secrets.ts's VITE_VC_API_KEY is a write-only Nexus telemetry-ingestion key (register device / log event / link device to an opaque user id) with no PII-read or destructive scope, moved to a gitignored file so it's at least out of git history. Full remediation for (2) requires proxying Nexus calls through gold-khata-book-backend using the user's own session instead of a shared static key — tracked as a follow-up, not done here."
+  }
+}

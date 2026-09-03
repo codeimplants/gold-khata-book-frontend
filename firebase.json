@@ -1,0 +1,42 @@
+{
+  "hosting": {
+    "public": "dist",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "//": "Catch-all first, on purpose. Firebase applies EVERY matching rule and the LAST one wins for a repeated key - verified against the live site on 23 Aug 2026, where this block listed second and overrode the hashed-asset rule above it. So the general case goes first and the specific exception below overrides it.",
+        "//0": "Apostrophes and backticks are BANNED in this file, including in these notes. @react-native-firebase reads firebase.json during the iOS build and interpolates the whole file into a single-quoted Ruby string inside a double-quoted shell string (node_modules/@react-native-firebase/app/ios_config.sh). An apostrophe closes that Ruby string and a backtick runs a shell command, so either one fails the iOS build with Failed to parse firebase.json - while the JSON itself is perfectly valid. This broke the iOS build on 26 Aug 2026.",
+        "//1": "Why it is needed: webpack emits bundle.web.js with no content hash, so a deploy reuses the same URLs with different bytes, and the Firebase default max-age=3600 kept an open browser on the previous deploy JavaScript for up to an hour. That cost a round of someone reporting that a deploy did not contain their fix.",
+        "//2": "Why a catch-all rather than a list of globs: header rules match the REQUEST path, and every route here is rewritten to index.html rather than requested by that name - the browser asks for a bare slash, or for /orders/123. An earlier attempt naming /index.html explicitly did nothing for exactly that reason.",
+        "//3": "no-cache means revalidate, not never store: an unchanged bundle costs a 304, not 5.7 MB. Hashing the bundle filenames would let the JS be cached forever too, and is the better fix when someone has time for a webpack change.",
+        "source": "**",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
+      },
+      {
+        "//": "Content-hashed by webpack, so the name changes whenever the bytes do and these can be held forever. Last, so it wins over the catch-all above.",
+        "source": "**/*.@(png|jpg|jpeg|gif|svg|webp|woff|woff2|ttf|otf|ico)",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      }
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

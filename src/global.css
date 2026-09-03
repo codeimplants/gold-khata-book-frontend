@@ -1,0 +1,90 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: "Outfit", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(99, 102, 241, 0.14), transparent 34%),
+    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Space Grotesk", sans-serif;
+}
+
+#root {
+  display: flex;
+}
+
+input,
+button,
+textarea,
+select {
+  font-family: "Outfit", sans-serif !important;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Ensure placeholders use the same font */
+input::placeholder,
+textarea::placeholder {
+  font-family: "Outfit", sans-serif !important;
+  color: #9CA3AF;
+}
+
+/* Remove default focus ring and border changes */
+*:focus,
+*:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: inherit !important;
+}
+
+input,
+select,
+textarea,
+button,
+[role="button"],
+[data-gluestack-component] {
+  outline: none !important;
+  box-shadow: none !important;
+  font-family: "Outfit", sans-serif !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  font-family: "Outfit", sans-serif !important;
+}
+
+/* Fix for Gluestack Select height on web */
+[data-gluestack-component="SelectInput"] {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+@supports (min-height: 100dvh) {
+
+  html,
+  body,
+  #root {
+    min-height: 100dvh;
+  }
+}
+
+@media (max-width: 767px) {
+  body {
+    background: #ffffff;
+  }
+}

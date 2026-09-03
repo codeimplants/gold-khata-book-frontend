@@ -1,0 +1,90 @@
+# Compiles the Android release variant on every change to main.
+#
+# Why this exists: @codeimplants/app-review 1.0.0 was merged in a commit that made the
+# Android release build fail to compile, and nobody found out for ten days — the last AAB
+# predated the merge, so no release build ran in between and `main` sat un-buildable until
+# someone tried to ship. Any check that compiles the release variant would have caught it
+# on the merge commit.
+#
+# Scope is deliberately "does it compile", not "is it shippable":
+#   - No signing. The release keystore is machine-local, and signingConfigs.release in
+#     android/app/build.gradle is guarded by hasProperty('MYAPP_UPLOAD_STORE_FILE'), so the
+#     release variant configures fine here without any secret.
+#   - No R8, no JS bundle, no AAB. Those need the full bundleRelease path and many more
+#     minutes; the failure mode this guards against is a Kotlin/Java compile error in the
+#     app or in one of its native dependencies.
+#   - No store-guard. Its Android rules read the *merged manifest*, which only exists after
+#     a build, and its manual gates need a person at a terminal. It stays in
+#     scripts/build-playstore-aab.ps1 where it gates the actual upload.
+#
+# A green run here does NOT mean the artifact is shippable — see CLAUDE.md, "Release builds
+# differ from debug", which still applies before every upload.
+
+name: Android release check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: android-release-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compile-release:
+    name: Compile release variant
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      # .npmrc is committed and carries legacy-peer-deps=true, which this install needs.
+      - name: Install JS dependencies
+        run: npm ci
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: android-actions/setup-android@v3
+
+      # Pinned to match android/build.gradle's ndkVersion. Several native modules
+      # (reanimated, worklets, ble-plx, screens) configure an externalNativeBuild, and AGP
+      # resolves the NDK while configuring them even though no native code is compiled here.
+      - name: Install pinned NDK
+        run: sdkmanager --install "ndk;27.1.12297006"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # A prebuilt bundle here silently shadows the one Gradle generates and ships stale
+      # JavaScript — this cost ~3 months of Android releases in 2026. It is gitignored, so
+      # this only fires if the ignore rule is ever weakened. See CLAUDE.md, "The artifact
+      # must ship *this build's* JavaScript".
+      - name: Refuse a stray JS bundle
+        run: |
+          if [ -e android/app/src/main/assets/index.android.bundle ]; then
+            echo "::error::A prebuilt index.android.bundle is committed under android/app/src/main/assets/."
+            echo "It overrides the bundle Gradle generates, with no warning and no build failure."
+            exit 1
+          fi
+
+      # Single ABI on purpose: architecture count multiplies native build time, and the
+      # compile errors this job exists to catch are architecture-independent.
+      - name: Compile release Kotlin and Java
+        working-directory: android
+        run: ./gradlew compileReleaseKotlin compileReleaseJavaWithJavac -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      # The only tests the project keeps: pure money and weight maths, where mistakes cost
+      # real rupees. Deliberately named rather than running `npm test`, which also picks up
+      # the long-broken App.test.tsx. See CLAUDE.md, "Testing policy".
+      - name: Money and weight maths
+        run: npx jest __tests__/thermalReceipt.test.ts __tests__/itemPlausibility.test.ts

@@ -1,0 +1,22 @@
+{
+  "name": "store-guard",
+  "version": "1.0.0",
+  "description": "Check a React Native app against App Store and Play Store requirements before building.",
+  "bin": {
+    "store-guard": "bin/store-guard.js"
+  },
+  "main": "lib/engine.js",
+  "files": [
+    "bin",
+    "lib",
+    "rules",
+    "store-guard.config.example.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {},
+  "license": "UNLICENSED",
+  "private": true
+}

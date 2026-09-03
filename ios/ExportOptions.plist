@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options for App Store submission.
+
+  Used with:
+    xcodebuild -exportArchive \
+      -archivePath build/GoldKhataBook.xcarchive \
+      -exportPath build/export \
+      -exportOptionsPlist ExportOptions.plist \
+      -allowProvisioningUpdates
+
+  signingStyle=automatic lets Xcode select the distribution certificate and
+  create the App Store provisioning profile, matching CODE_SIGN_STYLE=Automatic
+  in the project. The archive itself is signed with a development identity;
+  Xcode re-signs for distribution at export.
+
+  uploadSymbols=true ships dSYMs so crash reports are symbolicated.
+-->
+<plist version="1.0">
+<dict>
+	<key>method</key>
+	<string>app-store-connect</string>
+	<key>teamID</key>
+	<string>SCRC6XN49L</string>
+	<key>signingStyle</key>
+	<string>automatic</string>
+	<key>uploadSymbols</key>
+	<true/>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

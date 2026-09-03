@@ -1,0 +1,128 @@
+# OSX
+#
+.DS_Store
+.env
+
+android/app/release/app-release.aab
+android/app/release/app-release.apk
+
+# Xcode
+#
+build/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata
+*.xccheckout
+*.moved-aside
+DerivedData
+*.hmap
+*.ipa
+*.xcuserstate
+**/.xcode.env.local
+
+# Android/IntelliJ
+#
+build/
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+.cxx/
+*.keystore
+!debug.keystore
+*.jks
+.kotlin/
+
+# node.js
+#
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# fastlane
+#
+# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
+# screenshots whenever they are needed.
+# For more information about the recommended setup visit:
+# https://docs.fastlane.tools/best-practices/source-control/
+
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots
+**/fastlane/test_output
+
+# Bundle artifact
+*.jsbundle
+
+# Ruby / CocoaPods
+**/Pods/
+/vendor/bundle/
+
+# Temporary files created by Metro to check the health of the file watcher
+.metro-health-check*
+
+# testing
+/coverage
+
+# Yarn
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
+# Claude Code local config
+.claude/
+
+# Generated JS bundle. React Native's Gradle plugin bundles into
+# android/app/build/generated/assets/react/<variant>/, so a copy under src/main/assets/
+# is never needed. One was committed here in 2026 and Gradle's mergeReleaseAssets kept
+# preferring it over the freshly generated bundle, so every release APK/AAB shipped
+# months-old JavaScript while the native side stayed current. Keep this ignored, and
+# see scripts/lib/js-bundle.ps1 — the build scripts hard-fail if it ever reappears.
+android/app/src/main/assets/index.android.bundle
+android/app/src/main/assets/index.android.bundle.map
+
+# Local APK build timing log
+build-times.log
+
+# Screenshots captured from a connected device for visual debugging.
+# The pattern matches at any depth, so the store listing assets under
+# store-assets/ — which ARE meant to be committed — need re-including.
+screenshots/
+!store-assets/screenshots/
+
+# Web build output (webpack -> Firebase Hosting)
+dist/
+
+# Firebase
+.firebase/
+.firebase-key.json
+*-service-account*.json
+*-adminsdk-*.json
+serviceAccount*.json
+
+# Backend repo cloned here for local reference (separate git repo)
+gold-khata-book-backend/
+
+# Local iOS release config (identifiers, not secrets)
+scripts/release-ios.config.sh
+
+# Nexus API key — a real credential, must not be committed. See
+# src/config/secrets.example.ts for setup.
+src/config/secrets.ts
+
+# Expo's per-machine scratch dir. Holds devices.json (which of YOUR devices
+# recently opened the project) and settings.json (your local dev-server config)
+# — nothing another developer can use. Expo's own README in there says not to
+# share it; it just never reached this file because the folder only appears
+# once someone runs the Expo-backed dev server.
+.expo/
