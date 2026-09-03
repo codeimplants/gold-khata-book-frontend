@@ -14,7 +14,11 @@ export const development: AppConfig = {
   // Hosted dev backend (VPS) - reachable from any phone/network. Sends REAL
   // OTP SMS: dev uses the same 2Factor path as prod (the dev-only local-OTP
   // bypass was removed in gold-khata-book-backend login.controller.ts).
-  API_BASE_URL: 'https://dev.api.goldkhatabook.codeimplants.com/api/',
+  // Overridable so start.cmd can run the web app against the backend on this
+  // machine (http://localhost:7100/api/). Unset everywhere else, which leaves
+  // the hosted dev host below — note it is not provisioned yet.
+  API_BASE_URL:
+    process.env.API_BASE_URL || 'https://dev.api.goldkhatabook.codeimplants.com/api/',
   VITE_VC_API_KEY,
   VITE_VC_BACKEND: 'https://dev.api.nexus.codeimplants.com',
   VITE_VC_DEBUG: true,

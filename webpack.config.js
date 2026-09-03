@@ -202,6 +202,13 @@ module.exports = async () => {
             __DEV__: JSON.stringify(true),
             __APP_ENV__: JSON.stringify(process.env.APP_ENV || 'prod'),
             'process.env.APP_ENV': JSON.stringify(process.env.APP_ENV || 'prod'),
+            // Lets start.cmd point the web build at a backend on this machine
+            // without editing src/config/environments/*.ts. Empty when unset, so
+            // the `||` fallback in those files keeps the hosted URL for every
+            // other build. Native is unaffected: nothing defines this for Metro,
+            // so process.env.API_BASE_URL is simply undefined there and the same
+            // fallback applies.
+            'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || ''),
             // React Native's HMRClient.setup() branches on this: with EXPO_OS === 'web'
             // it accepts an options object, otherwise it asserts on a platform *string*
             // and throws `Missing required parameter \`platform\`` during startup, which
