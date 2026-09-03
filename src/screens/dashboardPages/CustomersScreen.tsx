@@ -547,9 +547,9 @@ export default function CustomersScreen() {
     try {
       await dispatch(deleteCustomer(pendingDelete.id)).unwrap();
       setPendingDelete(null);
-      toast.success('Customer deleted');
+      toast.success('Retailer deleted');
     } catch (error: any) {
-      toast.error(error || 'Failed to delete customer');
+      toast.error(error || 'Failed to delete retailer');
     } finally {
       setDeleting(false);
     }
@@ -666,14 +666,14 @@ export default function CustomersScreen() {
               <Text color="$coolGray400" fontWeight="$medium">
                 <Text style={{ fontSize: 16 }}>
                   {q.trim() || activeFilter !== 'all'
-                    ? t("customers.noResults") || "No customers match your search"
-                    : t("customers.noCustomers") || "No customers found"}
+                    ? t("customers.noResults") || "No retailers match your search"
+                    : t("customers.noCustomers") || "No retailers found"}
                 </Text>
               </Text>
               {!q.trim() && activeFilter === 'all' && (
                 <>
                   <Text color="$coolGray400" fontWeight="$medium" style={{ marginTop: -4 }}>
-                    <Text style={{ fontSize: 14 }}>{t("customers.emptySubHead") || "Add customers manually or they're created when making invoices"}</Text>
+                    <Text style={{ fontSize: 14 }}>{t("customers.emptySubHead") || "Add retailers manually or they're created when making invoices"}</Text>
                   </Text>
                   <Pressable
                     px="$4"
@@ -687,7 +687,7 @@ export default function CustomersScreen() {
                   >
                     <Icon as={Plus} color="$white" size="sm" />
                     <Text color="$white" ml="$2" fontWeight="$bold">
-                      {t("customers.addNew") || "Add New Customer"}
+                      {t("customers.addNew") || "Add New Retailer"}
                     </Text>
                   </Pressable>
                   <WatchTutorialLink topic={HELP_TOPICS.customers} />

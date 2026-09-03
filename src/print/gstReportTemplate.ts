@@ -137,7 +137,7 @@ ${esc(os.billCount || 0)} bill(s) &bull; B2B: ${esc(os.b2bCount || 0)} &bull; B2
 </div>
 <table>
 <tr>
-<th>Invoice No</th><th>Date</th><th>Customer</th><th>GSTIN</th><th>Type</th><th>HSN</th>
+<th>Invoice No</th><th>Date</th><th>Retailer</th><th>GSTIN</th><th>Type</th><th>HSN</th>
 <th class="num">Taxable</th><th class="num">Rate %</th><th class="num">CGST</th><th class="num">SGST</th><th class="num">IGST</th><th class="num">Total</th>
 </tr>
 ${outwardRowsHtml}

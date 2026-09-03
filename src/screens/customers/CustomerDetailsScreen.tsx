@@ -316,10 +316,10 @@ export default function CustomerDetailsScreen() {
     try {
       await dispatch(deleteCustomer(customerId)).unwrap();
       setShowDeleteModal(false);
-      toast.success('Customer deleted');
+      toast.success('Retailer deleted');
       navigation.goBack();
     } catch (error: any) {
-      toast.error(error || 'Failed to delete customer');
+      toast.error(error || 'Failed to delete retailer');
     } finally {
       setDeleting(false);
     }
@@ -380,11 +380,11 @@ export default function CustomerDetailsScreen() {
         address: form.address.trim() || undefined,
       })).unwrap();
       setShowEditModal(false);
-      toast.success('Customer updated');
+      toast.success('Retailer updated');
     } catch (e: any) {
       toast.error(e.message ||
         t('customers.detailsScreen.updateErrorMessage') ||
-        'Failed to update customer');
+        'Failed to update retailer');
     }
   };
 
@@ -457,14 +457,14 @@ export default function CustomerDetailsScreen() {
                 <ArrowLeft size={22} color="#111827" />
               </Pressable>
               <Text fontWeight="$bold" color="$coolGray900" style={{ fontSize: 20 }}>
-                {t('customers.detailsTitle') || 'Customer Details'}
+                {t('customers.detailsTitle') || 'Retailer Details'}
               </Text>
             </HStack>
           </Box>
         </SafeAreaView>
         <Center flex={1} px="$6">
           <Text color="$coolGray500">
-            {t('customers.notFound') || 'Customer not found'}
+            {t('customers.notFound') || 'Retailer not found'}
           </Text>
         </Center>
       </Box>
@@ -492,7 +492,7 @@ export default function CustomerDetailsScreen() {
                 color="$coolGray900"
                 style={{ fontSize: 22, lineHeight: 26 }}
               >
-                {t('customers.detailsTitle') || 'Customer Details'}
+                {t('customers.detailsTitle') || 'Retailer Details'}
               </Text>
             </VStack>
             <Box flex={1} />
@@ -1040,7 +1040,7 @@ export default function CustomerDetailsScreen() {
           >
             <HStack justifyContent="center" alignItems="center" mb="$4">
               <Text fontSize={20} fontWeight="$bold">
-                {t('customers.detailsScreen.editTitle') || 'Edit Customer'}
+                {t('customers.detailsScreen.editTitle') || 'Edit Retailer'}
               </Text>
               <Pressable position="absolute" right={0} onPress={() => setShowEditModal(false)}>
                 <Icon as={X} size="md" />
@@ -1064,7 +1064,7 @@ export default function CustomerDetailsScreen() {
                 <Text fontWeight="$semibold">{t('customers.name') || 'Name'}</Text>
                 <Input rounded="$xl" borderWidth={2} borderColor="#8B5CF6" bg="$white">
                   <InputField
-                    placeholder={t('customers.placeholders.name') || 'Customer name'}
+                    placeholder={t('customers.placeholders.name') || 'Retailer name'}
                     value={form.name}
                     onChangeText={text => setForm({ ...form, name: text })}
                     // Title-cased once the field is done rather than on every

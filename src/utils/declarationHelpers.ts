@@ -180,7 +180,7 @@ export const generateDeclaration = async (
   );
   if (!syncCustomerForDeclaration.fulfilled.match(syncAction)) {
     throw new Error(
-      String((syncAction as any).payload || 'Failed to save the customer details'),
+      String((syncAction as any).payload || 'Failed to save the retailer details'),
     );
   }
   const customerPhotoFailed = !!syncAction.payload?.photoFailed;

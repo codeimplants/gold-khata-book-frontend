@@ -144,7 +144,7 @@ const AdvanceOrderSuccessScreen = () => {
             if (customerPhotoFailed) {
                 toast.error(
                     t('declaration.customer.photoUploadFailed') ||
-                        'The customer photo could not be uploaded. The declaration was saved without it.',
+                        'The retailer photo could not be uploaded. The declaration was saved without it.',
                 );
             }
         } catch (err: any) {
@@ -297,7 +297,7 @@ const AdvanceOrderSuccessScreen = () => {
 
         return {
             invoiceDate: new Date(order.date).toISOString(),
-            customerName: customer?.name || 'Walk-in Customer',
+            customerName: customer?.name || 'Walk-in Retailer',
             address: customer?.address || '',
             phone: customer?.phone || '',
             includeGst: order.includeGST || false,
@@ -394,7 +394,7 @@ const AdvanceOrderSuccessScreen = () => {
             const textLines = [
                 `🧾 *Advance Order Created!*`,
                 `*Reference:* ${order.orderNumber || order.invoiceNumber || order.id?.slice(-8).toUpperCase() || 'ADV-ORDER'}`,
-                `*Customer:* ${customer?.name || 'Customer'}`,
+                `*Retailer:* ${customer?.name || 'Retailer'}`,
                 `*Item:* ${order.items?.[0]?.itemName || 'Jewelry'}`,
                 `*Total Weight:* ${formatNumber(order.totalWeight, 3)} gm`,
                 `*Advance Paid:* ₹${formatCurrency(advancePaidAmount)}`,

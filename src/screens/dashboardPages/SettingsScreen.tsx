@@ -548,7 +548,7 @@ const SettingsScreen = () => {
           deleteAccountError
             ? deleteAccountError
             : t("settings.deleteAccountConfirm") ||
-              "This permanently deletes your account along with your shop details, invoices, customers and uploaded images. This cannot be undone."
+              "This permanently deletes your account along with your shop details, invoices, retailers and uploaded images. This cannot be undone."
         }
         confirmLabel={t("settings.deleteAccountConfirmLabel") || "Delete Permanently"}
         cancelLabel={t("common.cancel") || "Cancel"}

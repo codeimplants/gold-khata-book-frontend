@@ -211,7 +211,7 @@ const OldGoldPurchaseScreen = () => {
         );
         if (!syncCustomerForDeclaration.fulfilled.match(syncAction)) {
           throw new Error(
-            String((syncAction as any).payload || 'Failed to save the customer details'),
+            String((syncAction as any).payload || 'Failed to save the retailer details'),
           );
         }
         customerPhotoFailed = !!syncAction.payload?.photoFailed;
@@ -234,7 +234,7 @@ const OldGoldPurchaseScreen = () => {
       if (customerPhotoFailed) {
         toast.error(
           t('declaration.customer.photoUploadFailed') ||
-            'The customer photo could not be uploaded. The declaration was saved without it.',
+            'The retailer photo could not be uploaded. The declaration was saved without it.',
         );
       }
 

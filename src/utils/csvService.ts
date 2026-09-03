@@ -43,8 +43,8 @@ export function buildGstReportCsv(report: any): string {
         row([
             'Invoice No',
             'Date',
-            'Customer Name',
-            'Customer GSTIN',
+            'Retailer Name',
+            'Retailer GSTIN',
             'Type',
             'HSN',
             'Taxable Value',

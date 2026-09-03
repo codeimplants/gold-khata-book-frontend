@@ -523,7 +523,7 @@ export const fetchCustomers = createAsyncThunk(
                     id: c._id || c.id
                 }));
             } catch (err: any) {
-                return rejectWithValue(err.message || 'Failed to fetch customers');
+                return rejectWithValue(err.message || 'Failed to fetch retailers');
             }
         }
     },
@@ -565,11 +565,11 @@ export const addCustomer = createAsyncThunk(
             try {
                 const response = await apiClient.post<any>('/api/customer', customer);
                 if (response.data?.success === false) {
-                    return rejectWithValue(response.data.message || 'Failed to add customer');
+                    return rejectWithValue(response.data.message || 'Failed to add retailer');
                 }
                 const newCustomer = response.data?.data || response.data;
                 if (!newCustomer || (!newCustomer._id && !newCustomer.id) || !newCustomer.name) {
-                    return rejectWithValue('Invalid server response: Missing customer data');
+                    return rejectWithValue('Invalid server response: Missing retailer data');
                 }
                 const mappedCustomer = {
                     ...newCustomer,
@@ -578,7 +578,7 @@ export const addCustomer = createAsyncThunk(
                 const currentData = (getState() as RootState).data.customers;
                 return [mappedCustomer, ...currentData];
             } catch (err: any) {
-                return rejectWithValue(err.message || 'Failed to add customer');
+                return rejectWithValue(err.message || 'Failed to add retailer');
             }
         }
     }
@@ -613,7 +613,7 @@ export const updateCustomer = createAsyncThunk(
                 const current = (getState() as RootState).data.customers;
                 return current.map(c => c.id === updatedCustomer.id ? updatedCustomer : c);
             } catch (err: any) {
-                return rejectWithValue(err.message || 'Failed to update customer');
+                return rejectWithValue(err.message || 'Failed to update retailer');
             }
         }
     }
@@ -666,7 +666,7 @@ export const deleteCustomer = createAsyncThunk(
                 const current = (getState() as RootState).data.customers;
                 return { customers: current.filter(c => c.id !== customerId), customerId };
             } catch (err: any) {
-                return rejectWithValue(err.message || 'Failed to delete customer');
+                return rejectWithValue(err.message || 'Failed to delete retailer');
             }
         }
     }
@@ -797,7 +797,7 @@ export const syncCustomerForDeclaration = createAsyncThunk(
         const state = getState() as RootState;
         const customer = state.data.customers.find(c => c.id === args.customerId);
         if (!customer) {
-            return rejectWithValue('Customer not found');
+            return rejectWithValue('Retailer not found');
         }
 
         const phone = args.phone?.trim() || '';

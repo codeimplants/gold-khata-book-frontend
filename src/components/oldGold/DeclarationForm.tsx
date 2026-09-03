@@ -1105,7 +1105,7 @@ const DeclarationForm = ({
                       value={values.ownerIsSelf ? 'self' : 'family'}
                       options={[
                         {
-                          label: t('declaration.ownership.optionSelf') || 'The customer',
+                          label: t('declaration.ownership.optionSelf') || 'The retailer',
                           value: 'self',
                         },
                         {
@@ -1157,7 +1157,7 @@ const DeclarationForm = ({
                   <VStack space="md">
                     <Text fontSize={12} color="$coolGray600">
                       {t('declaration.receipt.question') ||
-                        'Does the customer have the purchase receipt?'}
+                        'Does the retailer have the purchase receipt?'}
                     </Text>
                     <ChoiceRow
                       value={
@@ -1346,7 +1346,7 @@ const DeclarationForm = ({
 
                 {/* Payout */}
                 <Section
-                  title={t('declaration.payout.title') || 'Payment to Customer'}
+                  title={t('declaration.payout.title') || 'Payment to Retailer'}
                   subtitle={t('declaration.payout.subtitle')}
                 >
                   <VStack space="md">
@@ -1428,7 +1428,7 @@ const DeclarationForm = ({
                           <HStack justifyContent="space-between" alignItems="center" py="$2">
                             <VStack flex={1}>
                               <Text fontSize={13} fontWeight="$medium" color="$coolGray700">
-                                {t('declaration.payout.bankDetails') || 'Customer Bank Details'}
+                                {t('declaration.payout.bankDetails') || 'Retailer Bank Details'}
                               </Text>
                               <Text fontSize={11} color="$coolGray500">
                                 {t('declaration.payout.bankDetailsHint')}
@@ -1523,10 +1523,10 @@ const DeclarationForm = ({
                     declaration printed and signed by hand is exactly as valid. */}
                 {hasOrnament && (
                   <Section
-                    title={t('declaration.signature.title') || 'Customer Signature'}
+                    title={t('declaration.signature.title') || 'Retailer Signature'}
                     subtitle={
                       t('declaration.signature.hint') ||
-                      'Optional. Hand the device to the customer to sign.'
+                      'Optional. Hand the device to the retailer to sign.'
                     }
                   >
                     {values.customerSignature ? (
@@ -1618,7 +1618,7 @@ const DeclarationForm = ({
                             <PenLine size={18} color="#6D5EF7" />
                             <Text fontWeight="$medium" color="#6D5EF7">
                               {t('declaration.signature.take') ||
-                                'Take customer signature'}
+                                'Take retailer signature'}
                             </Text>
                           </HStack>
                         </Box>
@@ -1628,7 +1628,7 @@ const DeclarationForm = ({
                     <SignatureCaptureModal
                       isOpen={showSignature}
                       onClose={() => setShowSignature(false)}
-                      title={t('declaration.signature.title') || 'Customer Signature'}
+                      title={t('declaration.signature.title') || 'Retailer Signature'}
                       signerLabel={values.customerName}
                       onSave={svg => {
                         setFieldValue('customerSignature', svg);

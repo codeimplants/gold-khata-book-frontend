@@ -37,7 +37,7 @@ export const useDeclarationPhoneValidation = (customerId: string) => {
       if (!trimmed) {
         return (
           t('declaration.customer.phoneRequired') ||
-          'Enter the customer phone number - a declaration cannot be saved without one.'
+          'Enter the retailer phone number - a declaration cannot be saved without one.'
         );
       }
       // Everything below only applies to a number this form would actually
@@ -74,7 +74,7 @@ export const useDeclarationPhoneValidation = (customerId: string) => {
       if (customers.some(c => c.id !== customerId && c.phone === trimmed)) {
         return (
           t('customers.validation.phoneExists') ||
-          'A customer with this phone number already exists'
+          'A retailer with this phone number already exists'
         );
       }
       return null;
@@ -266,7 +266,7 @@ const DeclarationCustomerSection = ({
             </Input>
             <Text fontSize={11} color="$coolGray500" lineHeight={15}>
               {t('declaration.customer.savedToProfile') ||
-                "Saved to this customer's profile and printed on the declaration."}
+                "Saved to this retailer's profile and printed on the declaration."}
             </Text>
           </VStack>
         ) : (

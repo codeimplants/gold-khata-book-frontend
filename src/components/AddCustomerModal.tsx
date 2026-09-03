@@ -141,7 +141,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
         );
         fields.phone = true;
       } else if (customers.some((c) => c.phone === trimmedPhone)) {
-        errors.push(t('customers.validation.phoneExists') || 'A customer with this phone number already exists');
+        errors.push(t('customers.validation.phoneExists') || 'A retailer with this phone number already exists');
         fields.phone = true;
       }
     }
@@ -197,13 +197,13 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
         setValidationErrors([]);
         setDuplicateNameMatch(null);
         setConfirmedDuplicateName(false);
-        toast.success('Customer added');
+        toast.success('Retailer added');
         onClose();
         setShowOrderModal(true);
       })
       .catch((err) => {
         const apiErrors = parseApiErrorList(err);
-        toast.error(apiErrors[0] || 'Failed to add customer');
+        toast.error(apiErrors[0] || 'Failed to add retailer');
       });
   };
 
@@ -454,7 +454,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
 
                 <Box position="absolute" top={0} bottom={0} left={0} right={0} alignItems="center" justifyContent="center">
                   <Text color="$white" fontWeight="$bold" fontSize={16}>
-                    {t("customers.addAndCreateOrder") || "Add Customer & Create Order"}
+                    {t("customers.addAndCreateOrder") || "Add Retailer & Create Order"}
                   </Text>
                 </Box>
               </Box>
@@ -491,10 +491,10 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
 
         <ConfirmModal
           visible={Boolean(duplicateNameMatch)}
-          title={t('customers.validation.duplicateNameTitle') || 'Customer with this name exists'}
+          title={t('customers.validation.duplicateNameTitle') || 'Retailer with this name exists'}
           description={
             (t('customers.validation.duplicateNameMessage') ||
-              'You already have a customer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?'
+              'You already have a retailer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?'
             ).replace('{name}', duplicateNameMatch || '')
           }
           confirmLabel={t('customers.validation.duplicateNameConfirm') || 'Add anyway'}

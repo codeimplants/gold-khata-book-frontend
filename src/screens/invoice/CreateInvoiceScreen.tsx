@@ -332,7 +332,7 @@ const CreateInvoiceScreen = () => {
         `🧾 Invoice from ${shopName}\n` +
         `Invoice No: ${invoiceNo}\n` +
         `Date: ${new Date().toLocaleDateString('en-IN')}\n` +
-        `Customer: ${invoiceData.customerName}\n` +
+        `Retailer: ${invoiceData.customerName}\n` +
         `Amount: ₹${invoiceData.grandTotal}\n\n` +
         `Thank you for your purchase! 🙏`;
 
@@ -438,7 +438,7 @@ const CreateInvoiceScreen = () => {
       if (customerPhotoFailed) {
         toast.error(
           t('declaration.customer.photoUploadFailed') ||
-            'The customer photo could not be uploaded. The declaration was saved without it.',
+            'The retailer photo could not be uploaded. The declaration was saved without it.',
         );
       }
     } catch (err: any) {

@@ -139,7 +139,7 @@ export default function SelectCustomerScreen() {
         );
         fields.phone = true;
       } else if (customers.some((c) => c.phone === trimmedPhone)) {
-        errors.push(t('customers.validation.phoneExists') || 'A customer with this phone number already exists');
+        errors.push(t('customers.validation.phoneExists') || 'A retailer with this phone number already exists');
         fields.phone = true;
       }
     }
@@ -234,10 +234,10 @@ export default function SelectCustomerScreen() {
             </Pressable>
             <VStack>
               <Text color="$white" fontSize={20} fontWeight="$bold">
-                {t('customers.title') || 'Customers'}
+                {t('customers.title') || 'Retailers'}
               </Text>
               <Text color="$white" opacity={0.85}>
-                {t('orders.selectCustomer') || 'Select customer to continue'}
+                {t('orders.selectCustomer') || 'Select retailer to continue'}
               </Text>
             </VStack>
           </HStack>
@@ -332,13 +332,13 @@ export default function SelectCustomerScreen() {
                 </Box>
                 <Text color="$coolGray400" fontWeight="$medium">
                   <Text style={{ fontSize: 16 }}>
-                    {q.trim() ? t('customers.noResults') || 'No customers match your search' : t('customers.noCustomers') || 'No customers found'}
+                    {q.trim() ? t('customers.noResults') || 'No retailers match your search' : t('customers.noCustomers') || 'No retailers found'}
                   </Text>
                 </Text>
                 {!q.trim() && (
                   <>
                     <Text color="$coolGray400" fontWeight="$medium" style={{ marginTop: -4 }}>
-                      <Text style={{ fontSize: 14 }}>{t('customers.emptySubHead') || "Add customers manually or they're created when making invoices"}</Text>
+                      <Text style={{ fontSize: 14 }}>{t('customers.emptySubHead') || "Add retailers manually or they're created when making invoices"}</Text>
                     </Text>
                     <Pressable
                       px="$4"
@@ -352,7 +352,7 @@ export default function SelectCustomerScreen() {
                     >
                       <Icon as={Plus} color="$white" size="sm" />
                       <Text color="$white" ml="$2" fontWeight="$bold">
-                        {t('customers.addNew') || 'Add New Customer'}
+                        {t('customers.addNew') || 'Add New Retailer'}
                       </Text>
                     </Pressable>
                   </>
@@ -408,7 +408,7 @@ export default function SelectCustomerScreen() {
                 <Text fontSize={20} fontWeight="$bold">
                   {step === 'contacts'
                     ? t('customers.pickFromContacts')
-                    : t('customers.addNew') || 'Add New Customer'}
+                    : t('customers.addNew') || 'Add New Retailer'}
                 </Text>
                 <Pressable position="absolute" right={0} onPress={handleCloseModal}>
                   <Icon as={X} size="md" />
@@ -444,7 +444,7 @@ export default function SelectCustomerScreen() {
                   <Text fontWeight="$semibold" color={fieldErrors.name ? "$red500" : "$coolGray800"}>{t('customers.name') || 'Name'}</Text>
                   <Input borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.name ? '#EF4444' : '#c5c5c5' }}>
                     <InputField
-                      placeholder={t('customers.placeholders.name') || 'Customer name'}
+                      placeholder={t('customers.placeholders.name') || 'Retailer name'}
                       value={form.name}
                       onChangeText={text => { setForm({ ...form, name: text }); setFieldErrors(e => ({ ...e, name: undefined })); }}
                       // Title-cased once the field is done rather than on every
@@ -560,7 +560,7 @@ export default function SelectCustomerScreen() {
               {/* general error now handled by ValidationErrorModal */}
 
               <GradientButton
-                label={t('customers.addCustomer') || 'Add Customer'}
+                label={t('customers.addCustomer') || 'Add Retailer'}
                 onPress={handleAddCustomer}
                 style={{ marginTop: 18 }}
               />

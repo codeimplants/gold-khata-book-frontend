@@ -28,7 +28,7 @@ const GuestModeModal: React.FC<GuestModeModalProps> = ({
     t('guestModeNotice') || 'Using Gold Khata Book in Guest Mode';
   const description =
     t('guestModeNoticeDescription') ||
-    'In guest mode, your shop, customer and order data is stored only on this device and is not backed up to any server.';
+    'In guest mode, your shop, retailer and order data is stored only on this device and is not backed up to any server.';
   const dataStorageTitle =
     t('guestModeDataStorage') || 'How guest mode stores your data';
   const point1 =

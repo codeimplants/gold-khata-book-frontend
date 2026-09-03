@@ -531,7 +531,7 @@ export default function SoldToUsDetailsScreen() {
           {!!payout && payout.method !== 'none' && (
             <Box p="$5" borderTopWidth={1} borderTopColor="$coolGray100">
               <Text fontWeight="$bold" fontSize="$md" color="$coolGray900" mb="$3">
-                {t('declaration.payout.title') || 'Payment to Customer'}
+                {t('declaration.payout.title') || 'Payment to Retailer'}
               </Text>
               <VStack space="sm">
                 <DetailRow
@@ -671,7 +671,7 @@ export default function SoldToUsDetailsScreen() {
           {!!declaration.customerSignature && (
             <Box p="$5" borderTopWidth={1} borderTopColor="$coolGray100">
               <Text fontWeight="$bold" fontSize="$md" color="$coolGray900" mb="$3">
-                {t('declaration.signature.title') || 'Customer Signature'}
+                {t('declaration.signature.title') || 'Retailer Signature'}
               </Text>
               <Box
                 borderWidth={1}

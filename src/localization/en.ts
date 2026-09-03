@@ -190,7 +190,7 @@ export default {
       title: 'Declaration Language',
       hint: 'New declarations are written in this language. You can change it on any individual declaration.',
       hintFollowingApp:
-        'Currently following your app language. Pick one to always print declarations in the language your customers read.',
+        'Currently following your app language. Pick one to always print declarations in the language your retailers read.',
     },
   },
 
@@ -204,7 +204,7 @@ export default {
     features: [
       'Easy Invoice Generation',
       'Inventory Management',
-      'Customer Record Maintenance',
+      'Retailer Record Maintenance',
       'Sales Reports & Analysis',
       'Multi-language Support',
       'GST Ready Billing'
@@ -222,7 +222,7 @@ export default {
     sections: [
       {
         title: '1. Data Ownership',
-        content: 'All business data entered into the App — including customer details, billing information, product details, inventory records, transaction history, and business reports — remains the property of the respective business/user. We do not claim ownership of your business data.',
+        content: 'All business data entered into the App — including retailer details, billing information, product details, inventory records, transaction history, and business reports — remains the property of the respective business/user. We do not claim ownership of your business data.',
       },
       {
         title: '2. Data Access and Usage',
@@ -242,7 +242,7 @@ export default {
       },
       {
         title: '6. Device Permissions',
-        content: 'With your permission, the App can read your phone contacts so you can quickly fill in a new customer\'s name and phone number instead of typing it manually. Your contact list is only read on your device and is never uploaded, stored on our servers, or shared with any third party — only the single customer record you choose to save is stored, the same as if you had typed it in yourself. You can decline this permission at any time and still add customers manually; you can also revoke it later from your device settings.',
+        content: 'With your permission, the App can read your phone contacts so you can quickly fill in a new retailer\'s name and phone number instead of typing it manually. Your contact list is only read on your device and is never uploaded, stored on our servers, or shared with any third party — only the single retailer record you choose to save is stored, the same as if you had typed it in yourself. You can decline this permission at any time and still add retailers manually; you can also revoke it later from your device settings.',
       },
       {
         title: '7. Approximate Location',
@@ -254,7 +254,7 @@ export default {
       },
       {
         title: '9. What Deletion Removes',
-        content: 'Deleting your account permanently removes your account and mobile number, your shop details, GST settings and shop logo and signature, all invoices and bills you have created, all advance orders and their payment history, your customer list, your inventory and product records, and any images you have uploaded. Nothing is retained in a recoverable form, so please export or print anything you need — such as invoices required for tax records — before you delete. We may retain minimal anonymised records where the law requires it, and de-identified analytics that cannot be linked back to you or your shop. If you cannot sign in to complete the deletion yourself, email us from your registered mobile number\'s associated address at codeimplants@gmail.com and we will action the request.',
+        content: 'Deleting your account permanently removes your account and mobile number, your shop details, GST settings and shop logo and signature, all invoices and bills you have created, all advance orders and their payment history, your retailer list, your inventory and product records, and any images you have uploaded. Nothing is retained in a recoverable form, so please export or print anything you need — such as invoices required for tax records — before you delete. We may retain minimal anonymised records where the law requires it, and de-identified analytics that cannot be linked back to you or your shop. If you cannot sign in to complete the deletion yourself, email us from your registered mobile number\'s associated address at codeimplants@gmail.com and we will action the request.',
       },
     ]
   },
@@ -285,11 +285,11 @@ export default {
       },
       {
         title: 'What gets deleted',
-        content: 'Your account and registered mobile number; your shop details, GST settings, shop logo and signature; every invoice and bill you have created; every advance order and its payment history; your full customer list; your inventory and product records; and all images you have uploaded. Export or print anything you still need — invoices for your tax records, for example — before you delete, because none of it can be recovered afterwards.',
+        content: 'Your account and registered mobile number; your shop details, GST settings, shop logo and signature; every invoice and bill you have created; every advance order and its payment history; your full retailer list; your inventory and product records; and all images you have uploaded. Export or print anything you still need — invoices for your tax records, for example — before you delete, because none of it can be recovered afterwards.',
       },
       {
         title: 'What we may keep',
-        content: 'Only minimal anonymised records that we are required by law to retain, and de-identified usage analytics that cannot be linked back to you, your shop or your customers. We keep no copy of your business data after deletion.',
+        content: 'Only minimal anonymised records that we are required by law to retain, and de-identified usage analytics that cannot be linked back to you, your shop or your retailers. We keep no copy of your business data after deletion.',
       },
       {
         title: 'If you cannot sign in',
@@ -327,7 +327,7 @@ export default {
       },
       {
         title: '3. Data Ownership',
-        content: 'All business data entered into the App — including customer details, billing information, product details, inventory records, transaction history, and business reports — remains the property of the respective business/user. We do not claim ownership of your business data.',
+        content: 'All business data entered into the App — including retailer details, billing information, product details, inventory records, transaction history, and business reports — remains the property of the respective business/user. We do not claim ownership of your business data.',
       },
       {
         title: '4. Data Access and Usage',
@@ -593,8 +593,8 @@ export default {
       history: 'Bill History',
       historySub: 'View past invoices',
 
-      customers: 'Customers',
-      customersSub: 'Manage customer list',
+      customers: 'Retailers',
+      customersSub: 'Manage retailer list',
 
       salesReport: 'Sales Report',
       salesReportSub: 'View sales report',
@@ -650,22 +650,22 @@ export default {
     logoutMessage: 'Are you sure you want to logout?',
     logoutGuestTitle: 'Data Loss Warning!',
     logoutGuestMessage:
-      'You are in guest mode. Logging out will PERMANENTLY DELETE all your shop, customer, and order data from this device. Are you sure?',
+      'You are in guest mode. Logging out will PERMANENTLY DELETE all your shop, retailer, and order data from this device. Are you sure?',
 
     deleteAccount: 'Delete Account',
-    deleteAccountConfirm: 'This permanently deletes your account along with your shop details, invoices, customers and uploaded images. This cannot be undone.',
+    deleteAccountConfirm: 'This permanently deletes your account along with your shop details, invoices, retailers and uploaded images. This cannot be undone.',
     deleteAccountConfirmLabel: 'Delete Permanently',
     deleteAccountError: 'Failed to delete account. Please try again.',
   },
 
   customers: {
-    title: 'Customers',
-    count: 'customers',
-    empty: 'No customers yet',
-    emptySubHead: 'Add customers manually or they\'re created when making invoices',
+    title: 'Retailers',
+    count: 'retailers',
+    empty: 'No retailers yet',
+    emptySubHead: 'Add retailers manually or they\'re created when making invoices',
 
     photo: {
-      title: 'Customer Photo',
+      title: 'Retailer Photo',
       camera: 'Take a photo',
       gallery: 'Choose from gallery',
       remove: 'Remove photo',
@@ -696,10 +696,10 @@ export default {
       recent: 'Recent Purchase',
     },
     delete: {
-      title: 'Delete this customer?',
+      title: 'Delete this retailer?',
       confirm: 'Delete',
-      plain: 'This customer has no bills, orders or declarations. Deleting them cannot be undone.',
-      hasRecords: 'Deleting this customer will also permanently delete:',
+      plain: 'This retailer has no bills, orders or declarations. Deleting them cannot be undone.',
+      hasRecords: 'Deleting this retailer will also permanently delete:',
       recordsNote:
         'These bills, orders and declarations will be removed from your books, and any GST already reported on them will change. This cannot be undone.',
       records: {
@@ -720,28 +720,28 @@ export default {
     },
 
     add: 'Add',
-    addNew: 'Add New Customer',
-    addCustomer: 'Add Customer',
-    addAndCreateOrder: 'Add Customer & Create Order',
+    addNew: 'Add New Retailer',
+    addCustomer: 'Add Retailer',
+    addAndCreateOrder: 'Add Retailer & Create Order',
     cancel: 'Cancel',
-    deleteTitle: 'Delete Customer',
-    deleteConfirm: 'Are you sure you want to delete this customer? This action cannot be undone.',
+    deleteTitle: 'Delete Retailer',
+    deleteConfirm: 'Are you sure you want to delete this retailer? This action cannot be undone.',
 
     search: 'Search by name or phone...',
     searchWithCode: 'Search by name, phone or code...',
-    noResults: 'No customers match your search',
+    noResults: 'No retailers match your search',
 
     pickFromContacts: 'Pick from contacts',
     contactPickFailed: 'Could not open your contacts',
-    contactsPermissionPrimer: "Gold Khata Book will ask for access to your contacts so you can quickly fill in a customer's name and phone number. Contacts are only read on this device and are never uploaded or shared — only the one contact you pick is saved, as a customer.",
+    contactsPermissionPrimer: "Gold Khata Book will ask for access to your contacts so you can quickly fill in a retailer's name and phone number. Contacts are only read on this device and are never uploaded or shared — only the one contact you pick is saved, as a retailer.",
     contactsPermissionDenied: 'Contacts permission was denied. Enable it from your device settings to pick a contact.',
     openSettings: 'Open Settings',
     continueWithoutContacts: 'Enter details manually instead',
     loadingContacts: 'Loading your contacts…',
     noContactsFound: 'No contacts found',
-    alreadyACustomer: 'Already a customer',
+    alreadyACustomer: 'Already a retailer',
     moreDetails: "More details (optional)",
-    contactsPermissionShort: "Fill a customer in from your phone book. Contacts stay on this device.",
+    contactsPermissionShort: "Fill a retailer in from your phone book. Contacts stay on this device.",
     allowContacts: "Allow contacts access",
     limitedContacts: "You shared only some contacts with Gold Khata Book.",
     shareMore: "Share more",
@@ -755,22 +755,22 @@ export default {
     address: 'Address',
 
     placeholders: {
-      name: 'Customer name',
+      name: 'Retailer name',
       phone: '10-digit mobile number (optional)',
       email: 'Email address (optional)',
       address: 'Address (optional)',
     },
 
     // Details & list texts
-    noCustomers: 'No customers found',
-    detailsTitle: 'Customer Details',
-    notFound: 'Customer not found',
+    noCustomers: 'No retailers found',
+    detailsTitle: 'Retailer Details',
+    notFound: 'Retailer not found',
     orders: 'Orders',
     pending: 'Pending',
     completed: 'Complete',
     total: 'Total',
     orderHistory: 'Order History',
-    noOrders: 'No orders for this customer',
+    noOrders: 'No orders for this retailer',
 
     detailsScreen: {
       tabs: {
@@ -790,12 +790,12 @@ export default {
       noInvoicesFound: 'No invoices found',
       noAdvanceOrdersFound: 'No advance orders found',
       dueLabel: 'Due',
-      editTitle: 'Edit Customer',
+      editTitle: 'Edit Retailer',
       saveChanges: 'Save Changes',
       validationErrorTitle: 'Validation Error',
       phoneValidationMessage: 'Please enter a 10-digit phone number',
       errorTitle: 'Error',
-      updateErrorMessage: 'Failed to update customer',
+      updateErrorMessage: 'Failed to update retailer',
     },
     validation: {
       nameRequired: 'Name is required',
@@ -803,12 +803,12 @@ export default {
       phoneLengthError: 'Please enter a valid 10-digit phone number',
       shopPhoneError: "You cannot use your shop's phone number",
       ownPhoneError: 'You cannot use your own registered number',
-      phoneExists: 'A customer with this phone number already exists',
-      duplicateNameTitle: 'Customer with this name exists',
+      phoneExists: 'A retailer with this phone number already exists',
+      duplicateNameTitle: 'Retailer with this name exists',
       duplicateNameMessage:
-        'You already have a customer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?',
+        'You already have a retailer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?',
       duplicateNameConfirm: 'Add anyway',
-      addFailed: 'Failed to add customer',
+      addFailed: 'Failed to add retailer',
     },
   },
 
@@ -839,7 +839,7 @@ export default {
     noOrdersHead: 'No orders found',
     noOrdersSubHead: 'Create your order to get started',
     noItems: 'No items found for this order',
-    selectCustomer: 'Select customer',
+    selectCustomer: 'Select retailer',
 
     historyTitle: 'Bill History',
     historyEmpty: 'No invoices yet',
@@ -850,7 +850,7 @@ export default {
     notFound: 'Order not found',
     amount: 'Amount',
     type: 'Type',
-    viewCustomer: 'View Customer',
+    viewCustomer: 'View Retailer',
 
     chooseType: 'Choose Order Type',
 
@@ -875,8 +875,8 @@ export default {
       invoiceFromPrefix: 'Invoice from',
       invoiceNumberLabel: 'Invoice No',
       dateLabel: 'Date',
-      customerLabel: 'Customer',
-      customerFallback: 'Customer',
+      customerLabel: 'Retailer',
+      customerFallback: 'Retailer',
       subTotalLabel: 'Sub Total',
       gstLabel: 'GST',
       estimatedAmountLabel: 'Estimated Amount',
@@ -886,7 +886,7 @@ export default {
 
     details: {
       billTo: 'Bill To',
-      walkInCustomer: 'Walk-in Customer',
+      walkInCustomer: 'Walk-in Retailer',
       dateLabel: 'Date',
       itemDetails: 'Item Details',
       weightLabel: 'Weight (gm)',
@@ -920,15 +920,15 @@ export default {
       gstFinalSettlementNote: '* GST will be applied at final settlement',
       paymentHistory: 'Payment History',
       oldOrnamentSettled: 'Old ornament',
-      payableToCustomer: 'Payable to customer',
+      payableToCustomer: 'Payable to retailer',
       addPayment: 'Add Payment',
       paymentDetails: 'Payment Details',
       rateAt: '@',
       noPaymentHistory: 'No payment history yet',
       markAsCompleted: 'Mark as Completed',
       fullTimeline: 'Full Timeline',
-      viewFullTimeline: 'View Customer History',
-      timelineSubtitle: 'See all orders and payments for this customer',
+      viewFullTimeline: 'View Retailer History',
+      timelineSubtitle: 'See all orders and payments for this retailer',
       historySuffix: "'s History",
       useBookingRate: 'Apply Booking Rate',
       addInstallment: 'Add Installment',
@@ -963,7 +963,7 @@ export default {
       combinePaymentsDesc: 'Hides individual installments on this copy only — your records stay itemized',
       deleteInvoice: 'Delete Invoice',
       completeOrderNote: 'Complete when ready to generate final bill with all charges',
-      customerLabel: 'Customer',
+      customerLabel: 'Retailer',
       itemLabel: 'Item',
       purityLabel: 'Purity',
       orderDateLabel: 'Order Date',
@@ -988,7 +988,7 @@ export default {
       itemFallback: 'Jewelry Item',
       purity: 'Purity',
       totalWeight: 'Total Weight',
-      customer: 'Customer',
+      customer: 'Retailer',
     },
 
     payments: {
@@ -1019,21 +1019,21 @@ export default {
 
   advanceOrder: {
     title: 'Create Advance Order',
-    subtitle: 'Select or create customer',
+    subtitle: 'Select or create retailer',
 
-    addCustomer: 'Add New Customer',
+    addCustomer: 'Add New Retailer',
 
     saveContinue: 'Save & Continue',
     createTitle: 'Create Advance Order',
     editTitle: 'Edit Order Items',
 
-    noCustomerSelected: 'No Customer Selected',
+    noCustomerSelected: 'No Retailer Selected',
     orderDate: 'Order Date',
     itemsTitle: 'Items',
     chooseFromCatalog: 'Choose from catalog...',
 
     fields: {
-      name: 'Customer Name *',
+      name: 'Retailer Name *',
       phone: 'Phone *',
       email: 'Email (optional)',
       address: 'Address (optional)',
@@ -1058,7 +1058,7 @@ export default {
     },
 
     placeholders: {
-      name: 'Customer name',
+      name: 'Retailer name',
       phone: 'Phone number',
       email: 'Email address',
       address: 'Address',
@@ -1323,7 +1323,7 @@ export default {
     stats: {
       itemsSold: 'Items Sold',
       itemsSoldSub: '{gold} Gold, {silver} Silver',
-      customers: 'Customers',
+      customers: 'Retailers',
       customersSub: 'Unique buyers tracked',
       avgOrderValue: 'Avg Order Value',
       avgOrderValueSub: 'Median checkout per cart',
@@ -1342,7 +1342,7 @@ export default {
   tabs: {
     dashboard: 'Dashboard',
     orders: 'Orders',
-    customers: 'Customers',
+    customers: 'Retailers',
     settings: 'Settings',
   },
 
@@ -1444,7 +1444,7 @@ export default {
     },
 
     customer: {
-      title: 'Customer Information',
+      title: 'Retailer Information',
       name: 'Name *',
       phone: 'Phone *',
       address: 'Address (Optional)',
@@ -1454,7 +1454,7 @@ export default {
 
     gstApplied: 'GST APPLIED',
 
-    customerGstin: 'Customer GSTIN (for B2B)',
+    customerGstin: 'Retailer GSTIN (for B2B)',
     customerGstinPlaceholder: 'e.g., 27AAAAA0000A1Z5 (optional)',
     customerGstinInvalid: 'Enter a valid 15-character GSTIN',
 
@@ -1560,7 +1560,7 @@ export default {
   // Guest mode modal
   guestModeNotice: 'Using Gold Khata Book in Guest Mode',
   guestModeNoticeDescription:
-    'In guest mode, your shop, customer and order data is stored only on this device and is not backed up to any server.',
+    'In guest mode, your shop, retailer and order data is stored only on this device and is not backed up to any server.',
   guestModeDataStorage: 'How guest mode stores your data',
   guestModeDataLocalOnly: 'All data is stored locally on this device only.',
   guestModeDataTemporary:
@@ -1832,9 +1832,9 @@ export default {
       hint: 'Ornament photos are printed under the declaration',
     },
     signature: {
-      title: 'Customer Signature',
-      hint: 'Optional. Hand the device to the customer to sign.',
-      take: 'Take customer signature',
+      title: 'Retailer Signature',
+      hint: 'Optional. Hand the device to the retailer to sign.',
+      take: 'Take retailer signature',
       redo: 'Sign again',
       rotate: 'Rotate signature',
     },
@@ -1849,12 +1849,12 @@ export default {
     customer: {
       phone: 'Phone Number *',
       phoneRequired:
-        'Enter the customer’s phone number. A declaration is a legal record of who sold you the gold, so it cannot be saved without one.',
+        'Enter the retailer’s phone number. A declaration is a legal record of who sold you the gold, so it cannot be saved without one.',
       photoHint: 'Tap to add a photo (optional)',
       savedToProfile:
-        'Saved to this customer’s profile and printed on the declaration.',
+        'Saved to this retailer’s profile and printed on the declaration.',
       photoUploadFailed:
-        'The customer photo could not be uploaded. The declaration was saved without it.',
+        'The retailer photo could not be uploaded. The declaration was saved without it.',
     },
 
     title: 'Declaration / Affidavit',
@@ -1873,7 +1873,7 @@ export default {
       emptyTitle: 'No ornaments added yet',
       emptySubtitle: 'Tap Add Gold or Add Silver to begin',
       title: 'Old Ornaments',
-      subtitle: 'What is the customer handing over?',
+      subtitle: 'What is the retailer handing over?',
       add: 'Add Ornament',
       itemLabel: 'Ornament',
       description: 'Description of Jewellery *',
@@ -1894,10 +1894,10 @@ export default {
       /* isSelf / isFamily are full sentences, still used by the preview page.
          The form asks the same thing as a two-button choice, which needs the
          short labels below. */
-      isSelf: 'The ornaments belong to the customer',
+      isSelf: 'The ornaments belong to the retailer',
       isFamily: 'They belong to a family member',
       question: 'Who do the ornaments belong to?',
-      optionSelf: 'The customer',
+      optionSelf: 'The retailer',
       optionFamily: 'A family member',
       familyMemberName: 'Family Member Name *',
       familyMemberPlaceholder: 'Whose ornaments are these?',
@@ -1934,7 +1934,7 @@ export default {
 
     // Purchase receipt
     receipt: {
-      question: 'Does the customer have the purchase receipt?',
+      question: 'Does the retailer have the purchase receipt?',
       title: 'Purchase Receipt',
       details: 'Details of Purchase Receipt / Bill',
       detailsPlaceholder: 'Bill number, shop, date…',
@@ -1944,13 +1944,13 @@ export default {
 
     // Payout
     payout: {
-      title: 'Payment to Customer',
-      subtitle: 'How was the customer paid?',
+      title: 'Payment to Retailer',
+      subtitle: 'How was the retailer paid?',
       method: 'Payment Mode',
       cash: 'Cash',
       online: 'Online',
       none: 'Nothing payable',
-      noneHint: 'The exchange value is less than the new purchase, so nothing is owed to the customer.',
+      noneHint: 'The exchange value is less than the new purchase, so nothing is owed to the retailer.',
       onlineType: 'Online Type',
       selectType: 'Select payment type',
       upi: 'UPI',
@@ -1960,7 +1960,7 @@ export default {
       other: 'Other',
       reference: 'Transaction / Cheque No.',
       referencePlaceholder: 'For your records',
-      bankDetails: 'Customer Bank Details',
+      bankDetails: 'Retailer Bank Details',
       bankDetailsHint: 'Optional — kept for your audit trail only.',
       bankName: 'Bank Name',
       bankAccountName: 'Account Holder Name',
@@ -2041,7 +2041,7 @@ export default {
       regarding: 'Regarding ownership of old or used jewellery...',
       heading: 'DECLARATION / AFFIDAVIT',
       part1: 'Part-1',
-      part1Note: '(Information to be filled in by customers after reading the following conditions)',
+      part1Note: '(Information to be filled in by retailers after reading the following conditions)',
 
       clause1:
         'I hereby certify through this declaration/affidavit that the jewellery described below is under the complete ownership of myself / my family member (Name: {ownerName}). The described jewellery has been legally acquired by me/my family member, and if any legal action arises in the future regarding ownership rights, I and my family shall be entirely responsible.',
@@ -2057,7 +2057,7 @@ export default {
       // of their own - see the declaration template.
       billNo: 'Bill No.',
       date: 'Date',
-      customerName: 'Customer Name',
+      customerName: 'Retailer Name',
       address: 'Address',
       mobile: 'Mobile Number',
       idProofType: 'ID Proof Type (e.g., PAN / Aadhaar Card)',
@@ -2083,7 +2083,7 @@ export default {
       photosHeading: 'Photographs of the ornaments',
 
       witnesses: 'Witness',
-      customerSignature: 'Customer Signature',
+      customerSignature: 'Retailer Signature',
       boughtFrom: 'Bought From',
       invoiceRef: 'Against Invoice',
     },

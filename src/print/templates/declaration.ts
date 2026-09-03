@@ -298,7 +298,7 @@ ${shop
      own serial (POG-3) and reads "Sr. No."; a declaration written against an
      exchange carries the bill's number (INV-49, ADV-83) and reads "Bill No.",
      because that is what it is — a reference to the transaction this document
-     is evidence for, not a serial in a series of its own. A customer holding
+     is evidence for, not a serial in a series of its own. A retailer holding
      both papers can then see at a glance that they belong together. -->
 <div style="display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;font-weight:600;padding:6px 0;border-top:1px solid #333;">
   <span>${esc(t(declaration.mode === 'exchange' ? 'doc.billNo' : 'doc.srNo'))}: ${isBlank

@@ -139,7 +139,7 @@ const ContactsStep = ({ onPickContact, onAddManually }: ContactsStepProps) => {
     if (picked) onPickContact({ name: capitalizeWords(picked.name), phone: picked.phone });
   }, [pickViaSystem, onPickContact]);
 
-  const takenLabel = t('customers.alreadyACustomer') || 'Already a customer';
+  const takenLabel = t('customers.alreadyACustomer') || 'Already a retailer';
 
   const renderItem = useCallback(
     ({ item }: { item: ContactRow }) => (
@@ -191,7 +191,7 @@ const ContactsStep = ({ onPickContact, onAddManually }: ContactsStepProps) => {
           </Center>
           <Text textAlign="center" color="$coolGray600" fontSize={14}>
             {t('customers.contactsPermissionShort') ||
-              'Fill a customer in from your phone book. Contacts stay on this device.'}
+              'Fill a retailer in from your phone book. Contacts stay on this device.'}
           </Text>
           <Pressable onPress={request} w="100%" mt="$1">
             <Box bg={ACCENT} rounded="$xl" py="$3" alignItems="center">

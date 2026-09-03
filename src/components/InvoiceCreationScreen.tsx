@@ -2249,7 +2249,7 @@ const InvoiceCreationScreen = ({
                                                                     fontWeight="$bold"
                                                                     color="$coolGray800"
                                                                 >
-                                                                    {t('invoice.customerGstin') || 'Customer GSTIN (for B2B)'}
+                                                                    {t('invoice.customerGstin') || 'Retailer GSTIN (for B2B)'}
                                                                 </FormControlLabelText>
                                                             </FormControlLabel>
                                                             <Input

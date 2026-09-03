@@ -1845,7 +1845,7 @@ const AdvanceOrderScreen = () => {
 
               {includeGst && (
                 <Box bg="$white" rounded="$2xl" borderWidth={1} borderColor="$coolGray100" p="$4" shadowColor="#000" shadowOffset={{ width: 0, height: 1 }} shadowOpacity={0.05} elevation={2}>
-                  <FieldLabel>{t("invoice.customerGstin") || "Customer GSTIN (for B2B)"}</FieldLabel>
+                  <FieldLabel>{t("invoice.customerGstin") || "Retailer GSTIN (for B2B)"}</FieldLabel>
                   <Input rounded="$xl" borderWidth={1} borderColor={BORDER} h={44} bg={BG}>
                     <InputField
                       value={customerGstin}

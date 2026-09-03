@@ -255,7 +255,7 @@ const DeclarationPreview = ({
           elevation={2}
         >
           <Text fontWeight="$bold" fontSize={15} color="$coolGray800" mb="$2">
-            {t('declaration.payout.title') || 'Payment to Customer'}
+            {t('declaration.payout.title') || 'Payment to Retailer'}
           </Text>
           <Row label={t('declaration.payout.method') || 'Mode'} value={payoutLabel} />
           <Row

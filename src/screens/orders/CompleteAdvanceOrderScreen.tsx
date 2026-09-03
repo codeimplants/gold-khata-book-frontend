@@ -338,7 +338,7 @@ export default function CompleteAdvanceOrderScreen() {
                       {t('orders.details.billTo') || 'Bill To'}
                     </Text>
                     <Text fontWeight="$black" color="$coolGray900" fontSize="$lg">
-                      {customer?.name || (t('orders.details.walkInCustomer') || 'Walk-in Customer')}
+                      {customer?.name || (t('orders.details.walkInCustomer') || 'Walk-in Retailer')}
                     </Text>
                   </VStack>
                   {!!customer?.phone && (

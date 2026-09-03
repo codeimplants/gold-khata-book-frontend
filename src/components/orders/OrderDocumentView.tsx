@@ -276,7 +276,7 @@ const OrderDocumentView = ({
             {partyLabel || t('invoicePreview.billTo') || 'Bill To'}
           </Text>
           <Text color="$coolGray900" fontWeight="$black" fontSize="$lg">
-            {customer?.name || t('orders.details.walkInCustomer') || 'Walk-in customer'}
+            {customer?.name || t('orders.details.walkInCustomer') || 'Walk-in retailer'}
           </Text>
           {!!customer?.phone && (
             <Text color="$coolGray600" fontSize="$sm" mt="$1">

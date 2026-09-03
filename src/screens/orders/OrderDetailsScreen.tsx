@@ -321,7 +321,7 @@ export default function OrderDetailsScreen() {
 
     return {
       invoiceDate: new Date(order.date).toISOString(),
-      customerName: customer?.name || 'Walk-in Customer',
+      customerName: customer?.name || 'Walk-in Retailer',
       address: customer?.address || '',
       phone: customer?.phone || '',
       includeGst: order.includeGST || false,
@@ -638,7 +638,7 @@ export default function OrderDetailsScreen() {
       if (customerPhotoFailed) {
         toast.error(
           t('declaration.customer.photoUploadFailed') ||
-            'The customer photo could not be uploaded. The declaration was saved without it.',
+            'The retailer photo could not be uploaded. The declaration was saved without it.',
         );
       }
       // Also fetch, so `orderDeclaration` below picks it up and the button
@@ -733,7 +733,7 @@ export default function OrderDetailsScreen() {
         const message =
           `🧾 Invoice from ${shopName}\n` +
           `Invoice No: ${order?.invoiceNumber || order?.id}\n` +
-          `Customer: ${customer?.name || ''}\n\n` +
+          `Retailer: ${customer?.name || ''}\n\n` +
           `Thank you! 🙏`;
         await openWhatsApp(customer?.phone, message, {
           html: built.html,
@@ -1355,7 +1355,7 @@ export default function OrderDetailsScreen() {
                   {order.invoiceNumber || order.orderNumber}
                 </Text>
                 <Text fontSize="$xs" color="$coolGray500">
-                  {customer?.name || 'Walk-in Customer'}
+                  {customer?.name || 'Walk-in Retailer'}
                 </Text>
               </VStack>
             </HStack>
@@ -1867,7 +1867,7 @@ export default function OrderDetailsScreen() {
                     borderColor="#FDE68A"
                   >
                     <Text fontWeight="$bold" fontSize="$sm" color="#92400E" flex={1}>
-                      {t('orders.details.payableToCustomer') || 'Payable to customer'}
+                      {t('orders.details.payableToCustomer') || 'Payable to retailer'}
                     </Text>
                     <Text fontWeight="$black" fontSize="$md" color="#92400E">
                       ₹{Number(order?.exchangeExcess || 0).toLocaleString('en-IN')}
@@ -2095,10 +2095,10 @@ export default function OrderDetailsScreen() {
                     </Box>
                     <VStack>
                       <Text fontWeight="$bold" color="$coolGray900" fontSize="$md">
-                        {t('orders.details.viewFullTimeline') || 'View Customer History'}
+                        {t('orders.details.viewFullTimeline') || 'View Retailer History'}
                       </Text>
                       <Text fontSize="$xs" color="$coolGray500">
-                        {t('orders.details.timelineSubtitle') || 'See all orders and payments for this customer'}
+                        {t('orders.details.timelineSubtitle') || 'See all orders and payments for this retailer'}
                       </Text>
                     </VStack>
                   </HStack>
