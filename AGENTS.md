@@ -92,7 +92,22 @@ npx tsc --noEmit
 npx jest __tests__/thermalReceipt.test.ts __tests__/itemPlausibility.test.ts
 ```
 
-`../start.cmd` brings up MongoDB, the backend and the web app together.
+`start.cmd` (in this repo's root) runs the web app against a backend you pick:
+
+| | |
+| --- | --- |
+| 1) dev | `dev.api.goldkhatabook.codeimplants.com` — the default. Web window only. |
+| 2) prod | `api.goldkhatabook.codeimplants.com` — **read-only, enforced**. Web window only. |
+| 3) local | MongoDB + backend on this machine, as siblings of this repo. |
+
+Dev is the default because it is deployed and shared: no local database to seed
+or keep in step, and what you see is what a test APK sees.
+
+Prod mode sets `API_READONLY=1`, and `src/api/apiClient.ts` refuses every
+`POST/PUT/PATCH/DELETE` while it is on. The check is keyed on the HTTP method,
+not a per-screen allowlist, so it covers mutations added later. It is off in
+every other build — in a released app that block would be a bug, not a
+safeguard.
 
 `API_BASE_URL` is overridable at build time so the web build can point at a
 backend on this machine; unset, `src/config/environments/*.ts` keeps its hosted

@@ -209,6 +209,13 @@ module.exports = async () => {
             // so process.env.API_BASE_URL is simply undefined there and the same
             // fallback applies.
             'process.env.API_BASE_URL': JSON.stringify(process.env.API_BASE_URL || ''),
+            // Set by start.cmd when the local web app is pointed at the PRODUCTION
+            // backend, so browsing real shop data cannot accidentally write to it.
+            // src/api/apiClient.ts refuses POST/PUT/PATCH/DELETE while this is on.
+            // Empty for every other build, including the deployed one — this is a
+            // developer safeguard, not a product feature, and a released app that
+            // could not write would be broken rather than safe.
+            'process.env.API_READONLY': JSON.stringify(process.env.API_READONLY || ''),
             // React Native's HMRClient.setup() branches on this: with EXPO_OS === 'web'
             // it accepts an options object, otherwise it asserts on a platform *string*
             // and throws `Missing required parameter \`platform\`` during startup, which

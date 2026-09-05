@@ -15,6 +15,31 @@ const apiClient = new ApiClient(
 const ongoingRequests = new Map<string, AbortController>();
 const activeControllers = new Set<AbortController>();
 
+/**
+ * Read-only mode. Set by start.cmd when a developer points the local web app at
+ * the PRODUCTION backend to look at real shop data, and baked in by webpack's
+ * DefinePlugin. Off everywhere else — in a released build this would be a bug,
+ * not a safeguard.
+ *
+ * It exists because the alternative is a convention. Pointing a local dev
+ * session at prod is a legitimate thing to do — reproducing what a shop is
+ * seeing usually needs their actual data — but every screen that loads that
+ * data also has buttons that write it, and one stray click edits a real
+ * retailer's ledger. "Be careful on prod" is not a control.
+ *
+ * Enforced on the HTTP method rather than per-screen: read-only has to mean
+ * every mutation, including ones added later by someone who has never read this
+ * comment.
+ */
+const API_READONLY = process.env.API_READONLY === '1';
+
+if (API_READONLY) {
+  logger.warn(
+    '[ApiClient] READ-ONLY mode: POST/PUT/PATCH/DELETE are blocked. ' +
+      'The app is pointed at a backend you must not write to.',
+  );
+}
+
 // Store reference for zero-latency loader dismissal
 let _store: any = null;
 export const injectStore = (store: any) => {
@@ -29,6 +54,18 @@ apiClient.addInterceptor({
     const isMutation = ['post', 'put', 'patch', 'delete'].includes(method);
     const url = config.url;
     const requestId = `${method}:${url}`;
+
+    // Before anything else. Rejecting here means no global loader was started
+    // and no AbortController was registered, so there is nothing to unwind —
+    // throwing further down would leave the spinner running forever.
+    if (API_READONLY && isMutation) {
+      const message = `Blocked ${method?.toUpperCase()} ${url} — the app is in READ-ONLY mode.`;
+      console.warn(`[ApiClient] ${message}`);
+      throw new Error(
+        `${message} You are pointed at a backend that must not be written to. ` +
+          `Restart with the dev or local backend to make changes.`,
+      );
+    }
 
     if (isMutation && _store) {
       console.log(`[ApiClient] Starting mutation: ${requestId}`);
