@@ -57,7 +57,7 @@ if (-not $storeFileName) {
     Write-Host ""
     Write-Host "Without it this build would be signed with the DEBUG key and rejected by Play." -ForegroundColor Red
     Write-Host ""
-    Write-Host "Create the keystore once (keep the passwords somewhere you will not lose them —" -ForegroundColor Yellow
+    Write-Host "Create the keystore once (keep the passwords somewhere you will not lose them -" -ForegroundColor Yellow
     Write-Host "losing them means you can no longer update the app):" -ForegroundColor Yellow
     Write-Host ""
     Write-Host '  keytool -genkeypair -v -storetype PKCS12 \' -ForegroundColor Gray
@@ -71,7 +71,7 @@ if (-not $storeFileName) {
     Write-Host '  GOLDKHATABOOK_UPLOAD_STORE_PASSWORD=...' -ForegroundColor Gray
     Write-Host '  GOLDKHATABOOK_UPLOAD_KEY_PASSWORD=...' -ForegroundColor Gray
     Write-Host ""
-    Write-Host "Do NOT reuse MYAPP_UPLOAD_* — that is SoneBill's key." -ForegroundColor Red
+    Write-Host "Do NOT reuse MYAPP_UPLOAD_* - that is SoneBill's key." -ForegroundColor Red
     Write-Host ""
     exit 1
 }
@@ -84,7 +84,7 @@ if (-not (Test-Path $storePath)) {
     Write-Host "  $storePath" -ForegroundColor Red
     Write-Host ""
     Write-Host "The .jks is gitignored, so a fresh clone will not have it. Restore it from" -ForegroundColor Yellow
-    Write-Host "wherever you backed it up — it cannot be regenerated." -ForegroundColor Yellow
+    Write-Host "wherever you backed it up - it cannot be regenerated." -ForegroundColor Yellow
     Write-Host ""
     exit 1
 }

@@ -28,6 +28,7 @@ import { SvgXml } from 'react-native-svg';
 import SignatureCaptureModal from '../../components/common/SignatureCaptureModal';
 import PhotoSourceSheet from '../../components/photos/PhotoSourceSheet';
 import { pickPhotos } from '../../utils/photoPicker';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { rotateSignatureSvg, canRotateSignature } from '../../utils/signature';
 
 import CommonHeader from "../../components/CommonHeader";
@@ -318,6 +319,7 @@ const AddShopDetailsScreen = () => {
   const [showSignatureDrawModal, setShowSignatureDrawModal] = useState(false);
   // Signature is the one branding image worth photographing — a shop often has
   // it signed on paper rather than as a file.
+  const photoUploadEnabled = useFeatureFlag('photoUpload');
   const [showSignatureSourceSheet, setShowSignatureSourceSheet] = useState(false);
 
   useEffect(() => {
@@ -742,15 +744,21 @@ const AddShopDetailsScreen = () => {
                   </Text>
 
                   <VStack mt="$4" space="lg">
-                    <ImagePickerRow
-                      label={t("shop.add.shopLogo")}
-                      icon={ImageIcon}
-                      placeholder={t("shop.add.chooseLogo")}
-                      value={form.logo}
-                      onPick={() => pickImage("logo")}
-                      onPreview={() => openPreview("logo")}
-                      onRemove={() => setForm(prev => ({ ...prev, logo: null }))}
-                    />
+                    {/* Hidden entirely rather than disabled while `photoUpload`
+                        is off: with ImageKit unprovisioned no shop has ever had
+                        a logo, so there is nothing here to preview and the row
+                        would only offer something that cannot work. */}
+                    {photoUploadEnabled && (
+                      <ImagePickerRow
+                        label={t("shop.add.shopLogo")}
+                        icon={ImageIcon}
+                        placeholder={t("shop.add.chooseLogo")}
+                        value={form.logo}
+                        onPick={() => pickImage("logo")}
+                        onPreview={() => openPreview("logo")}
+                        onRemove={() => setForm(prev => ({ ...prev, logo: null }))}
+                      />
+                    )}
 
                     {/* Signature — supports draw or upload */}
                     <VStack space="xs">
@@ -855,8 +863,13 @@ const AddShopDetailsScreen = () => {
                               </Text>
                             </Box>
                           </Pressable>
+                          {/* Only the UPLOAD half is gated. Drawing a signature
+                              stores an SVG string on the shop record and never
+                              touches ImageKit, so it keeps working while photo
+                              upload is off. */}
                           <Pressable
                             flex={1}
+                            display={photoUploadEnabled ? 'flex' : 'none'}
                             onPress={() => setShowSignatureSourceSheet(true)}
                           >
                             <Box
@@ -880,15 +893,17 @@ const AddShopDetailsScreen = () => {
                       )}
                     </VStack>
 
-                    <ImagePickerRow
-                      label={t("shop.add.shopHeader") || "Shop Header (recommended 2480×700px)"}
-                      icon={ImageIcon}
-                      placeholder={t("shop.add.chooseHeader") || "Choose Shop Header"}
-                      value={form.shopHeader}
-                      onPick={() => pickImage("shopHeader")}
-                      onPreview={() => openPreview("shopHeader")}
-                      onRemove={() => setForm(prev => ({ ...prev, shopHeader: null }))}
-                    />
+                    {photoUploadEnabled && (
+                      <ImagePickerRow
+                        label={t("shop.add.shopHeader") || "Shop Header (recommended 2480×700px)"}
+                        icon={ImageIcon}
+                        placeholder={t("shop.add.chooseHeader") || "Choose Shop Header"}
+                        value={form.shopHeader}
+                        onPick={() => pickImage("shopHeader")}
+                        onPreview={() => openPreview("shopHeader")}
+                        onRemove={() => setForm(prev => ({ ...prev, shopHeader: null }))}
+                      />
+                    )}
 
                   </VStack>
                 </Card>

@@ -5,6 +5,7 @@ import { User, Pencil } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 import { toast } from './Toast';
 import { pickPhotos } from '../../utils/photoPicker';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import { getFullImageUrl } from '../../utils/imageUtils';
 import PhotoSourceSheet from '../photos/PhotoSourceSheet';
 import type { PendingDeclarationPhoto } from '../../types';
@@ -41,6 +42,7 @@ const CustomerPhotoPicker: React.FC<CustomerPhotoPickerProps> = ({
     name,
 }) => {
     const { t } = useTranslation();
+    const photoUploadEnabled = useFeatureFlag('photoUpload');
     const [chooserOpen, setChooserOpen] = useState(false);
 
     const localUri = (value as any)?.uri;
@@ -67,7 +69,14 @@ const CustomerPhotoPicker: React.FC<CustomerPhotoPickerProps> = ({
 
     return (
         <>
-            <Pressable onPress={() => setChooserOpen(true)} alignSelf="flex-start">
+            {/* Still shows the photo or the initial when `photoUpload` is off —
+                only changing it is gated. Disabled rather than unmounted so the
+                avatar keeps its place in the layout. */}
+            <Pressable
+                onPress={() => setChooserOpen(true)}
+                disabled={!photoUploadEnabled}
+                alignSelf="flex-start"
+            >
                 <Box style={styles.avatar}>
                     {shownUri ? (
                         <Image source={{ uri: shownUri }} style={styles.avatarImage} />
@@ -84,10 +93,14 @@ const CustomerPhotoPicker: React.FC<CustomerPhotoPickerProps> = ({
                     )}
 
                     {/* Badge rather than a caption: it marks the avatar as
-                        editable without spending a line on saying so. */}
-                    <Box style={styles.badge}>
-                        <Icon as={Pencil} size="xs" color="$white" />
-                    </Box>
+                        editable without spending a line on saying so. Which is
+                        exactly why it must go when editing is switched off — a
+                        pencil on a control that does nothing is a lie. */}
+                    {photoUploadEnabled && (
+                        <Box style={styles.badge}>
+                            <Icon as={Pencil} size="xs" color="$white" />
+                        </Box>
+                    )}
                 </Box>
             </Pressable>
 

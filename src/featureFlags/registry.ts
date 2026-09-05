@@ -35,7 +35,7 @@
 
 import { APP_ENV } from '../config';
 
-export type FeatureFlagKey = 'tutorials' | 'oldGoldMelt';
+export type FeatureFlagKey = 'tutorials' | 'oldGoldMelt' | 'photoUpload';
 
 type FeatureFlagDefinition = {
   /** Used when neither layer has an opinion. */
@@ -97,6 +97,39 @@ export const FEATURE_FLAGS: Record<FeatureFlagKey, FeatureFlagDefinition> = {
     default: APP_ENV !== 'prod',
     description:
       'Old-gold melt: taking ornaments in for melt, the credit it earns a retailer, and drawing that credit down onto an order.',
+  },
+
+  photoUpload: {
+    /**
+     * OFF until ImageKit is provisioned.
+     *
+     * `IMAGEKIT_PUBLIC_KEY` / `_PRIVATE_KEY` / `_URL_ENDPOINT` are the literal
+     * string REPLACE_ME in both the dev and prod backend `.env` files, and
+     * `common/utils/imageKit.ts` throws when they are unset. So every upload
+     * fails today: shop logo, signature, item photos, retailer photos and the
+     * melt-lot audit photos alike. Nothing is silently lost — it fails loudly —
+     * but the user has already chosen an image by then, which is the worst
+     * possible moment to discover the feature does not work.
+     *
+     * Hiding the controls is therefore honest rather than cosmetic: an upload
+     * button that cannot upload is a defect, and a Play Data safety declaration
+     * covering photo collection the app never actually performs is a mismatch
+     * with the reviewer's own guidance.
+     *
+     * Compiled default rather than a remote switch, for the same reason as
+     * `tutorials` above: whether ImageKit exists is a property of the deployment
+     * this build talks to, and a config request that fails must not be what
+     * decides it. Flags fail OPEN, so the default IS the failure mode.
+     *
+     * ── TO ENABLE: provision an ImageKit account, replace the three REPLACE_ME
+     * values in each environment's .env, restart, and set a product flag of
+     * `true` in /api/platform/config. No app release is needed — that is this
+     * flag earning its keep. Then update Play Console > App content > Data
+     * safety to declare Photos, in the same change.
+     */
+    default: false,
+    description:
+      'Photo upload and capture: shop logo and signature, item and retailer photos, and melt-lot audit photos. Requires ImageKit credentials on the backend.',
   },
 };
 

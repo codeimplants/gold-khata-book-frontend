@@ -9,6 +9,7 @@ import { toast } from '../common/Toast';
 import ConfirmModal from '../ConfirmModal';
 import { getFullImageUrl } from '../../utils/imageUtils';
 import { pickPhotos } from '../../utils/photoPicker';
+import { useFeatureFlag } from '../../hooks/useFeatureFlag';
 import PhotoSourceSheet from './PhotoSourceSheet';
 import AddPhotosButton from './AddPhotosButton';
 import PhotoViewer from './PhotoViewer';
@@ -75,6 +76,7 @@ const PhotoField = ({
   compact,
 }: PhotoFieldProps) => {
   const { t } = useTranslation();
+  const photoUploadEnabled = useFeatureFlag('photoUpload');
   const [sheetOpen, setSheetOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -226,7 +228,10 @@ const PhotoField = ({
 
       </HStack>
 
-      {remaining > 0 && (
+      {/* Adding is gated on `photoUpload`; already-saved photos above are NOT.
+          Hiding those would make existing records look like they lost data,
+          when the only thing unavailable is putting new photos in. */}
+      {photoUploadEnabled && remaining > 0 && (
         <AddPhotosButton
           label={addLabel || t('declaration.photos.addPhotos') || 'Add Photos'}
           onPress={() => setSheetOpen(true)}

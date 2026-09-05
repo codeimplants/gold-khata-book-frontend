@@ -2,6 +2,7 @@ const path = require('path');
 const net = require('net');
 const fs = require('fs');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const { buildLegalPages } = require('./scripts/legal-pages');
 const webpack = require('webpack');
 
 function findFreePort(startPort, maxPort = startPort + 100) {
@@ -233,6 +234,25 @@ module.exports = async () => {
         new HtmlWebpackPlugin({
             template: path.resolve(appDirectory, 'public/index.html'),
         }),
+        // The standalone legal pages Play Console links to. Emitted by the
+        // build rather than committed as static files, for two reasons:
+        // deploy-web.ps1 wipes dist/ before every build (so anything not
+        // emitted is deleted), and the text comes from src/localization/en.ts —
+        // the same source the in-app screens use, so the two cannot drift.
+        //
+        // inject: false — these are plain documents. Injecting bundle.web.js
+        // would load the entire React Native Web app behind a privacy policy,
+        // which is 5.9 MB to render nine paragraphs and would blank the page if
+        // the bundle ever failed.
+        ...buildLegalPages().map(
+            page =>
+                new HtmlWebpackPlugin({
+                    filename: page.filename,
+                    templateContent: page.content,
+                    inject: false,
+                    minify: false,
+                }),
+        ),
     ],
     devServer: {
         port,

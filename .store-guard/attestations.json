@@ -1,1 +1,50 @@
-{}
+{
+  "1.0.0": {
+    "play.data-safety-form": {
+      "confirmed": true,
+      "note": null,
+      "by": "maga0721",
+      "at": "2026-09-05T17:47:33.161Z",
+      "signals": {
+        "androidPermissions": "source:52c910110b82",
+        "sdks": "b0f9bbd85a72",
+        "profile": "c6f2d08aa0cf"
+      }
+    },
+    "play.account-deletion-url": {
+      "confirmed": true,
+      "note": null,
+      "by": "maga0721",
+      "at": "2026-09-05T17:47:47.765Z",
+      "signals": {
+        "profile": "c6f2d08aa0cf"
+      }
+    },
+    "play.content-rating": {
+      "confirmed": true,
+      "note": null,
+      "by": "maga0721",
+      "at": "2026-09-05T17:47:51.044Z",
+      "signals": {
+        "profile": "c6f2d08aa0cf"
+      }
+    },
+    "play.store-listing-accurate": {
+      "confirmed": true,
+      "note": null,
+      "by": "maga0721",
+      "at": "2026-09-05T17:47:55.662Z",
+      "signals": {
+        "screens": "372b82181dc0",
+        "profile": "c6f2d08aa0cf"
+      }
+    },
+    "play.testing-credentials": {
+      "confirmed": true,
+      "note": null,
+      "by": "maga0721",
+      "at": "2026-09-05T17:48:00.008Z",
+      "signals": {}
+    }
+  }
+}
