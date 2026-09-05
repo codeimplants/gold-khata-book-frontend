@@ -94,12 +94,27 @@ android {
         keyPassword 'android'
     }
 
+    // GOLDKHATABOOK_UPLOAD_*, deliberately NOT the generic MYAPP_UPLOAD_* this
+    // file inherited from the SoneBill fork.
+    //
+    // ~/.gradle/gradle.properties is shared by every React Native project on a
+    // developer's machine, and MYAPP_UPLOAD_* there belongs to SoneBill — it
+    // names sonebill-keystore.jks and the alias `sonebill`. While this block
+    // read that prefix, a release build here picked up SoneBill's signing
+    // identity: at best the build fails because the .jks is not in this repo,
+    // at worst someone copies the .jks in "to fix it" and ships a Gold Khata
+    // Book AAB signed with another product's upload key. Play binds an app to
+    // the first upload certificate it sees, so that mistake is not reversible
+    // by rebuilding.
+    //
+    // sonetaran and sonebhav already carry their own prefixes for exactly this
+    // reason; this is the third project to need one.
     release {
-        if (project.hasProperty('MYAPP_UPLOAD_STORE_FILE')) {
-            storeFile file(MYAPP_UPLOAD_STORE_FILE)
-            storePassword MYAPP_UPLOAD_STORE_PASSWORD
-            keyAlias MYAPP_UPLOAD_KEY_ALIAS
-            keyPassword MYAPP_UPLOAD_KEY_PASSWORD
+        if (project.hasProperty('GOLDKHATABOOK_UPLOAD_STORE_FILE')) {
+            storeFile file(GOLDKHATABOOK_UPLOAD_STORE_FILE)
+            storePassword GOLDKHATABOOK_UPLOAD_STORE_PASSWORD
+            keyAlias GOLDKHATABOOK_UPLOAD_KEY_ALIAS
+            keyPassword GOLDKHATABOOK_UPLOAD_KEY_PASSWORD
         }
     }
 }
@@ -109,7 +124,20 @@ buildTypes {
         signingConfig signingConfigs.debug
     }
     release {
-        signingConfig signingConfigs.release
+        // Falls back to debug signing when no upload keystore is configured, the
+        // same way sonetaran does. scripts/build-test-apk.ps1 runs
+        // assembleRelease — a test APK for a phone is a release build — and with
+        // an unconditional signingConfigs.release that fails at configuration
+        // time with "SigningConfig 'release' is missing required property
+        // 'storeFile'". A debug-signed APK installs on a phone perfectly well,
+        // so requiring the Play upload key just to test a build is a cost with
+        // no benefit.
+        //
+        // The Play Store path is NOT allowed to fall back: build-playstore-aab.ps1
+        // checks for the property up front and refuses to build without it,
+        // because a debug-signed .aab is rejected on upload after a ten-minute
+        // build, and the error Play gives does not mention signing.
+        signingConfig project.hasProperty('GOLDKHATABOOK_UPLOAD_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
         minifyEnabled enableProguardInReleaseBuilds
         shrinkResources true
         proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"

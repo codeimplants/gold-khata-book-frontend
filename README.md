@@ -8,9 +8,9 @@
 > | --- | --- |
 > | Identity | `com.goldkhatabook.app` on both platforms; iOS project, target and scheme renamed `GoldKhataBook`; Android package `com/goldkhatabook/app`. |
 > | Version | Reset to 1.0.0 / build 1. SoneBill's 1.0.19 history is not this app's. |
-> | Backend | `*.api.goldkhatabook.codeimplants.com`. **These hosts do not exist yet** — see below. |
+> | Backend | `dev.api.goldkhatabook.codeimplants.com` (dev) and `api.goldkhatabook.codeimplants.com` (prod). Both resolve to the shared VPS. There is **no preprod server** — only dev and prod are deployed. |
 > | OTP | Dev now sends real SMS, matching prod (the backend's dev-only bypass was removed). |
-> | Firebase | Placeholder config. SoneBill's project was **not** inherited, so analytics is off in all environments until a Gold Khata Book project exists. |
+> | Firebase | Own project `goldkhatabook` (project number 954294037063), with Android, iOS and Web apps registered. SoneBill's project was **not** inherited. Analytics stays off in all environments until a GA4 property is linked — see "Analytics" below. |
 > | App Store id | Cleared. It was SoneBill's live listing id, which would have sent every iOS "Update"/"Rate" tap to SoneBill. |
 > | Nexus key | `src/config/secrets.ts` is empty; version-control/update checks will not authenticate until it is filled. |
 > | Store-guard | Attestations reset to `{}` — SoneBill's sign-offs do not attest anything about this app. Rule *provenance* notes still name SoneBill, on purpose: they record where those rules came from. |
@@ -461,7 +461,7 @@ safe to run against a dirty tree mid-release. Full reference: `scripts/release-n
 ## 🌐 Deploying the web app to Firebase Hosting
 
 This repo also builds a **web** version (via `react-native-web` + webpack) that is hosted on
-**Firebase Hosting** (project `PLACEHOLDER-firebase-project`). `npm run build` compiles the web bundle into `dist/`,
+**Firebase Hosting** (project `goldkhatabook`). `npm run build` compiles the web bundle into `dist/`,
 which is what [firebase.json](firebase.json) serves.
 
 > **For AI assistants / automation:** to deploy the web app, run `npm run deploy`
@@ -475,7 +475,7 @@ scripts\deploy-web.cmd
 # deploy the already-built dist/ without rebuilding:
 scripts\deploy-web.cmd -SkipBuild
 ```
-Both build the web bundle and deploy it. On success the app is live at **https://PLACEHOLDER-firebase-project.web.app**.
+Both build the web bundle and deploy it. On success the app is live at **https://goldkhatabook.web.app**.
 
 ### One-time setup — service account (no browser login)
 Deployment authenticates with a Firebase **service-account key** via an environment variable, so you

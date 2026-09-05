@@ -13,7 +13,7 @@ breakdown — do not duplicate any of that into system 2 below.
 
 - Native config already provisioned: `android/app/google-services.json`,
   `ios/GoldKhataBook/GoogleService-Info.plist`, both for Firebase project
-  `PLACEHOLDER-firebase-project` (package `com.goldkhatabook.app`).
+  `goldkhatabook` (package `com.goldkhatabook.app`).
 - Gradle wiring: `android/build.gradle` (Google Services classpath),
   `android/app/build.gradle` (`apply plugin: 'com.google.gms.google-services'`).
 - **Web build (`npm run build` → `bundle.web.js`, deployed to Firebase Hosting)
@@ -28,7 +28,7 @@ breakdown — do not duplicate any of that into system 2 below.
   the Firebase JS SDK (`firebase/app` + `firebase/analytics`, matching RNFB's
   own `analytics()` callable-default-export shape so `GA4Adapter` needs no
   changes). Config lives in `src/config/firebaseWeb.ts` — **fill in the actual
-  Web app config from Firebase Console → PLACEHOLDER-firebase-project → Project settings →
+  Web app config from Firebase Console → goldkhatabook → Project settings →
   Your apps → Web app** (register one if it doesn't exist yet); until that's
   done the shim safely no-ops instead of sending real data.
 - Init: `App.tsx:33,57,61-67` —
@@ -42,10 +42,10 @@ breakdown — do not duplicate any of that into system 2 below.
   `App.tsx:309` (`OFFLINE_DETECTED`). Add new ones the same way, at the call
   site of the behavior you're tracking.
 
-To see this data: Firebase Console → project `PLACEHOLDER-firebase-project` → Analytics.
+To see this data: Firebase Console → project `goldkhatabook` → Analytics.
 Nexus (the internal admin platform) also pulls real numbers from this same
 GA4 property server-side via the Google Analytics Data API — see
-`nexus-backend/ANALYTICS.md` — once `PLACEHOLDER-firebase-project`'s GA4 property grants
+`nexus-backend/ANALYTICS.md` — once `goldkhatabook`'s GA4 property grants
 Nexus's shared reporting service account Viewer access.
 
 ## 2. Nexus SDK — device/admin telemetry

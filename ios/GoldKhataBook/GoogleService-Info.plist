@@ -3,17 +3,17 @@
 <plist version="1.0">
 <dict>
 	<key>API_KEY</key>
-	<string>REPLACE_WITH_GOLD_KHATA_BOOK_IOS_API_KEY</string>
+	<string>AIzaSyBjF2p1Hpl0k9JMPHHzja5X2n9nWVe51U0</string>
 	<key>GCM_SENDER_ID</key>
-	<string>000000000000</string>
+	<string>954294037063</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.goldkhatabook.app</string>
 	<key>PROJECT_ID</key>
-	<string>PLACEHOLDER-firebase-project</string>
+	<string>goldkhatabook</string>
 	<key>STORAGE_BUCKET</key>
-	<string>PLACEHOLDER-firebase-project.firebasestorage.app</string>
+	<string>goldkhatabook.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:000000000000:ios:0000000000000000000000</string>
+	<string>1:954294037063:ios:60b1213f556ffc6b1fdf62</string>
 </dict>
 </plist>

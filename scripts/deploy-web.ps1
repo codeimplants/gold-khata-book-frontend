@@ -1,4 +1,4 @@
-# Builds the web app and deploys it to Firebase Hosting (project PLACEHOLDER-firebase-project).
+# Builds the web app and deploys it to Firebase Hosting (project goldkhatabook).
 #
 # Auth: uses a Firebase service-account key referenced by the GOOGLE_APPLICATION_CREDENTIALS
 # environment variable (no interactive `firebase login` needed). One-time setup is in
@@ -13,7 +13,7 @@ param([switch]$SkipBuild)
 
 $ErrorActionPreference = "Stop"
 $root      = Split-Path -Parent $PSScriptRoot
-$project   = "PLACEHOLDER-firebase-project"
+$project   = "goldkhatabook"
 $hostUrl   = "https://$project.web.app"
 $dist      = Join-Path $root "dist"
 

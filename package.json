@@ -20,7 +20,7 @@
     "release-notes:ios": "node scripts/release-notes/bin/release-notes.js --ios --generate",
     "dev": "cross-env WEBPACK=true APP_ENV=dev webpack serve --mode development --config webpack.config.js",
     "build": "cross-env WEBPACK=true APP_ENV=prod webpack --mode production --config webpack.config.js",
-    "deploy": "npm run build && npx firebase deploy --only hosting --project PLACEHOLDER-firebase-project --non-interactive"
+    "deploy": "npm run build && npx firebase deploy --only hosting --project goldkhatabook --non-interactive"
   },
   "dependencies": {
     "@codeimplants/analytics": "^0.1.0",

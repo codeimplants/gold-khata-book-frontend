@@ -26,6 +26,71 @@ $root    = Split-Path -Parent $PSScriptRoot
 $logFile = Join-Path $root "build-times.log"
 $aab     = Join-Path $root "android\app\build\outputs\bundle\release\app-release.aab"
 
+# --- Signing preflight ---------------------------------------------------------
+# Checked here, before the pull, the version bump and the ten-minute build,
+# because every way this can go wrong is expensive and none of them is obvious
+# from the error you eventually get.
+#
+# android/app/build.gradle falls back to DEBUG signing when
+# GOLDKHATABOOK_UPLOAD_STORE_FILE is absent. That fallback exists for test APKs
+# and is exactly wrong here: a debug-signed .aab uploads and is then rejected by
+# Play with a message about the certificate fingerprint that never says "you
+# built this with the wrong signing config".
+#
+# The property name is GOLDKHATABOOK_-prefixed, not the generic MYAPP_UPLOAD_*
+# this repo inherited from the SoneBill fork. ~/.gradle/gradle.properties is
+# shared by every React Native project on the machine and its MYAPP_UPLOAD_*
+# entry belongs to SoneBill — building against that prefix would sign Gold Khata
+# Book with SoneBill's upload key. Play binds an app to the first upload
+# certificate it accepts, so that is not undoable by rebuilding.
+$gradleProps = Join-Path $env:USERPROFILE ".gradle\gradle.properties"
+$storeFileName = $null
+if (Test-Path $gradleProps) {
+    $match = Select-String -Path $gradleProps -Pattern '^\s*GOLDKHATABOOK_UPLOAD_STORE_FILE\s*=\s*(.+?)\s*$' |
+             Select-Object -First 1
+    if ($match) { $storeFileName = $match.Matches[0].Groups[1].Value }
+}
+
+if (-not $storeFileName) {
+    Write-Host ""
+    Write-Host "ERROR: no upload keystore configured for Gold Khata Book." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Without it this build would be signed with the DEBUG key and rejected by Play." -ForegroundColor Red
+    Write-Host ""
+    Write-Host "Create the keystore once (keep the passwords somewhere you will not lose them —" -ForegroundColor Yellow
+    Write-Host "losing them means you can no longer update the app):" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host '  keytool -genkeypair -v -storetype PKCS12 \' -ForegroundColor Gray
+    Write-Host '    -keystore android\app\gold-khata-book-keystore.jks \' -ForegroundColor Gray
+    Write-Host '    -alias goldkhatabook -keyalg RSA -keysize 2048 -validity 10000' -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Then add to $gradleProps :" -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host '  GOLDKHATABOOK_UPLOAD_STORE_FILE=gold-khata-book-keystore.jks' -ForegroundColor Gray
+    Write-Host '  GOLDKHATABOOK_UPLOAD_KEY_ALIAS=goldkhatabook' -ForegroundColor Gray
+    Write-Host '  GOLDKHATABOOK_UPLOAD_STORE_PASSWORD=...' -ForegroundColor Gray
+    Write-Host '  GOLDKHATABOOK_UPLOAD_KEY_PASSWORD=...' -ForegroundColor Gray
+    Write-Host ""
+    Write-Host "Do NOT reuse MYAPP_UPLOAD_* — that is SoneBill's key." -ForegroundColor Red
+    Write-Host ""
+    exit 1
+}
+
+# storeFile is resolved by Gradle relative to android/app.
+$storePath = Join-Path $root "android\app\$storeFileName"
+if (-not (Test-Path $storePath)) {
+    Write-Host ""
+    Write-Host "ERROR: keystore '$storeFileName' is configured but not present at:" -ForegroundColor Red
+    Write-Host "  $storePath" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "The .jks is gitignored, so a fresh clone will not have it. Restore it from" -ForegroundColor Yellow
+    Write-Host "wherever you backed it up — it cannot be regenerated." -ForegroundColor Yellow
+    Write-Host ""
+    exit 1
+}
+
+Write-Host "Signing with: $storeFileName" -ForegroundColor DarkGray
+
 if (-not $SkipPull) {
     Write-Host "Pulling latest changes (git pull --ff-only)..." -ForegroundColor Cyan
     & git -C $root pull --ff-only

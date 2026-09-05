@@ -39,7 +39,7 @@ if (-not $AppEnv) {
     Write-Host ""
     Write-Host "Which backend should this test APK point to?" -ForegroundColor Yellow
     Write-Host "  1) dev      - https://dev.api.goldkhatabook.codeimplants.com (test OTP)"
-    Write-Host "  2) preprod  - https://preprod.api.goldkhatabook.codeimplants.com (test OTP)"
+    Write-Host "  2) preprod  - NO SERVER EXISTS. Only dev and prod are deployed." -ForegroundColor DarkGray
     Write-Host "  3) prod     - https://api.goldkhatabook.codeimplants.com (REAL OTP - real users)"
     $choice = Read-Host "Enter 1-3 (default: 1/dev)"
     $AppEnv = switch ($choice) {

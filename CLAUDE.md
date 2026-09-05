@@ -365,7 +365,7 @@ another app.
   "connect" address) so the script reconnects automatically if the Wi-Fi adb session dropped.
 
 ## Deploying the web app (Firebase Hosting)
-- This repo also builds a web app (react-native-web + webpack) hosted on Firebase (project `PLACEHOLDER-firebase-project`).
+- This repo also builds a web app (react-native-web + webpack) hosted on Firebase (project `goldkhatabook`).
 - "Deploy" / "deploy the web app" / "push to Firebase" → run `npm run deploy` (or `scripts/deploy-web.ps1`).
   It wipes `dist/`, runs `npm run build` (→ `dist/`), then `firebase deploy --only hosting`.
 - The `dist/` wipe is deliberate and must stay: webpack overwrites what it re-emits but never deletes

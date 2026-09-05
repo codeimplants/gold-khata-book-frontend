@@ -8,7 +8,7 @@ export const preprod: AppConfig = {
   // config was NOT inherited (see src/config/firebaseWeb.ts), so with the
   // placeholder values in place this would report nowhere. Flip to true once
   // the real google-services.json / GoogleService-Info.plist are in.
-  ANALYTICS_ENABLED: false,
+  ANALYTICS_ENABLED: true,
   // OneSignal App ID — public, ships in the binary. Empty disables push.
   ONESIGNAL_APP_ID: '',
   // Staging API URL
