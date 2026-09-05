@@ -303,6 +303,20 @@ const CompleteRegistrationScreen = () => {
         onConfirm={() => {
           setShowSkipModal(false);
           dispatch(skipRegistration());
+          // The dispatch alone does NOT move the user, which is why "Skip for
+          // now" appeared to do nothing at all.
+          //
+          // RootNavigator derives `registrationPending` from this state, but
+          // feeds it only to `initialRouteName` — and React Navigation reads
+          // that once, when the navigator mounts. Later changes do not
+          // re-navigate. Logging in looks like it works only because
+          // `isAuthenticated` flips and swaps the entire screen set, which
+          // forces a reset; skipping changes neither, so nothing moves.
+          //
+          // Reset rather than navigate, matching the submit path above: the
+          // registration screen must not stay on the back stack, or the device
+          // back button returns to a form the user has just declined.
+          (navigation as any).reset({ index: 0, routes: [{ name: "MainTabs" }] });
         }}
       />
     </Box>
