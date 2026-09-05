@@ -16,7 +16,6 @@ import {
 import { inspectItemEntry } from '../../utils/itemPlausibility';
 import { getFullImageUrl } from '../../utils/imageUtils';
 import ItemPhotoThumbnails from '../items/ItemPhotoThumbnails';
-import ExchangeTotalsRow from '../oldGold/ExchangeTotalsRow';
 
 /**
  * The parts every order document shares: who it is for, what is on it, and what
@@ -197,33 +196,12 @@ const OrderDocumentView = ({
       }
     }
 
-    const gold = exList.filter((ex: any) => ex.type === 'Gold');
-    const silver = exList.filter((ex: any) => ex.type === 'Silver');
-    const sumAmount = (rows: any[]) =>
-      rows.reduce((sum: number, ex: any) => sum + (Number(ex.amount) || 0), 0);
-    // netWt first: `weight` exists only on the legacy aggregate rows, so
-    // reading it alone reported 0.000 gm for every per-item exchange.
-    const sumWeight = (rows: any[]) =>
-      rows.reduce(
-        (sum: number, ex: any) => sum + (Number(ex.netWt ?? ex.weight ?? 0) || 0),
-        0,
-      );
-    const goldTotal = sumAmount(gold);
-    const silverTotal = sumAmount(silver);
-    const exchangeTotal = goldTotal + silverTotal;
-
-    const subTotal =
-      totals?.subTotal ?? base + making + other - discount - exchangeTotal;
+    const subTotal = totals?.subTotal ?? base + making + other - discount;
     const gst = totals?.gstAmount ?? gstAmount;
     const grandTotal = totals?.grandTotal ?? subTotal + gst;
 
-    return {
-      base, making, other, discount, makingLabel,
-      gold, silver, goldTotal, silverTotal,
-      goldWeight: sumWeight(gold), silverWeight: sumWeight(silver),
-      exchangeTotal, subTotal, gst, grandTotal,
-    };
-  }, [list, exchanges, gstAmount, totals, t]);
+    return { base, making, other, discount, makingLabel, subTotal, gst, grandTotal };
+  }, [list, gstAmount, totals, t]);
 
   const gstLabel =
     gstRatePercent != null
@@ -481,54 +459,6 @@ const OrderDocumentView = ({
               - {formatCurrencyValue(derived.discount)}
             </Text>
           </HStack>
-        )}
-
-        {/* Expandable per metal, carrying the ornament breakdown and the
-            exchange photos. A flat "- Rs X" line lost the weight, what was
-            handed over, and the photos entirely. */}
-        {derived.goldTotal > 0 && (
-          <ExchangeTotalsRow
-            label={t('invoicePreview.goldExchange') || 'Gold Exchange'}
-            weightGm={derived.goldWeight}
-            amount={derived.goldTotal}
-            ornaments={derived.gold}
-            photos={exchangePhotos}
-            onPhotoPress={onExchangePhotoPress}
-            onOrnamentPhotoPress={onOrnamentPhotoPress}
-            // The upload addresses a row by its index in the stored list, and
-            // this component shows gold and silver as two lists - so the index
-            // the row hands back is looked up rather than trusted.
-            onAddOrnamentPhotos={
-              onAddOrnamentPhotos
-                ? ornament =>
-                    onAddOrnamentPhotos(ornament, exList.indexOf(ornament))
-                : undefined
-            }
-            onAddPhotos={onAddExchangePhotos}
-            formatAmount={formatCurrencyValue}
-          />
-        )}
-
-        {derived.silverTotal > 0 && (
-          <ExchangeTotalsRow
-            label={t('invoicePreview.silverExchange') || 'Silver Exchange'}
-            weightGm={derived.silverWeight}
-            amount={derived.silverTotal}
-            ornaments={derived.silver}
-            onAddOrnamentPhotos={
-              onAddOrnamentPhotos
-                ? ornament =>
-                    onAddOrnamentPhotos(ornament, exList.indexOf(ornament))
-                : undefined
-            }
-            // Only when gold is not already carrying them, so the one shared
-            // set has exactly one place to be shown and added.
-            photos={derived.goldTotal > 0 ? [] : exchangePhotos}
-            onPhotoPress={onExchangePhotoPress}
-            onOrnamentPhotoPress={onOrnamentPhotoPress}
-            onAddPhotos={derived.goldTotal > 0 ? undefined : onAddExchangePhotos}
-            formatAmount={formatCurrencyValue}
-          />
         )}
 
         {/* Subtotal only when GST sits between it and the Grand Total.

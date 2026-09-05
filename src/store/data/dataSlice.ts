@@ -6,6 +6,7 @@ import { AppReview } from '@codeimplants/app-review';
 import { RootState } from '../index';
 import { apiClient } from '../../api/apiClient';
 import { splitGstAmount } from '../../utils/gst';
+import { SETTLEMENT_FINENESS } from '../../utils/goldPricing';
 import type {
     PurchaseOldGold,
     DeclarationFormValues,
@@ -73,6 +74,16 @@ const mapBackendOrder = (ord: any): any => ({
     remainingWeight: ord.remainingWeight || 0,
     payments: ord.payments || [],
     totalPaid: ord.totalPaid || 0,
+    // The two outstanding accounts a retailer carries on an order. Metal is
+    // `remainingWeight` above (grams); this is the cash half (making, other
+    // charges, GST) net of anything already paid against it. They settle
+    // independently, so both are carried — `estimatedBalance` is the pair
+    // priced as one figure and must never be added to either.
+    cashPaid: ord.cashPaid || 0,
+    outstandingCash: ord.outstandingCash || 0,
+    // Only an advance order carries an outstanding; a full-payment order is
+    // settled when it is raised. Carried so the dues views can filter on it.
+    paymentMode: ord.paymentMode || 'advance',
     estimatedBalance: ord.estimatedBalance || 0,
     finalInvoiceId: ord.finalInvoiceId,
     bookingRate: ord.bookingRate || 0,
@@ -254,7 +265,22 @@ export interface Customer {
      *  guest mode); absent on customers created before the field existed,
      *  until the backfill migration has run on that environment. */
     customerCode?: string;
+    /**
+     * The display identity — bills, lists, search and the duplicate check all
+     * read this, and it is the only name any of them know about.
+     *
+     * NOT typed directly. It is derived by `retailerDisplayName` at save time:
+     * the shop name when there is one, the owner's name when there is not. The
+     * form requires an owner and leaves the shop optional, so this always has a
+     * value even though neither typed field is individually required.
+     */
     name: string;
+    /** Who you deal with. Required by the form; optional here because records
+     *  added before the field existed have none. */
+    ownerName?: string;
+    /** The shop, when it has a name of its own. Optional — plenty of small
+     *  retailers trade under the owner's name and there is nothing else. */
+    shopName?: string;
     /** Optional — a walk-in buying a small item routinely will not give one.
      *  An old-gold declaration is the single place that still requires it. */
     phone?: string;
@@ -304,9 +330,19 @@ export type Order = {
     // Advance order fields
     orderNumber?: string;
     totalPaid?: number;
+    /** Both outstanding accounts priced as one rupee figure. Never add it to
+     *  either account — it already contains both. */
     estimatedBalance?: number;
     totalWeight?: number;
+    /** The METAL account: grams still owed. */
     remainingWeight?: number;
+    /** The CASH account: rupees still owed (making, other charges, GST). */
+    outstandingCash?: number;
+    /** Cash received against the charges account. */
+    cashPaid?: number;
+    /** Only 'advance' orders carry an outstanding — full payment settles on
+     *  creation. */
+    paymentMode?: 'complete' | 'advance';
     weightPaid?: number;
     completedAt?: string;
     payments?: any[];
@@ -381,6 +417,9 @@ export type ShopDetails = {
     invoiceTemplate?: InvoiceTemplate;
     appLanguage?: Language;
     declarationLanguage?: Language;
+    /** Whether this wholesaler takes old ornaments for melt. Undefined on a
+     *  shop that has never answered, which reads as off — see useOldGoldMelt. */
+    oldGoldMelt?: boolean;
 };
 
 export type MetalRates = {
@@ -423,6 +462,14 @@ interface DataState {
     /** Old gold bought from customers. Never feeds salesReport/gstReport — a purchase
      * from a customer is not a sale. */
     purchaseOldGold: PurchaseOldGold[];
+    /** Held cash and melt credit, keyed by retailer. Loaded per retailer rather
+     *  than as a list: only the screen looking at one retailer needs it. */
+    retailerAccounts: Record<string, RetailerAccount>;
+    /** Old-ornament lots, open ones included — see the melt-lot section. */
+    meltLots: MeltLot[];
+    /** The shop's own rate, keyed by day. A day absent here has no override
+     *  and falls back to the live rate — see useShopRate. */
+    shopRates: Record<string, ShopRate | null>;
     salesReport: SalesData | null;
     gstReport: any | null;
     loading: boolean;
@@ -435,6 +482,7 @@ interface DataState {
         catalogProducts: number | null;
         purchases: number | null;
         purchaseOldGold: number | null;
+        retailerAccounts: Record<string, number>;
         salesReport: Record<string, number>;
     };
     error?: string;
@@ -448,6 +496,9 @@ const initialState: DataState = {
     catalogProducts: [],
     purchases: [],
     purchaseOldGold: [],
+    retailerAccounts: {},
+    meltLots: [],
+    shopRates: {},
     salesReport: null,
     gstReport: null,
     loading: false,
@@ -460,6 +511,7 @@ const initialState: DataState = {
         catalogProducts: null,
         purchases: null,
         purchaseOldGold: null,
+        retailerAccounts: {},
         salesReport: {},
     },
 };
@@ -485,6 +537,10 @@ const STALE_TIMES_MS = {
     catalogProducts: 60_000,
     purchases: 60_000,
     purchaseOldGold: 60_000,
+    // Shorter than the rest: this is a running balance that the order screen
+    // reads immediately before spending it, and showing credit that another
+    // device already drew down turns into a rejected save at the counter.
+    retailerAccounts: 15_000,
     salesReport: 60_000,
 };
 
@@ -1077,6 +1133,57 @@ export const fetchSalesReport = createAsyncThunk(
             return shouldFetch(last, { staleTimeMs }, STALE_TIMES_MS.salesReport);
         },
     }
+);
+
+/**
+ * Raises a wholesale order.
+ *
+ * Deliberately separate from `addOrder`, which still carries the retail shape —
+ * making charges, discounts, GST splits, guest-mode mirroring. A wholesale line
+ * is metal and nothing else, so this posts the five fields the server wants and
+ * lets the Order pre-save hook do the pricing. Nothing here computes a total:
+ * the screen previews one for the user, the server decides the stored one.
+ */
+export const createWholesaleOrder = createAsyncThunk(
+    'data/createWholesaleOrder',
+    async (
+        payload: {
+            customerId: string;
+            /** YYYY-MM-DD. Bills get back-dated — goods leave on one day and
+             *  the paperwork catches up on another. */
+            orderDate?: string;
+            items: { itemName: string; weight: number; purity: number; wastage: number; rate: number }[];
+            bookingRate: number;
+            includeGST: boolean;
+            gstRate?: number;
+            /** What is being handed over now. Empty means nothing is paid yet. */
+            initialPayment?: { amount: number; goldRate: number; notes?: string };
+        },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>('/api/orders', {
+                customerId: payload.customerId,
+                orderDate: payload.orderDate || new Date().toISOString(),
+                paymentMode: 'advance',
+                items: payload.items,
+                bookingRate: payload.bookingRate,
+                includeGST: payload.includeGST,
+                ...(payload.gstRate != null ? { gstRate: payload.gstRate } : {}),
+                ...(payload.initialPayment ? { initialPayment: payload.initialPayment } : {}),
+            }, { headers: { 'Content-Type': 'application/json' } });
+
+            const raw = response.data?.data ?? response.data;
+            if (!raw?._id && !raw?.id) {
+                return rejectWithValue('The server did not return the saved order');
+            }
+            return mapBackendOrder(raw);
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Failed to create the order',
+            );
+        }
+    },
 );
 
 export const addOrder = createAsyncThunk(
@@ -3360,6 +3467,596 @@ export const decrementCatalogStock = createAsyncThunk(
 );
 
 
+/**
+ * Saves one shop-wide preference without touching the rest of the shop record.
+ *
+ * The endpoint takes only the keys it is given, so a screen flipping one toggle
+ * cannot blank a language or a bill template that another screen set. That
+ * matters more than it sounds: these preferences reach every device the shop
+ * uses, and sending a whole shop record to change one boolean is how two
+ * computers end up writing back their own stale copy of everything else.
+ *
+ * LanguageProvider pushes the language and template keys the same way, but
+ * swallows failures because it has already applied the change locally and can
+ * afford to. This one reports them: the melt toggle changes what the order
+ * screen offers, so a shopkeeper who is told it saved and finds it off on the
+ * next launch has been misled about the state of their own shop.
+ */
+export const updateShopPreferences = createAsyncThunk(
+    'data/updateShopPreferences',
+    async (
+        prefs: {
+            invoiceTemplate?: InvoiceTemplate;
+            appLanguage?: Language;
+            declarationLanguage?: Language;
+            oldGoldMelt?: boolean;
+        },
+        { getState, rejectWithValue },
+    ) => {
+        const state = getState() as RootState;
+        if (state.auth.isGuest) {
+            return rejectWithValue('Guest mode has no shop record to save preferences to.');
+        }
+        try {
+            const response = await apiClient.put<any>('/api/shopDetails/preferences', prefs);
+            const raw = response.data?.data ?? response.data;
+            // Merged onto what is already in the store rather than replacing it:
+            // this endpoint answers with the shop document in its raw backend
+            // shape, and fetchShopDetails' mapper is what turns that into the
+            // shape every screen reads. Overwriting with the raw form would
+            // blank the mapped fields (shopDesc, gst, logo) until the next fetch.
+            return { ...prefs, ...(raw?.oldGoldMelt !== undefined ? { oldGoldMelt: raw.oldGoldMelt } : {}) };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not save the setting',
+            );
+        }
+    },
+);
+
+/**
+ * Records metal handed over against an order.
+ *
+ * Separate from `addPaymentToAdvanceOrder`, which speaks the cash shape and
+ * sends `purity`/`weightCovered` — names `addPaymentSchema` does not have, so a
+ * gold leg posted through it is stripped before it reaches the order.
+ *
+ * `createWholesaleOrder`'s `initialPayment` carries only `amount` and
+ * `goldRate`, so metal paid at the counter cannot ride along with the order it
+ * pays for. It is posted here straight after the order comes back instead. Once
+ * the order exists this is also what "add a gold payment later" would use.
+ *
+ * The weight is grams of 99.50 fine and says so, which makes the order's
+ * inbound conversion a no-op — the figure the screen showed is the figure
+ * stored, with no second uplift applied to it.
+ */
+export const addMetalPaymentToOrder = createAsyncThunk(
+    'data/addMetalPaymentToOrder',
+    async (
+        payload: { orderId: string; goldWeight: number; goldPurity?: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(`/api/orders/${payload.orderId}/payments`, {
+                amount: 0,
+                goldRate: 0,
+                goldWeight: payload.goldWeight,
+                goldPurity: payload.goldPurity ?? SETTLEMENT_FINENESS,
+                settles: 'metal',
+                date: payload.date || new Date().toISOString(),
+                ...(payload.notes ? { notes: payload.notes } : {}),
+            });
+            const raw = response.data?.data ?? response.data;
+            return raw ? mapBackendOrder(raw) : null;
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not record the gold payment',
+            );
+        }
+    },
+);
+
+// ─── The shop's own rate for the day ────────────────────────────────────────
+//
+// The live metal feed is the market; this is what the shopkeeper has decided to
+// deal at, which is routinely a different number. Stored per DAY and never
+// carried forward: a day with no rate uses the live one, because a Monday rate
+// silently still in force on Friday is how a shop quotes a price it never meant
+// to hold.
+
+export interface ShopRate {
+    /** YYYY-MM-DD — a calendar day, not a timestamp. */
+    date: string;
+    /** Rupees per gram of 99.50. */
+    goldRate: number;
+    notes?: string;
+}
+
+const mapShopRate = (r: any): ShopRate | null =>
+    r && r.goldRate != null
+        ? {
+            date: String(r.date || ''),
+            goldRate: Number(r.goldRate) || 0,
+            ...(r.notes ? { notes: String(r.notes) } : {}),
+        }
+        : null;
+
+/** Today in the DEVICE's calendar, matching how the screens format dates. */
+export const todayKey = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * The shop's rate for a day, or null when they have not set one.
+ *
+ * Null is the answer, not a failure: it is what puts the app on the live rate
+ * and makes it say so.
+ */
+export const fetchShopRate = createAsyncThunk(
+    'data/fetchShopRate',
+    async (args: { date?: string } | undefined, { rejectWithValue }) => {
+        const date = args?.date || todayKey();
+        try {
+            const response = await apiClient.get<any>('/api/shop-rate', { params: { date } });
+            const raw = response.data?.data ?? response.data;
+            return { date, rate: mapShopRate(raw) };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not load the shop rate',
+            );
+        }
+    },
+    {
+        condition: (_arg, { getState }) => !(getState() as RootState).auth.isGuest,
+    },
+);
+
+export const setShopRate = createAsyncThunk(
+    'data/setShopRate',
+    async (
+        payload: { goldRate: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        const date = payload.date || todayKey();
+        try {
+            const response = await apiClient.put<any>('/api/shop-rate', {
+                date,
+                goldRate: payload.goldRate,
+                ...(payload.notes ? { notes: payload.notes } : {}),
+            });
+            const raw = response.data?.data ?? response.data;
+            return { date, rate: mapShopRate(raw) };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not save the rate',
+            );
+        }
+    },
+);
+
+/** Puts a day back on the live rate. */
+export const clearShopRate = createAsyncThunk(
+    'data/clearShopRate',
+    async (args: { date?: string } | undefined, { rejectWithValue }) => {
+        const date = args?.date || todayKey();
+        try {
+            await apiClient.delete<any>('/api/shop-rate', { params: { date } });
+            return { date, rate: null as ShopRate | null };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not clear the rate',
+            );
+        }
+    },
+);
+
+// ─── Melt lots: old ornaments moving through the shop ───────────────────────
+//
+// A lot is weighed into the pot, melted, and tested — on separate days, because
+// that is how long it takes. It is a RECORD with stages rather than a form,
+// since nobody can hold a screen open between the counter and the test bench
+// while the same device raises other bills.
+//
+// Credit only reaches the retailer's account when the test closes the lot: the
+// fine weight is not knowable until the purity is, and a lot still in the pot
+// is ornaments the shop is holding, not credit the retailer has.
+
+export type MeltLotStatus = 'received' | 'melted' | 'tested';
+
+export interface MeltLot {
+    id: string;
+    lotNumber: string;
+    customerId: string;
+    status: MeltLotStatus;
+
+    potWeight: number;
+    receivedAt: string;
+
+    afterMelt?: number;
+    meltedAt?: string;
+
+    afterTesting?: number;
+    purity?: number;
+    testedAt?: string;
+
+    /** Frozen when the lot was credited — see the server model. */
+    fine999?: number;
+    creditedWeight?: number;
+
+    notes?: string;
+    createdAt?: string;
+}
+
+const mapMeltLot = (l: any): MeltLot => ({
+    id: String(l?._id || l?.id || ''),
+    lotNumber: String(l?.lotNumber || ''),
+    customerId: String(l?.customerId?._id || l?.customerId?.id || l?.customerId || ''),
+    status: (l?.status || 'received') as MeltLotStatus,
+    potWeight: Number(l?.potWeight) || 0,
+    receivedAt: l?.receivedAt,
+    ...(l?.afterMelt != null ? { afterMelt: Number(l.afterMelt) } : {}),
+    ...(l?.meltedAt ? { meltedAt: l.meltedAt } : {}),
+    ...(l?.afterTesting != null ? { afterTesting: Number(l.afterTesting) } : {}),
+    ...(l?.purity != null ? { purity: Number(l.purity) } : {}),
+    ...(l?.testedAt ? { testedAt: l.testedAt } : {}),
+    ...(l?.fine999 != null ? { fine999: Number(l.fine999) } : {}),
+    ...(l?.creditedWeight != null ? { creditedWeight: Number(l.creditedWeight) } : {}),
+    ...(l?.notes ? { notes: String(l.notes) } : {}),
+    createdAt: l?.createdAt,
+});
+
+/**
+ * The shop's lots. Defaults to the open ones, which is the working list —
+ * "what is in the pot right now" is the question this feature exists to answer.
+ */
+export const fetchMeltLots = createAsyncThunk(
+    'data/fetchMeltLots',
+    async (args: { status?: 'open' | MeltLotStatus } | undefined, { rejectWithValue }) => {
+        try {
+            const response = await apiClient.get<any>('/api/melt-lots', {
+                params: { status: args?.status || 'open' },
+            });
+            const raw = response.data?.data ?? response.data;
+            return Array.isArray(raw) ? raw.map(mapMeltLot) : [];
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not load melt lots',
+            );
+        }
+    },
+    {
+        condition: (_arg, { getState }) => !(getState() as RootState).auth.isGuest,
+    },
+);
+
+/** Stage 1 — ornaments over the counter, weighed into the pot. */
+export const createMeltLot = createAsyncThunk(
+    'data/createMeltLot',
+    async (
+        payload: { customerId: string; potWeight: number; receivedAt?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>('/api/melt-lots', payload);
+            return mapMeltLot(response.data?.data ?? response.data);
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not open the lot',
+            );
+        }
+    },
+);
+
+/** Stage 2 — the lagdi out of the pot. */
+export const recordMeltStage = createAsyncThunk(
+    'data/recordMeltStage',
+    async (
+        payload: { lotId: string; afterMelt: number; meltedAt?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const { lotId, ...body } = payload;
+            const response = await apiClient.patch<any>(`/api/melt-lots/${lotId}/melt`, body);
+            return mapMeltLot(response.data?.data ?? response.data);
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not record the melted weight',
+            );
+        }
+    },
+);
+
+/**
+ * Stage 3 — tested. This closes the lot AND credits the retailer, so the
+ * account is refetched after it: the credit is the whole point, and a screen
+ * still showing the old balance would look like nothing happened.
+ */
+export const recordTestStage = createAsyncThunk(
+    'data/recordTestStage',
+    async (
+        payload: { lotId: string; customerId: string; afterTesting: number; purity: number; testedAt?: string; notes?: string },
+        { dispatch, rejectWithValue },
+    ) => {
+        try {
+            const { lotId, customerId, ...body } = payload;
+            const response = await apiClient.patch<any>(`/api/melt-lots/${lotId}/test`, body);
+            const lot = mapMeltLot(response.data?.data ?? response.data);
+            if (customerId) {
+                await dispatch(fetchRetailerAccount({ customerId, force: true }) as any);
+            }
+            return lot;
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not record the test',
+            );
+        }
+    },
+);
+
+/** Only while the lot is still open — the server refuses a credited one. */
+export const deleteMeltLot = createAsyncThunk(
+    'data/deleteMeltLot',
+    async (lotId: string, { rejectWithValue }) => {
+        try {
+            await apiClient.delete<any>(`/api/melt-lots/${lotId}`);
+            return lotId;
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not delete the lot',
+            );
+        }
+    },
+);
+
+// ─── Retailer account: held cash and melt credit ────────────────────────────
+//
+// What the wholesaler is holding for a retailer that is not against any one
+// bill. Order balances answer "what does THIS bill still owe"; this answers
+// "what am I holding for this retailer", and they are different questions —
+// a melt lot may be split across several bills or taken as cash.
+//
+// Nothing here nets itself against an order. Drawing credit down is always an
+// explicit act (applyMeltCredit), because netting silently would hide that the
+// wholesaler is holding someone else's metal, which is the one thing both
+// sides need to see plainly.
+
+/** One movement on the account, kept so a balance can be explained rather than
+ *  just asserted — a retailer disputing a figure needs the history. */
+export interface AccountEntry {
+    id?: string;
+    date: string;
+    type:
+    | 'cash-received'
+    | 'cash-allocated'
+    | 'cash-refunded'
+    | 'melt-credited'
+    | 'melt-applied'
+    | 'melt-paid-out';
+    /** Rupees moved. Positive adds to what is held, negative draws it down. */
+    cashDelta: number;
+    /** Grams of 99.50 moved, same sign convention. */
+    metalDelta: number;
+    rate?: number;
+    orderId?: string;
+    notes?: string;
+}
+
+export interface RetailerAccount {
+    customerId: string;
+    /** Rupees paid in and deliberately not applied to anything yet. */
+    heldCash: number;
+    /** Grams of 99.50 fine credited from melt lots and not yet used. */
+    meltCredit: number;
+    entries: AccountEntry[];
+}
+
+const mapAccountEntry = (e: any): AccountEntry => ({
+    id: e?._id || e?.id,
+    date: e?.date,
+    type: e?.type,
+    cashDelta: Number(e?.cashDelta) || 0,
+    metalDelta: Number(e?.metalDelta) || 0,
+    ...(e?.rate != null ? { rate: Number(e.rate) } : {}),
+    ...(e?.orderId ? { orderId: String(e.orderId?._id || e.orderId?.id || e.orderId) } : {}),
+    ...(e?.notes ? { notes: String(e.notes) } : {}),
+});
+
+const mapRetailerAccount = (a: any): RetailerAccount => ({
+    customerId: String(a?.customerId?._id || a?.customerId?.id || a?.customerId || ''),
+    heldCash: Number(a?.heldCash) || 0,
+    // Unrounded on purpose, matching the server: the rupee figures derived from
+    // this are `weight * rate`, so quantising the grams quantises the money.
+    meltCredit: Number(a?.meltCredit) || 0,
+    entries: Array.isArray(a?.entries) ? a.entries.map(mapAccountEntry) : [],
+});
+
+export const fetchRetailerAccount = createAsyncThunk(
+    'data/fetchRetailerAccount',
+    async (
+        args: { customerId: string } & FetchArgs,
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.get<any>(`/api/retailer-account/${args.customerId}`);
+            const raw = response.data?.data ?? response.data;
+            // The route upserts, so a retailer who has never left anything comes
+            // back as a zeroed account rather than a 404. Pinning the id we
+            // asked for keeps the store keyed correctly either way.
+            return { ...mapRetailerAccount(raw), customerId: args.customerId };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not load the retailer account',
+            );
+        }
+    },
+    {
+        condition: (arg, { getState }) => {
+            const state = getState() as RootState;
+            // Guests have no shop record and no server-side account, so there
+            // is nothing to fetch — not an error worth surfacing, just a
+            // request that must never be made.
+            if (state.auth.isGuest) return false;
+            if (!arg?.customerId) return false;
+            return shouldFetch(
+                state.data.lastFetched.retailerAccounts[arg.customerId] ?? null,
+                arg,
+                STALE_TIMES_MS.retailerAccounts,
+            );
+        },
+    },
+);
+
+/**
+ * Credits fine weight to a retailer from a melt lot.
+ *
+ * The weight is grams of 99.50 fine — already converted, because the melt is
+ * tested before it is credited. Nothing downstream converts it again.
+ */
+export const creditMelt = createAsyncThunk(
+    'data/creditMelt',
+    async (
+        payload: {
+            customerId: string;
+            weight: number;
+            /** The weighings the credit was worked out from — see MeltLot on
+             *  the server. Optional, for a credit entered by hand. */
+            melt?: {
+                potWeight: number;
+                afterMelt: number;
+                afterTesting: number;
+                purity: number;
+                fine999: number;
+            };
+            date?: string;
+            notes?: string;
+        },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/melt`,
+                {
+                    weight: payload.weight,
+                    ...(payload.melt ? { melt: payload.melt } : {}),
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not add the melt credit',
+            );
+        }
+    },
+);
+
+/**
+ * Draws melt credit down onto an order.
+ *
+ * The order must already exist — this posts a payment against it — so at order
+ * creation it runs after the order comes back, never as part of creating it.
+ * The server rejects a weight larger than the credit held, which is the check
+ * that matters: the screen's own copy of the balance can be stale.
+ */
+export const applyMeltCredit = createAsyncThunk(
+    'data/applyMeltCredit',
+    async (
+        payload: { customerId: string; orderId: string; weight: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/melt/apply`,
+                {
+                    orderId: payload.orderId,
+                    weight: payload.weight,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return {
+                account: { ...mapRetailerAccount(raw?.account), customerId: payload.customerId },
+                // The order comes back already carrying the payment, so the
+                // lists that show a balance update without a refetch.
+                order: raw?.order ? mapBackendOrder(raw.order) : null,
+            };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not apply the melt credit',
+            );
+        }
+    },
+);
+
+/**
+ * Draws held cash down onto an order.
+ *
+ * The cash half of `applyMeltCredit`, and the reason held cash is worth holding
+ * at all: the rupees bought no metal when they arrived, so they buy it now, at
+ * `goldRate` — the rate on the day of ALLOCATION, never the day the money came
+ * in. That difference is the retailer's whole reason for leaving it unapplied.
+ *
+ * Like the melt version this needs an order to apply to, and the server checks
+ * the amount against the balance again — the screen's copy can be stale.
+ */
+export const allocateCash = createAsyncThunk(
+    'data/allocateCash',
+    async (
+        payload: { customerId: string; orderId: string; amount: number; goldRate: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/cash/allocate`,
+                {
+                    orderId: payload.orderId,
+                    amount: payload.amount,
+                    goldRate: payload.goldRate,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return {
+                account: { ...mapRetailerAccount(raw?.account), customerId: payload.customerId },
+                order: raw?.order ? mapBackendOrder(raw.order) : null,
+            };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not apply the credit',
+            );
+        }
+    },
+);
+
+/** Melt credit taken out — as cash when a rate is given, as fine gold when not. */
+export const payOutMelt = createAsyncThunk(
+    'data/payOutMelt',
+    async (
+        payload: { customerId: string; weight: number; rate?: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/melt/payout`,
+                {
+                    weight: payload.weight,
+                    ...(payload.rate ? { rate: payload.rate } : {}),
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not pay out the melt credit',
+            );
+        }
+    },
+);
+
 const dataSlice = createSlice({
     name: 'data',
     initialState,
@@ -3377,6 +4074,12 @@ const dataSlice = createSlice({
             // they must not survive a logout or the end of an impersonation
             // session into the next user's view.
             state.purchaseOldGold = [];
+            // A retailer's held cash and melt credit is this shop's ledger, and
+            // must not survive a logout or the end of an impersonation session
+            // into the next user's view.
+            state.retailerAccounts = {};
+            state.meltLots = [];
+            state.shopRates = {};
             state.gstReport = null;
             state.lastFetched = {
                 customers: null,
@@ -3386,6 +4089,7 @@ const dataSlice = createSlice({
                 catalogProducts: null,
                 purchases: null,
                 purchaseOldGold: null,
+                retailerAccounts: {},
                 salesReport: {},
             };
         },
@@ -3717,6 +4421,13 @@ const dataSlice = createSlice({
                 }
             });
 
+        // createWholesaleOrder — unshift so the new bill is at the top of every
+        // list that reads state.orders, the same as a fetched one would be.
+        builder.addCase(createWholesaleOrder.fulfilled, (state, action) => {
+            const created: any = action.payload;
+            if (created?.id) state.orders.unshift(created);
+        });
+
         // updateOrderStatus
         builder.addCase(updateOrderStatus.fulfilled, (state, action) => {
             const updatedOrder: any = action.payload;
@@ -3756,6 +4467,114 @@ const dataSlice = createSlice({
             });
 
             state.loading = false;
+        });
+
+        // ─── Shop rate ──────────────────────────────────────────────────────
+        //
+        // A day is stored even when the answer is `null`, because "asked and
+        // there is none" and "never asked" have to be tellable apart: only the
+        // first should put the app on the live rate and say so.
+
+        const storeRate = (
+            state: DataState,
+            payload: { date: string; rate: ShopRate | null },
+        ) => {
+            state.shopRates[payload.date] = payload.rate;
+        };
+
+        builder.addCase(fetchShopRate.fulfilled, (state, action) => storeRate(state, action.payload));
+        builder.addCase(setShopRate.fulfilled, (state, action) => storeRate(state, action.payload));
+        builder.addCase(clearShopRate.fulfilled, (state, action) => storeRate(state, action.payload));
+
+        // ─── Melt lots ──────────────────────────────────────────────────────
+        //
+        // Every stage returns the whole lot, so the list is patched by id
+        // rather than reassembled — a lot that has just moved from `received`
+        // to `melted` must not jump position in a list the shopkeeper is
+        // looking at.
+
+        const upsertLot = (state: DataState, lot: MeltLot) => {
+            if (!lot?.id) return;
+            const idx = state.meltLots.findIndex(l => l.id === lot.id);
+            if (idx !== -1) state.meltLots[idx] = lot;
+            else state.meltLots.unshift(lot);
+        };
+
+        builder.addCase(fetchMeltLots.fulfilled, (state, action) => {
+            state.meltLots = action.payload;
+        });
+        builder.addCase(createMeltLot.fulfilled, (state, action) => {
+            upsertLot(state, action.payload);
+        });
+        builder.addCase(recordMeltStage.fulfilled, (state, action) => {
+            upsertLot(state, action.payload);
+        });
+        builder.addCase(recordTestStage.fulfilled, (state, action) => {
+            upsertLot(state, action.payload);
+        });
+        builder.addCase(deleteMeltLot.fulfilled, (state, action) => {
+            state.meltLots = state.meltLots.filter(l => l.id !== action.payload);
+        });
+
+        // ─── Retailer account ───────────────────────────────────────────────
+        //
+        // Every one of these carries the whole account back from the server,
+        // which is deliberate: the balances are recomputed from the entry list
+        // on save, so replacing the document wholesale is the only way the app
+        // and the server cannot disagree about a figure the retailer can see.
+
+        const storeAccount = (state: DataState, account: RetailerAccount) => {
+            if (!account?.customerId) return;
+            state.retailerAccounts[account.customerId] = account;
+            state.lastFetched.retailerAccounts[account.customerId] = Date.now();
+        };
+
+        builder.addCase(fetchRetailerAccount.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(creditMelt.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(payOutMelt.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(updateShopPreferences.fulfilled, (state, action) => {
+            if (!state.shopDetails) return;
+            state.shopDetails = { ...state.shopDetails, ...action.payload };
+        });
+
+        builder.addCase(addMetalPaymentToOrder.fulfilled, (state, action) => {
+            const order: any = action.payload;
+            if (!order?.id) return;
+            const idx = state.orders.findIndex(o => o.id === order.id);
+            if (idx !== -1) state.orders[idx] = order;
+            else state.orders.unshift(order);
+        });
+
+        builder.addCase(allocateCash.fulfilled, (state, action) => {
+            const { account, order } = action.payload;
+            storeAccount(state, account);
+            if (order?.id) {
+                const idx = state.orders.findIndex(o => o.id === order.id);
+                if (idx !== -1) state.orders[idx] = order;
+                else state.orders.unshift(order);
+            }
+        });
+
+        builder.addCase(applyMeltCredit.fulfilled, (state, action) => {
+            const { account, order } = action.payload;
+            storeAccount(state, account);
+
+            // The order comes back carrying the payment that was just made, so
+            // the lists showing its balance update without a refetch.
+            if (order?.id) {
+                const idx = state.orders.findIndex(o => o.id === order.id);
+                if (idx !== -1) state.orders[idx] = order;
+                else state.orders.unshift(order);
+            }
         });
     },
 });

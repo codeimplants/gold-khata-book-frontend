@@ -16,7 +16,7 @@ export interface ViewablePhoto {
   fileId?: string;
 }
 
-interface OrnamentPhotoViewerProps {
+interface PhotoViewerProps {
   photos: ViewablePhoto[];
   /** Which photo the user tapped. */
   initialIndex: number;
@@ -25,7 +25,11 @@ interface OrnamentPhotoViewerProps {
 }
 
 /**
- * Fullscreen viewer for ornament photos.
+ * Fullscreen viewer for a set of photos.
+ *
+ * Lived under components/oldGold as OrnamentPhotoViewer, but nothing in it is
+ * about old gold — it is a plain lightbox, and item photos use it too. Moved
+ * here when the old-gold module was removed.
  *
  * These photos exist to prove what actually came across the counter, so a 64px
  * thumbnail cannot do the job — a dispute needs the full frame. Swiping moves
@@ -36,12 +40,12 @@ interface OrnamentPhotoViewerProps {
  * a native rebuild plus a store-guard review. That rules out pinch-to-zoom, but
  * full-bleed at device width is the part that carries the evidentiary value.
  */
-const OrnamentPhotoViewer = ({
+const PhotoViewer = ({
   photos,
   initialIndex,
   isOpen,
   onClose,
-}: OrnamentPhotoViewerProps) => {
+}: PhotoViewerProps) => {
   const { width, height } = useWindowDimensions();
   const [index, setIndex] = useState(initialIndex);
   const listRef = useRef<FlatList<ViewablePhoto> | null>(null);
@@ -158,4 +162,4 @@ const styles = StyleSheet.create({
   arrowRight: { right: 12 },
 });
 
-export default OrnamentPhotoViewer;
+export default PhotoViewer;

@@ -29,13 +29,18 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AppStackParamList } from '../../navigation/types';
 
 import { useTranslation } from '../../hooks/useTranslation';
+import { useOldGoldMelt } from '../../hooks/useOldGoldMelt';
+import RemindButton from '../../components/customers/RemindButton';
+import SetRateModal from '../../components/common/SetRateModal';
+import { useShopRate } from '../../hooks/useShopRate';
+import { useDailyRatePrompt } from '../../hooks/useDailyRatePrompt';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   fetchCustomers,
   fetchOrders,
   fetchMetalRates,
+  fetchMeltLots,
 } from '../../store/data/dataSlice';
-import OrderTypeModal from '../../components/OrderTypeModal';
 import AddCustomerModal from '../../components/AddCustomerModal';
 import ExitAppModal from '../../components/ExitAppModal';
 import GradientSurface from '../../components/common/GradientSurface';
@@ -43,6 +48,7 @@ import RateAppCard from '../../components/common/RateAppCard';
 import LanguagePopover, { type PopoverAnchor } from '../../components/common/LanguagePopover';
 import { LAYOUT, useContentContainerStyle } from '../../constants/layout';
 import { BannerHeightContext } from '../../navigation/MainTabs';
+import { orderOutstanding, hasOutstanding, formatGrams } from '../../utils/dues';
 
 type NavProp = NativeStackNavigationProp<AppStackParamList>;
 
@@ -167,26 +173,6 @@ const inr = (n: number) =>
   `₹${Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
 
 /**
- * Grams below which an order counts as weight-settled.
- *
- * Mirrors WEIGHT_SETTLED_EPSILON_GM in the backend's order.model.ts, which is
- * what decides there that an order's weight is paid off. Weights carry full
- * float precision deliberately, so a fully-settled order routinely lands at
- * ~1e-13 rather than exactly 0 — without this, every settled order would show
- * its retailer as still owing a sliver of gold. It is also exactly where a
- * 3-decimal display stops rounding to "0.000", so the threshold and what the
- * screen shows agree.
- */
-const WEIGHT_SETTLED_EPSILON_GM = 0.0005;
-
-/**
- * Half a rupee — the cash counterpart of the weight epsilon above. Dues render
- * with no decimals, so anything below this shows as ₹0; counting it would list
- * a retailer as owing while displaying nothing owed.
- */
-const CASH_SETTLED_EPSILON = 0.5;
-
-/**
  * Forces the label under each dues-tile icon to reserve two lines' height,
  * whether or not the translation needs them, so the figure below always
  * starts at the same y across a row of tiles. The Marathi, Hindi and Gujarati
@@ -304,6 +290,7 @@ const DuesFilterTabs = ({
  * changes every time the rate does.
  */
 const RetailerDuesRow = ({
+  id,
   name,
   code,
   cash,
@@ -311,6 +298,8 @@ const RetailerDuesRow = ({
   gramShort,
   onPress,
 }: {
+  /** Needed only by the Remind action — the row itself navigates by it too. */
+  id?: string;
   name: string;
   code?: string;
   cash: number;
@@ -342,10 +331,18 @@ const RetailerDuesRow = ({
         )}
         {gold > 0 && (
           <Text fontWeight="$bold" fontSize={15} color="#B45309" numberOfLines={1}>
-            {`${gold.toFixed(3)} ${gramShort}`}
+            {formatGrams(gold, gramShort)}
           </Text>
         )}
       </VStack>
+
+      {/* This list exists to answer "who owes me"; chasing them is the next
+          thing anyone does with that answer, so the action belongs on the row
+          rather than two taps away inside the retailer. Icon only — the row
+          already carries a name, two figures and a chevron. */}
+      <Box ml="$3">
+        <RemindButton customerId={id} compact />
+      </Box>
 
       <Icon as={ChevronRight} size="sm" color="$coolGray400" ml="$1" />
     </HStack>
@@ -363,15 +360,31 @@ const DashboardScreen = () => {
   // Granular Selectors for Performance
   const customers = useAppSelector(state => state.data.customers);
   const orders = useAppSelector(state => state.data.orders);
-  const metalRates = useAppSelector(state => state.data.metalRates);
 
   const { t, language } = useTranslation();
+  const meltEnabled = useOldGoldMelt();
   const insets = useSafeAreaInsets();
 
   const [fabOpen, setFabOpen] = React.useState(false);
   const [duesFilter, setDuesFilter] = React.useState<DuesFilter>('all');
+
+  /**
+   * The rate the shop is dealing at today, and how it got there.
+   *
+   * Every price on this screen and in the order flow reads through this so
+   * they cannot disagree about what today's rate is. `isOverride` decides what
+   * the card says, and it says it plainly: a shop trading on the live feed
+   * should be able to see that at a glance, not infer it.
+   */
+  const shopRate = useShopRate();
+  const dailyPrompt = useDailyRatePrompt();
+  const [rateModalOpen, setRateModalOpen] = React.useState(false);
+
+  /** Lots weighed into the pot but not yet tested — work still owed today. */
+  const openLotCount = useAppSelector(
+    s => s.data.meltLots.filter(l => l.status !== 'tested').length,
+  );
   const [refreshing, setRefreshing] = React.useState(false);
-  const [orderModalOpen, setOrderModalOpen] = React.useState(false);
   const [customerModalOpen, setCustomerModalOpen] = React.useState(false);
   const [exitModalVisible, setExitModalVisible] = React.useState(false);
   const [languageSheetOpen, setLanguageSheetOpen] = React.useState(false);
@@ -412,20 +425,28 @@ const DashboardScreen = () => {
     dispatch(fetchCustomers());
     dispatch(fetchOrders());
     dispatch(fetchMetalRates());
+    // Only the open ones — the card below is about what is still in the pot.
+    dispatch(fetchMeltLots({ status: 'open' }));
   }, [dispatch]);
 
   /**
    * What every retailer still owes, from the orders already in the store.
    *
-   * Both figures come from fields the server maintains on an advance order:
-   * `estimatedBalance` is the cash still to be paid, `remainingWeight` the
-   * grams still to be settled. They are read rather than recomputed here so
-   * that "still owed" has one definition, on the server, where the payment and
-   * old-gold arithmetic that produces it already lives.
+   * A retailer carries two independent balances, and they are read from the
+   * server rather than recomputed here so "still owed" has one definition,
+   * where the payment and old-gold arithmetic that produces it already lives:
    *
-   * Only `pending` orders count. The server zeroes estimatedBalance the moment
-   * an order completes, and a cancelled order is not owed at all — so filtering
-   * on status is what keeps a finished order from lingering in the list.
+   *   - metal, as `remainingWeight` (grams)
+   *   - cash,  as `outstandingCash` (making, other charges, GST)
+   *
+   * Deliberately NOT `estimatedBalance`. That field is both accounts priced as
+   * a single rupee figure — `remainingWeight * rate + outstandingCash` — so
+   * pairing it with the weight showed one debt twice: a retailer owing 5 gm
+   * appeared as "5.000 gm" AND "Rs.75,000", which is the same 5 gm counted
+   * again in rupees.
+   *
+   * Only `pending` advance orders count. A full-payment order is settled when
+   * it is raised, and a cancelled one is not owed at all.
    */
   const dues = React.useMemo(() => {
     const customerById = new Map<string, any>(
@@ -440,22 +461,17 @@ const DashboardScreen = () => {
     let totalGold = 0;
 
     orders.forEach(o => {
-      if (o.status !== 'pending') return;
+      const due = orderOutstanding(o);
+      if (!hasOutstanding(due)) return;
 
-      const cash = Number(o.estimatedBalance || 0);
-      const gold = Number(o.remainingWeight || 0);
-      const hasCash = cash >= CASH_SETTLED_EPSILON;
-      const hasGold = gold >= WEIGHT_SETTLED_EPSILON_GM;
-      if (!hasCash && !hasGold) return;
-
-      if (hasCash) totalCash += cash;
-      if (hasGold) totalGold += gold;
+      totalCash += due.cash;
+      totalGold += due.gold;
 
       const id = String(o.customerId || '');
       const existing = byRetailer.get(id);
       if (existing) {
-        if (hasCash) existing.cash += cash;
-        if (hasGold) existing.gold += gold;
+        existing.cash += due.cash;
+        existing.gold += due.gold;
         return;
       }
 
@@ -466,8 +482,8 @@ const DashboardScreen = () => {
         // is missing or has not loaded yet.
         name: customer?.name || 'Unknown',
         code: customer?.customerCode,
-        cash: hasCash ? cash : 0,
-        gold: hasGold ? gold : 0,
+        cash: due.cash,
+        gold: due.gold,
       });
     });
 
@@ -535,21 +551,46 @@ const DashboardScreen = () => {
               </Pressable>
             </HStack>
 
-            <HStack space="md">
+            {/* One rate, because there is only one.
+                
+                Every position in this app is denominated in fine gold at
+                99.50, and cash settles it at this rate — so a second card for
+                silver, or for any other purity, would be quoting a price
+                nothing here is ever struck at. The card is full width now that
+                it is alone rather than left in a half-width slot with a gap
+                beside it. */}
+            <Pressable onPress={() => setRateModalOpen(true)}>
               <RateCard
                 colors={['#FBBF24', '#F97316']}
                 title={t('dashboard.gold24')}
-                price={inr(metalRates?.gold?.goldPrice24K995GW || 7850)}
+                price={inr(shopRate.rate || 7850)}
                 sub={t('dashboard.per1gm')}
               />
+            </Pressable>
 
-              <RateCard
-                colors={['#94A3B8', '#475569']}
-                title={t('dashboard.silver')}
-                price={inr(metalRates?.silver?.silverPrice || 92)}
-                sub={t('dashboard.per1gm')}
-              />
-            </HStack>
+            {/* Which rate is in force, said out loud.
+                A shop trading on the market feed and one trading at a rate the
+                owner set look identical otherwise, and the difference is every
+                bill raised today. Tapping either state opens the same sheet. */}
+            <Pressable onPress={() => setRateModalOpen(true)} mt="$3">
+              <HStack alignItems="center" justifyContent="space-between">
+                {shopRate.isOverride ? (
+                  <Text fontSize={12} color="#15803D" flex={1}>
+                    {t('rate.usingYours') || 'Your rate for today'}
+                    {shopRate.liveRate > 0 && (
+                      `  ·  ${t('rate.liveIs') || 'Live rate'} ${inr(shopRate.liveRate)}`
+                    )}
+                  </Text>
+                ) : (
+                  <Text fontSize={12} color="$coolGray500" flex={1}>
+                    {t('rate.usingLive') || 'Using the live rate — tap to set your own'}
+                  </Text>
+                )}
+                <Text fontSize={12} fontWeight="$bold" color="#6366F1">
+                  {shopRate.isOverride ? (t('rate.change') || 'Change') : (t('rate.set') || 'Set')}
+                </Text>
+              </HStack>
+            </Pressable>
           </Box>
 
           {/* Sits below the rates rather than above them: it is dismissible and only
@@ -574,13 +615,47 @@ const DashboardScreen = () => {
             <DuesTile
               icon={Coins}
               label={t('dashboard.dues.totalGold')}
-              value={`${dues.totalGold.toFixed(3)} ${t('common.gramShort') || 'gm'}`}
+              value={formatGrams(dues.totalGold, t('common.gramShort') || 'gm')}
               bg="#FFFBEB"
               borderColor="#FDE68A"
               fg="#B45309"
               iconColor="#D97706"
             />
           </HStack>
+
+          {/* Lots still waiting on a reading.
+              Above the dues list because it is work in the shop TODAY — metal
+              physically in the pot with a weighing outstanding — where dues are
+              money to chase whenever there is time. Hidden at zero: a shop with
+              nothing in the pot does not need a row saying so, and melt is off
+              entirely for shops that do not do it. */}
+          {meltEnabled && openLotCount > 0 && (
+            <Pressable onPress={() => navigation.navigate('MeltLots')} mb="$4">
+              <Box
+                bg="#FFFBEB"
+                p="$4"
+                rounded="$2xl"
+                borderWidth={1}
+                borderColor="#FDE68A"
+                style={styles.card}
+              >
+                <HStack alignItems="center" space="md">
+                  <Box w={40} h={40} rounded="$full" bg="#FEF3C7" alignItems="center" justifyContent="center">
+                    <Icon as={Coins} size="sm" color="#B45309" />
+                  </Box>
+                  <VStack flex={1}>
+                    <Text fontWeight="$bold" color="#92400E">
+                      {t('melt.openLotsTitle') || 'Old gold in the pot'}
+                    </Text>
+                    <Text fontSize={12} color="#B45309">
+                      {openLotCount} {t('melt.openLots') || 'lots open'}
+                    </Text>
+                  </VStack>
+                  <Icon as={ChevronRight} size="sm" color="#B45309" />
+                </HStack>
+              </Box>
+            </Pressable>
+          )}
 
           {/* Retailer dues */}
           <Box
@@ -625,6 +700,7 @@ const DashboardScreen = () => {
                     borderColor="#F3F4F6"
                   >
                     <RetailerDuesRow
+                      id={r.id}
                       name={r.name}
                       code={r.code}
                       cash={r.cash}
@@ -671,7 +747,24 @@ const DashboardScreen = () => {
               </HStack>
             </Pressable>
 
-            <Pressable onPress={() => { setFabOpen(false); setOrderModalOpen(true); }}>
+            {/* Taking old gold in is its own action, not a mode of New Order.
+                A retailer brings ornaments on a day when there is no bill to
+                put them against; making him wait for one, or inventing an
+                empty order to hang the lot off, is not how the counter works.
+                Spending the credit lives on the order screen, where the bill
+                it comes off is. */}
+            {meltEnabled && (
+              <Pressable onPress={() => { setFabOpen(false); navigation.navigate('MeltLots'); }}>
+                <HStack bg="$white" px="$4" py="$3" rounded="$full" alignItems="center" space="md" style={{ elevation: 4 }}>
+                  <Text fontWeight="$medium">{t('melt.fabTitle') || 'Take Old Gold'}</Text>
+                  <Box w={40} h={40} rounded="$full" justifyContent="center" alignItems="center" bg="#F59E0B">
+                    <Icon as={Coins} color="$white" />
+                  </Box>
+                </HStack>
+              </Pressable>
+            )}
+
+            <Pressable onPress={() => { setFabOpen(false); navigation.navigate('NewOrder'); }}>
               <HStack bg="$white" px="$4" py="$3" rounded="$full" alignItems="center" justifyContent="space-between" space="md" style={{ elevation: 4 }}>
                 <Text fontWeight="$medium">{t('dashboard.fab.newOrder')}</Text>
                 <Box w={40} h={40} rounded="$full" justifyContent="center" alignItems="center">
@@ -694,14 +787,25 @@ const DashboardScreen = () => {
           <Box position="absolute"><Icon as={Plus} color="$white" size="xl" /></Box>
         </Pressable>
       </Box>
-
-      <OrderTypeModal isOpen={orderModalOpen} onClose={() => setOrderModalOpen(false)} />
       <AddCustomerModal isOpen={customerModalOpen} onClose={() => setCustomerModalOpen(false)} />
       <LanguagePopover
         isOpen={languageSheetOpen}
         onClose={() => setLanguageSheetOpen(false)}
         anchor={languageAnchor}
       />
+      {/* One modal, two ways in: the once-a-day prompt and the card above.
+          Closing the prompt records that today's question was asked, so it
+          does not return this evening — see useDailyRatePrompt. */}
+      <SetRateModal
+        isOpen={rateModalOpen || dailyPrompt.visible}
+        onClose={() => {
+          setRateModalOpen(false);
+          if (dailyPrompt.visible) dailyPrompt.dismiss();
+        }}
+        liveRate={shopRate.liveRate}
+        currentOverride={shopRate.isOverride ? shopRate.rate : undefined}
+      />
+
       <ExitAppModal
         visible={exitModalVisible}
         onConfirm={handleExitConfirm}

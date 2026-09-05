@@ -18,22 +18,14 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useEffectiveMetalRates } from '../../hooks/useShopRate';
 import { toast } from '../../components/common/Toast';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { usePrintBill } from '../../hooks/usePrintBill';
 import { prepareShopForPrint, prepareBillForPrint } from '../../utils/imageUtils';
 import { openWhatsApp } from '../../utils/whatsappUtils';
 import { calcItemTotal, calculateItemMakingCharge } from '../../utils/calculations';
-import DeclarationDetailsModal from '../../components/oldGold/DeclarationDetailsModal';
-import DeclarationGeneratedSheet from '../../components/oldGold/DeclarationGeneratedSheet';
 import PrintTargetNote from '../../components/common/PrintTargetNote';
-import {
-    generateDeclaration as saveDeclarationRecord,
-    buildExchangeDeclarationPrefill,
-} from '../../utils/declarationHelpers';
-import { printDeclarationAction, shareDeclarationAction } from '../../print/declarationActions';
-import { uploadPurchaseOldGoldPhotos } from '../../store/data/dataSlice';
-import type { DeclarationFormValues, PurchaseOldGold } from '../../types';
 import { LAYOUT } from '../../constants/layout';
 import { formatNumber } from '../../utils/formatter';
 
@@ -57,7 +49,9 @@ const AdvanceOrderSuccessScreen = () => {
         invoiceLanguage,
         invoiceTemplate,
     );
-    const { metalRates, shopDetails, customers } = useAppSelector((state) => state.data);
+    const { shopDetails, customers } = useAppSelector((state) => state.data);
+    /** Shop rate when set, live feed otherwise. */
+    const effectiveRates = useEffectiveMetalRates();
     const dispatch = useAppDispatch();
 
     const order = route.params?.order;
@@ -68,118 +62,16 @@ const AdvanceOrderSuccessScreen = () => {
 
     const hasExchange = Boolean(order?.isOrnamentExchanges && (order?.exchanges?.length ?? 0) > 0);
 
-    // Declaration generated inline, right after this order saved — see the
-    // "Generate Declaration" checkbox on the create-order form. Auto-opens once
-    // if that checkbox was ticked; otherwise reachable manually below.
-    const [declarationPrefill, setDeclarationPrefill] = React.useState<DeclarationFormValues | null>(null);
-    const [declarationSaving, setDeclarationSaving] = React.useState(false);
-    const [savedDeclaration, setSavedDeclaration] = React.useState<PurchaseOldGold | null>(null);
-    const [declarationPhotosFailed, setDeclarationPhotosFailed] = React.useState(false);
-    const [declarationRetryPhotos, setDeclarationRetryPhotos] = React.useState<
-        DeclarationFormValues['pendingPhotos']
-    >([]);
-
-    const openDeclarationModal = React.useCallback(() => {
-        if (!order?.id) return;
-        const customer = customers.find(c => c.id === order.customerId);
-        setDeclarationPrefill(
-            buildExchangeDeclarationPrefill({
-                orderId: order.id,
-                customer,
-                customerId: order.customerId || '',
-                invoiceDate: order.date,
-                exchanges: order.exchanges || [],
-                // An advance order's own amount is what the customer still
-                // owes, not the invoice grand total — 0 or less means the
-                // exchange covered the order and the shop may owe back.
-                grandTotal: Number(order.amount) || 0,
-                pendingPhotos: order.ornamentPhotos?.map((p: any) => ({ uri: p.url })),
-                language: declarationLanguage,
-            }),
-        );
-    }, [order, customers]);
-
-    // Auto-open exactly once, only when the checkbox on the create screen was
-    // ticked — never re-triggers on a later re-render or revisit.
-    const autoPromptedRef = React.useRef(false);
-    React.useEffect(() => {
-        if (autoPromptedRef.current) return;
-        if (route.params?.generateDeclaration && hasExchange) {
-            autoPromptedRef.current = true;
-            openDeclarationModal();
-        }
-    }, [route.params?.generateDeclaration, hasExchange, openDeclarationModal]);
 
     // An advance order just went through — a genuine moment of satisfaction, so ask the
     // SDK whether this is a good time to request a rating. It usually decides no.
-    //
-    // Skipped entirely when the declaration modal is auto-opening above: the user is
-    // still mid-task there, and a review card thrown on top of it is precisely the
-    // interruption both stores' guidance warns against.
     React.useEffect(() => {
-        if (route.params?.generateDeclaration && hasExchange) return;
         const timer = setTimeout(() => {
             AppReview.requestIfEligible();
         }, 1500);
         return () => clearTimeout(timer);
-    }, [route.params?.generateDeclaration, hasExchange]);
+    }, []);
 
-    const handleGenerateDeclaration = async (values: DeclarationFormValues) => {
-        setDeclarationSaving(true);
-        try {
-            const { declaration, photosFailed, idPhotosFailed, customerPhotoFailed } =
-                await saveDeclarationRecord(dispatch, values);
-            setDeclarationPrefill(null);
-            setSavedDeclaration(declaration);
-            setDeclarationPhotosFailed(photosFailed);
-            setDeclarationRetryPhotos(photosFailed ? values.pendingPhotos : []);
-            // Toasts rather than a retry banner: the retry above re-sends
-            // ornament photos only, and the declaration is saved either way.
-            if (idPhotosFailed) {
-                toast.error(
-                    t('declaration.idProof.photos.uploadFailed') ||
-                        'ID photos could not be uploaded. The declaration was saved.',
-                );
-            }
-            if (customerPhotoFailed) {
-                toast.error(
-                    t('declaration.customer.photoUploadFailed') ||
-                        'The retailer photo could not be uploaded. The declaration was saved without it.',
-                );
-            }
-        } catch (err: any) {
-            toast.error(err?.message || 'Failed to save declaration');
-        } finally {
-            setDeclarationSaving(false);
-        }
-    };
-
-    const handleRetryDeclarationPhotos = async () => {
-        if (!savedDeclaration || (declarationRetryPhotos?.length ?? 0) === 0) return;
-        const action = await dispatch(
-            uploadPurchaseOldGoldPhotos({
-                declarationId: savedDeclaration.id,
-                photos: declarationRetryPhotos!,
-            }),
-        );
-        if (uploadPurchaseOldGoldPhotos.fulfilled.match(action) && action.payload) {
-            setSavedDeclaration(action.payload as PurchaseOldGold);
-            setDeclarationPhotosFailed(false);
-            setDeclarationRetryPhotos([]);
-        } else {
-            toast.error('Photos could not be uploaded.');
-        }
-    };
-
-    const handlePrintDeclaration = async () => {
-        if (!savedDeclaration) return;
-        await printDeclarationAction(savedDeclaration, shopDetails, declarationLanguage, t);
-    };
-
-    const handleShareDeclaration = async () => {
-        if (!savedDeclaration) return;
-        await shareDeclarationAction(savedDeclaration, shopDetails, declarationLanguage, t);
-    };
 
     // Basic validation if order is missing
     if (!order) {
@@ -207,13 +99,13 @@ const AdvanceOrderSuccessScreen = () => {
         if (bookingRate) return bookingRate;
 
         return (order.purity?.includes('24K')
-            ? metalRates?.gold?.goldPrice24K995GW
+            ? effectiveRates?.gold?.goldPrice24K995GW
             : order.purity?.includes('18K')
-                ? metalRates?.gold?.goldPrice18K
+                ? effectiveRates?.gold?.goldPrice18K
                 : order.purity?.includes('Silver')
-                    ? metalRates?.silver?.silverPrice
-                    : metalRates?.gold?.goldPrice22K) || 6750;
-    }, [bookingRate, order.purity, metalRates]);
+                    ? effectiveRates?.silver?.silverPrice
+                    : effectiveRates?.gold?.goldPrice22K) || 6750;
+    }, [bookingRate, order.purity, effectiveRates]);
 
     // These should ideally come from the order object passed from handleSave
     const goldBalance = (order.remainingWeight || 0) * ratePerGram;
@@ -583,20 +475,6 @@ const AdvanceOrderSuccessScreen = () => {
                                 <Text fontWeight="$bold" color="$white">{t('advanceOrderSuccess.shareWhatsApp')}</Text>
                             </Box>
                         </Pressable>
-
-                        {/* Only offered when old ornaments were actually taken
-                            in. The plain "name + amount deducted" exchange flow
-                            is untouched and never sees this. */}
-                        {hasExchange && (
-                            <Pressable onPress={openDeclarationModal}>
-                                <Box bg="$white" rounded="$2xl" p="$4" alignItems="center" borderWidth={1} borderColor="#C7D2FE" flexDirection="row" justifyContent="center">
-                                    <Icon as={FileSignature} size="sm" color={PURPLE} mr="$2" />
-                                    <Text fontWeight="$bold" color={PURPLE}>
-                                        {t('declaration.generate') || 'Declaration / Affidavit'}
-                                    </Text>
-                                </Box>
-                            </Pressable>
-                        )}
                     </VStack>
 
                     {/* Navigation Buttons */}
@@ -648,28 +526,6 @@ const AdvanceOrderSuccessScreen = () => {
                 </ScrollView>
             </SafeAreaView>
             {printerChooser}
-
-            {declarationPrefill && (
-                <DeclarationDetailsModal
-                    isOpen={!!declarationPrefill}
-                    onClose={() => setDeclarationPrefill(null)}
-                    initialValues={declarationPrefill}
-                    isSubmitting={declarationSaving}
-                    onSubmit={handleGenerateDeclaration}
-                />
-            )}
-
-            {savedDeclaration && (
-                <DeclarationGeneratedSheet
-                    isOpen={!!savedDeclaration}
-                    declarationNumber={savedDeclaration.declarationNumber}
-                    photosFailed={declarationPhotosFailed}
-                    onRetryPhotos={handleRetryDeclarationPhotos}
-                    onPrint={handlePrintDeclaration}
-                    onShare={handleShareDeclaration}
-                    onDone={() => setSavedDeclaration(null)}
-                />
-            )}
         </Box>
     );
 };

@@ -13,15 +13,13 @@ import {
   ScrollView,
   Center,
 } from '@gluestack-ui/themed';
-import { ArrowLeft, Plus, X, ChevronRight, Search, User, ChevronDown, ChevronUp, ChevronLeft, Contact } from 'lucide-react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { ArrowLeft, Plus, X, ChevronRight, Search, User, ChevronLeft, Contact } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { addCustomer, fetchCustomers, updateCustomer, uploadCustomerPhoto } from '../../store/data/dataSlice';
-import CustomerPhotoPicker from '../../components/common/CustomerPhotoPicker';
+import { addCustomer, fetchCustomers } from '../../store/data/dataSlice';
 import { ToastViewport } from '../../components/common/Toast';
 import type { RootStackParamList } from '../../navigation/types';
 import { parseApiErrorList } from '../../utils/errorUtils';
@@ -29,24 +27,23 @@ import { capitalizeWords } from '../../utils/textUtils';
 import ValidationErrorModal from '../../components/ValidationErrorModal';
 import GradientSurface from '../../components/common/GradientSurface';
 import GradientButton from '../../components/GradientButton';
-import SelectField from '../../components/common/SelectField';
 import { LAYOUT } from "../../constants/layout";
 import CustomerCodeBadge from '../../components/customers/CustomerCodeBadge';
 import { INPUT_LIMITS, clampToLimit, validateText } from "../../constants/inputLimits";
-import { ID_PROOF_TYPES } from "../../constants/idProof";
-import type { IdProofType, PendingDeclarationPhoto } from "../../types";
+import { retailerDisplayName } from "../../utils/retailerName";
 import CharCounter from "../../components/common/CharCounter";
 import ContactsStep from "../../components/customers/ContactsStep";
 
 type RouteProps = NativeStackScreenProps<RootStackParamList, 'SelectCustomer'>['route'];
 
+// Owner name (required), shop name, phone — the same three AddCustomerModal
+// and the edit form ask for. Kept identical on purpose: this is the third place
+// a retailer can be created, and three forms that disagree about what a
+// retailer IS is how records end up with fields no other screen can edit.
 const emptyCustomerForm = {
-  name: '',
+  ownerName: '',
+  shopName: '',
   phone: '',
-  email: '',
-  address: '',
-  idProofType: '' as IdProofType | '',
-  idProofNumber: '',
 };
 
 export default function SelectCustomerScreen() {
@@ -63,15 +60,7 @@ export default function SelectCustomerScreen() {
   const [q, setQ] = useState('');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyCustomerForm);
-  // Collapsed by default — most shopkeepers never touch this, and it exists
-  // purely so a repeat customer's declaration does not have to ask for ID
-  // proof again. Mirrors AddCustomerModal, which is where customers added
-  // outside the order flow get the same field.
-  const [showIdProof, setShowIdProof] = useState(false);
-  // Held locally until the customer exists — there is no id to upload against
-  // until the save succeeds.
-  const [pendingPhoto, setPendingPhoto] = useState<PendingDeclarationPhoto | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; phone?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ ownerName?: boolean; phone?: boolean }>({});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
   // Two views inside the one Modal rather than two Modals, exactly as in
@@ -103,20 +92,18 @@ export default function SelectCustomerScreen() {
 
   const handleAddCustomer = () => {
     const errors: string[] = [];
-    const fields: { name?: boolean; phone?: boolean } = {};
+    const fields: { ownerName?: boolean; phone?: boolean } = {};
 
-    if (!form.name.trim()) {
-      errors.push(t('customers.validation.nameRequired') || 'Name is required');
-      fields.name = true;
+    if (!form.ownerName.trim()) {
+      errors.push(t('customers.validation.ownerNameRequired') || 'Owner name is required');
+      fields.ownerName = true;
     } else {
-      const nameError = validateText(form.name, { label: t('customers.name') || 'Name', limit: INPUT_LIMITS.customerName });
-      if (nameError) { errors.push(nameError); fields.name = true; }
+      const ownerError = validateText(form.ownerName, { label: t('customers.ownerName') || 'Owner Name', limit: INPUT_LIMITS.customerName });
+      if (ownerError) { errors.push(ownerError); fields.ownerName = true; }
     }
 
-    const emailError = validateText(form.email, { label: t('customers.email') || 'Email', limit: INPUT_LIMITS.email });
-    if (emailError) errors.push(emailError);
-    const addressError = validateText(form.address, { label: t('customers.address') || 'Address', limit: INPUT_LIMITS.customerAddress });
-    if (addressError) errors.push(addressError);
+    const shopError = validateText(form.shopName, { label: t('customers.shopName') || 'Shop Name', limit: INPUT_LIMITS.customerName });
+    if (shopError) errors.push(shopError);
 
     // Optional — see AddCustomerModal, which this form mirrors. A walk-in who
     // will not give a number still has to be billable. Everything below applies
@@ -153,26 +140,17 @@ export default function SelectCustomerScreen() {
 
     dispatch(
       addCustomer({
-        name: form.name.trim(),
+        // Derived, never typed — see retailerDisplayName.
+        name: retailerDisplayName(form.shopName, form.ownerName),
+        ownerName: form.ownerName.trim(),
+        ...(form.shopName.trim() ? { shopName: form.shopName.trim() } : {}),
         // Omitted rather than sent as "" — an absent phone and an empty one are
         // stored differently (see the partial unique index on the model).
         ...(trimmedPhone ? { phone: trimmedPhone } : {}),
-        email: form.email.trim() || undefined,
-        address: form.address.trim() || undefined,
-        ...(form.idProofType ? { idProofType: form.idProofType } : {}),
-        ...(form.idProofNumber.trim() ? { idProofNumber: form.idProofNumber.trim() } : {}),
       })
     ).unwrap()
-      .then((updatedCustomers) => {
-        // Not awaited into the failure path: the customer is saved, and a photo
-        // that fails to upload must not read as "the customer was not added".
-        const newest = updatedCustomers?.[0];
-        if (pendingPhoto && newest?.id) {
-          dispatch(uploadCustomerPhoto({ customerId: newest.id, photo: pendingPhoto }));
-        }
-        setPendingPhoto(null);
+      .then(() => {
         setForm(emptyCustomerForm);
-        setShowIdProof(false);
         setFieldErrors({});
         setValidationErrors([]);
         setOpen(false);
@@ -197,7 +175,6 @@ export default function SelectCustomerScreen() {
   const handleCloseModal = () => {
     setOpen(false);
     setForm(emptyCustomerForm);
-    setShowIdProof(false);
     setFieldErrors({});
     setValidationErrors([]);
   };
@@ -420,10 +397,13 @@ export default function SelectCustomerScreen() {
                   onPickContact={picked => {
                     setForm(f => ({
                       ...f,
-                      name: picked.name ? clampToLimit(picked.name, INPUT_LIMITS.customerName) : f.name,
+                      // A contact is a PERSON and a number — the owner name
+                      // and the phone. It never holds a shop name, so that one
+                      // is left for the shopkeeper to type.
+                      ownerName: picked.name ? clampToLimit(picked.name, INPUT_LIMITS.customerName) : f.ownerName,
                       phone: picked.phone ? clampToLimit(picked.phone, INPUT_LIMITS.phone) : f.phone,
                     }));
-                    setFieldErrors(e => ({ ...e, name: undefined, phone: undefined }));
+                    setFieldErrors(e => ({ ...e, ownerName: undefined, phone: undefined }));
                     setStep('form');
                   }}
                   onAddManually={() => setStep('form')}
@@ -433,30 +413,37 @@ export default function SelectCustomerScreen() {
               {(step === 'form' || LAYOUT.isWeb) && (
               <>
               <VStack space="md">
-                {/* Optional portrait, same as the Customers tab's Add modal. */}
-                <CustomerPhotoPicker
-                  value={pendingPhoto}
-                  name={form.name}
-                  onPick={setPendingPhoto}
-                  onRemove={() => setPendingPhoto(null)}
-                />
                 <VStack space="xs">
-                  <Text fontWeight="$semibold" color={fieldErrors.name ? "$red500" : "$coolGray800"}>{t('customers.name') || 'Name'}</Text>
-                  <Input borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.name ? '#EF4444' : '#c5c5c5' }}>
+                  <Text fontWeight="$semibold" color={fieldErrors.ownerName ? "$red500" : "$coolGray800"}>{t('customers.ownerName') || 'Owner Name'}</Text>
+                  <Input borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.ownerName ? '#EF4444' : '#c5c5c5' }}>
                     <InputField
-                      placeholder={t('customers.placeholders.name') || 'Retailer name'}
-                      value={form.name}
-                      onChangeText={text => { setForm({ ...form, name: text }); setFieldErrors(e => ({ ...e, name: undefined })); }}
+                      placeholder={t('customers.placeholders.ownerName') || 'e.g. Ramesh Patel'}
+                      value={form.ownerName}
+                      onChangeText={text => { setForm({ ...form, ownerName: text }); setFieldErrors(e => ({ ...e, ownerName: undefined })); }}
                       // Title-cased once the field is done rather than on every
                       // keystroke, which re-cases mid-word and makes a
                       // deliberate lower-case letter impossible to keep.
-                      onBlur={() => setForm(f => ({ ...f, name: capitalizeWords(f.name) }))}
+                      onBlur={() => setForm(f => ({ ...f, ownerName: capitalizeWords(f.ownerName) }))}
                       maxLength={INPUT_LIMITS.customerName}
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
+                      returnKeyType="next"
                     />
                   </Input>
-                  <CharCounter value={form.name} limit={INPUT_LIMITS.customerName} />
+                  <CharCounter value={form.ownerName} limit={INPUT_LIMITS.customerName} />
+                </VStack>
+
+                <VStack space="xs">
+                  <Text fontWeight="$semibold" color="$coolGray800">{t('customers.shopName') || 'Shop Name'}</Text>
+                  <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
+                    <InputField
+                      placeholder={t('customers.placeholders.shopName') || 'e.g. Krishna Jewellers'}
+                      value={form.shopName}
+                      onChangeText={text => setForm({ ...form, shopName: text })}
+                      onBlur={() => setForm(f => ({ ...f, shopName: capitalizeWords(f.shopName) }))}
+                      maxLength={INPUT_LIMITS.customerName}
+                      returnKeyType="next"
+                    />
+                  </Input>
+                  <CharCounter value={form.shopName} limit={INPUT_LIMITS.customerName} />
                 </VStack>
 
                 <VStack space="xs">
@@ -476,85 +463,6 @@ export default function SelectCustomerScreen() {
                     )}
                   </Input>
                 </VStack>
-
-                <VStack space="xs">
-                  <Text fontWeight="$semibold">{t('customers.address') || 'Address'}</Text>
-                  <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                    <InputField
-                      placeholder={t('customers.placeholders.address') || 'Address (optional)'}
-                      value={form.address}
-                      onChangeText={text => setForm({ ...form, address: text })}
-                      onBlur={() => setForm(f => ({ ...f, address: capitalizeWords(f.address) }))}
-                      maxLength={INPUT_LIMITS.customerAddress}
-                      returnKeyType="done"
-                      onSubmitEditing={Keyboard.dismiss}
-                    />
-                  </Input>
-                  <CharCounter value={form.address} limit={INPUT_LIMITS.customerAddress} />
-                </VStack>
-
-                {/* Rarely filled in at the counter: email, plus the ID proof that
-                    only matters later if this customer ever brings in old gold.
-                    Collapsed so the common case stays name, phone and address. */}
-                <Pressable onPress={() => setShowIdProof(v => !v)}>
-                  <HStack justifyContent="space-between" alignItems="center" py="$1">
-                    <Text fontSize={13} fontWeight="$medium" color="$coolGray600">
-                      {t('customers.moreDetails') || 'More details (optional)'}
-                    </Text>
-                    <Icon as={showIdProof ? ChevronUp : ChevronDown} size="sm" color="$coolGray500" />
-                  </HStack>
-                </Pressable>
-
-                {showIdProof && (
-                  <VStack space="sm">
-                    <VStack space="xs">
-                      <Text fontSize={12} color="$coolGray600">{t('customers.email') || 'Email'}</Text>
-                      <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                        <InputField
-                          placeholder={t('customers.placeholders.email') || 'Email (optional)'}
-                          value={form.email}
-                          onChangeText={text => setForm({ ...form, email: text })}
-                          maxLength={INPUT_LIMITS.email}
-                          returnKeyType="done"
-                          onSubmitEditing={Keyboard.dismiss}
-                          keyboardType="email-address"
-                        />
-                      </Input>
-                      <CharCounter value={form.email} limit={INPUT_LIMITS.email} />
-                    </VStack>
-                    <VStack space="xs">
-                      <Text fontSize={12} color="$coolGray600">
-                        {t('customers.idProof.type') || 'ID Proof Type'}
-                      </Text>
-                      <SelectField
-                        value={form.idProofType}
-                        items={ID_PROOF_TYPES.map(v => ({
-                          label: t(`declaration.idProof.types.${v}`) || v,
-                          value: v,
-                        }))}
-                        placeholder={t('customers.idProof.selectType') || 'Select...'}
-                        title={t('customers.idProof.title') || 'ID Proof'}
-                        onValueChange={v => setForm(f => ({ ...f, idProofType: v as IdProofType }))}
-                      />
-                    </VStack>
-                    <VStack space="xs">
-                      <Text fontSize={12} color="$coolGray600">
-                        {t('customers.idProof.number') || 'ID Proof Number'}
-                      </Text>
-                      <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                        <InputField
-                          placeholder={t('customers.idProof.numberPlaceholder') || 'e.g. ABCDE1234F'}
-                          value={form.idProofNumber}
-                          maxLength={INPUT_LIMITS.idProofNumber}
-                          autoCapitalize="characters"
-                          onChangeText={text => setForm(f => ({ ...f, idProofNumber: text }))}
-                          returnKeyType="done"
-                          onSubmitEditing={Keyboard.dismiss}
-                        />
-                      </Input>
-                    </VStack>
-                  </VStack>
-                )}
               </VStack>
 
               {/* general error now handled by ValidationErrorModal */}

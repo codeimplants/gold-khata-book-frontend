@@ -24,10 +24,20 @@ import { deriveRateFromPureGold } from './itemPlausibility';
  * far better at both than zero.
  */
 export const getRateForPurity = (
-  purity: string,
+  purity: string | number,
   metalRates?: MetalRates | null,
 ): number => {
-  if (!purity) return 0;
+  if (!purity && purity !== 0) return 0;
+
+  // A wholesale item stores purity as a NUMBER (91.6), where the retail screens
+  // that built this helper stored a karat label ("22K - 91.6%"). Every branch
+  // below is a string match, so a number reaching them threw
+  // `purity.includes is not a function` and took the screen down. There is only
+  // one wholesale rate — 24K at 99.50 — so a numeric purity resolves to it
+  // rather than being pattern-matched into a per-karat quote it never had.
+  if (typeof purity === 'number') {
+    return metalRates?.gold?.goldPrice24K995GW || 0;
+  }
 
   if (purity.includes('Silver')) {
     return purity.includes('Coin')

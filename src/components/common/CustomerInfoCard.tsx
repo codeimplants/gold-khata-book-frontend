@@ -3,10 +3,15 @@ import { Box, HStack, VStack, Text, Pressable, Icon } from '@gluestack-ui/themed
 import { User, Phone, RefreshCw } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
 import CustomerCodeBadge from '../customers/CustomerCodeBadge';
+import { retailerSubtitle } from '../../utils/retailerName';
 
 interface CustomerInfoCardProps {
   customer: {
+    /** The display identity — the shop name when there is one, the owner's
+     *  name when there is not. See retailerDisplayName. */
     name: string;
+    /** Who you deal with. Absent on records added before the field existed. */
+    ownerName?: string;
     /** Optional — a walk-in may not have given one. */
     phone?: string;
     /** Per-shop code. Confirms which of two same-named customers this
@@ -39,18 +44,27 @@ const CustomerInfoCard = ({ customer, onChangeCustomer, readOnly }: CustomerInfo
               </Text>
               <CustomerCodeBadge code={customer.customerCode} />
             </HStack>
-            <HStack alignItems="center" space="xs">
-              <Icon as={Phone} size={12} color="$coolGray400" />
-              {customer.phone ? (
+            {/* The owner, but only when the title above is the SHOP — printing
+                "Ramesh Patel" directly under "Ramesh Patel" tells the reader
+                nothing, and that is exactly what a retailer with no shop name
+                would get. Phone takes the line otherwise, and when there is
+                neither the line is dropped: "No phone number" in italics under
+                every card is noise rather than information. */}
+            {retailerSubtitle(customer) ? (
+              <HStack alignItems="center" space="xs">
+                <Icon as={User} size={12} color="$coolGray400" />
+                <Text fontSize={13} color="$coolGray500" flexShrink={1} numberOfLines={1}>
+                  {retailerSubtitle(customer)}
+                </Text>
+              </HStack>
+            ) : customer.phone ? (
+              <HStack alignItems="center" space="xs">
+                <Icon as={Phone} size={12} color="$coolGray400" />
                 <Text fontSize={13} color="$coolGray500">
                   {customer.phone}
                 </Text>
-              ) : (
-                <Text fontSize={13} color="$coolGray400" fontStyle="italic">
-                  {t('customers.noPhone') || 'No phone number'}
-                </Text>
-              )}
-            </HStack>
+              </HStack>
+            ) : null}
           </VStack>
         </HStack>
 

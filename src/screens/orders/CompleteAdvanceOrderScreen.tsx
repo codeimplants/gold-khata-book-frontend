@@ -38,6 +38,7 @@ import ImpersonationBlockModal from '../../components/ImpersonationBlockModal';
 import DatePickerModal from '../../components/common/DatePickerModal';
 import { Alert } from 'react-native';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useEffectiveMetalRates } from '../../hooks/useShopRate';
 import { parseApiErrorList } from '../../utils/errorUtils';
 import ValidationErrorModal from '../../components/ValidationErrorModal';
 import DiscardChangesModal from '../../components/DiscardChangesModal';
@@ -59,7 +60,10 @@ export default function CompleteAdvanceOrderScreen() {
   const { orderId } = route.params;
 
   const dispatch = useAppDispatch();
-  const { orders, customers, metalRates, shopDetails } = useAppSelector(s => s.data);
+  const { orders, customers, shopDetails } = useAppSelector(s => s.data);
+  /** The feed with the 99.50 gold price swapped for the shop's own rate when
+   *  one is set for today — see useEffectiveMetalRates. */
+  const effectiveRates = useEffectiveMetalRates();
   const { impersonateUserId, impersonatePhone } = useAppSelector(s => s.auth);
   const [blockModalVisible, setBlockModalVisible] = useState(false);
 
@@ -137,18 +141,18 @@ export default function CompleteAdvanceOrderScreen() {
 
   const marketRatePerGram = useMemo(() => {
     const p = selectedPurity;
-    if (p.includes('24K')) return metalRates?.gold?.goldPrice24K995GW;
-    if (p.includes('22K')) return metalRates?.gold?.goldPrice22K;
-    if (p.includes('18K')) return metalRates?.gold?.goldPrice18K;
-    if (p.includes('14K')) return metalRates?.gold?.goldPrice14K;
+    if (p.includes('24K')) return effectiveRates?.gold?.goldPrice24K995GW;
+    if (p.includes('22K')) return effectiveRates?.gold?.goldPrice22K;
+    if (p.includes('18K')) return effectiveRates?.gold?.goldPrice18K;
+    if (p.includes('14K')) return effectiveRates?.gold?.goldPrice14K;
     if (p.includes('Silver')) {
       return p.includes('Coin')
-        ? metalRates?.silver?.silverBarPrice
-        : metalRates?.silver?.silverPrice;
+        ? effectiveRates?.silver?.silverBarPrice
+        : effectiveRates?.silver?.silverPrice;
     }
     // No dedicated Metal Rates field for this karat — rate stays manual (falls back to bookingRate/0).
     return undefined;
-  }, [metalRates, selectedPurity]);
+  }, [effectiveRates, selectedPurity]);
 
   const currentRatePerGram = useMemo(() => {
     if (useCustomRate && customGoldRate) return parseFloat(customGoldRate) || 0;

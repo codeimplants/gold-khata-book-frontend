@@ -33,7 +33,9 @@
  * would itself have been the thing breaking the app.
  */
 
-export type FeatureFlagKey = 'tutorials';
+import { APP_ENV } from '../config';
+
+export type FeatureFlagKey = 'tutorials' | 'oldGoldMelt';
 
 type FeatureFlagDefinition = {
   /** Used when neither layer has an opinion. */
@@ -60,6 +62,41 @@ export const FEATURE_FLAGS: Record<FeatureFlagKey, FeatureFlagDefinition> = {
      */
     default: false,
     description: 'In-app video tutorials: the library, the "?" icons and the empty-state links.',
+  },
+
+  oldGoldMelt: {
+    /**
+     * ON while testing, OFF in anything that reaches a shop.
+     *
+     * Melt is unfinished enough that it must not appear in a release, and
+     * whether a build is a release is a property of the build — the same
+     * argument as `tutorials` above, which is why this is a compiled default
+     * rather than something switched off remotely.
+     *
+     * `APP_ENV` is the guard, NOT `__DEV__`. webpack.config.js defines
+     * `__DEV__: true` unconditionally, so it is true in `npm run build` too and
+     * would have shipped melt to the hosted web app. `APP_ENV` is set per
+     * invocation — `dev` for `npm run dev` and the run-on-device scripts,
+     * `prod` for `npm run build`, build-playstore-aab.ps1 and release-ios.sh —
+     * so a store or web release cannot pick this up by accident.
+     *
+     * Flags here fail OPEN: absent config means "use the compiled default", so
+     * the default IS the failure mode. `false` in prod is what keeps a shop
+     * that does not take old ornaments from being shown melt controls because a
+     * config request timed out. Turning it on for real shops later needs no
+     * release — a product flag of `true` from /api/platform/config beats this.
+     *
+     * ── TO SHIP: delete the APP_ENV expression, make this `false`. ──
+     *
+     * This flag only decides whether the product OFFERS melt. Whether a
+     * particular shop does is `shopDetails.oldGoldMelt`, and both have to say
+     * yes — see `useOldGoldMelt`. Rollout is this flag's job; "we don't do melt
+     * here" is the shopkeeper's, and conflating the two would mean turning the
+     * feature on for everyone the moment one shop asked for it.
+     */
+    default: APP_ENV !== 'prod',
+    description:
+      'Old-gold melt: taking ornaments in for melt, the credit it earns a retailer, and drawing that credit down onto an order.',
   },
 };
 

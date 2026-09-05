@@ -1,5 +1,4 @@
 import { NavigatorScreenParams } from "@react-navigation/native";
-import type { FormId } from "../print/forms/catalog";
 
 
 export type AuthStackParamList = {
@@ -19,22 +18,22 @@ export type AppStackParamList = {
     editOrderId?: string;
   } | undefined;
   AdvanceOrderSuccess: { order: any };
-  /** Standalone old-gold purchase + declaration.
-   *  `prefill` is a JSON DeclarationFormValues patch — used by the invoice
-   *  exchange path to carry the exchanged ornaments across. */
-  OldGoldPurchase:
-    | { customerId?: string; editId?: string; prefill?: string }
-    | undefined;
+  /** The one order screen. Full vs part payment is inferred from what is
+   *  actually paid, so there is no type to pass in. */
+  NewOrder: { customerId?: string } | undefined;
+  /** Taking old ornaments in for melt, against no particular bill. Credit is
+   *  spent from the order screen — see TakeMeltScreen for why they are apart. */
+  TakeMelt: { customerId?: string } | undefined;
+  /** Every lot still waiting on a reading, plus the credited ones as history. */
+  MeltLots: undefined;
+  /** One lot, and whatever stage it is waiting on. */
+  MeltLot: { lotId: string };
   PendingOrders: undefined;
   BillHistory: undefined;
   SalesReport: undefined;
   Customers: undefined;
   CustomerDetails: { customerId?: string, customer?: any };
   OrderDetails: { orderId: string };
-  /** One old-gold purchase ("Sold to us") and its declaration. `OldGoldPurchase`
-   *  above is the form that creates and edits one; this is the read view a card
-   *  opens into, mirroring OrderDetails. */
-  SoldToUsDetails: { declarationId: string };
   CompleteAdvanceOrder: { orderId: string };
   SelectCustomer: { next: keyof AppStackParamList, isEdit?: boolean, customer?: any } & Record<string, any>;
 
@@ -44,8 +43,6 @@ export type AppStackParamList = {
   GstReport: undefined;
   GST: undefined;
   PrintSettings: undefined;
-  DownloadForms: undefined;
-  FormDetail: { formId: FormId };
   ThermalPrinterSetup: undefined;
   InvoiceBillSettings: undefined;
   Language: undefined;
@@ -71,7 +68,7 @@ export type MainTabParamList = {
   Dashboard: undefined;
   Orders: { filter?: 'pending' | 'completed' | 'all' | 'gst' | 'nongst' } | undefined;
   Customers:
-    | { filter?: 'all' | 'pending' | 'completed' | 'sellers' | 'noOrders' }
+    | { filter?: 'all' | 'pending' | 'completed' | 'owing' | 'noOrders' }
     | undefined;
   Settings: undefined;
 };

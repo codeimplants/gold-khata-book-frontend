@@ -5,11 +5,6 @@ import { Alert, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { addOrder, updateInvoiceOrder, fetchShopDetails, clearUserData, decrementCatalogStock, uploadInvoiceOrnamentPhotos, uploadAllItemPhotos, uploadAllExchangePhotos, uploadPurchaseOldGoldPhotos, removeItemPhoto, removeExchangePhoto } from '../../store/data/dataSlice';
-import DeclarationDetailsModal from '../../components/oldGold/DeclarationDetailsModal';
-import DeclarationGeneratedSheet from '../../components/oldGold/DeclarationGeneratedSheet';
-import { generateDeclaration as saveDeclarationRecord, buildExchangeDeclarationPrefill } from '../../utils/declarationHelpers';
-import { printDeclarationAction, shareDeclarationAction } from '../../print/declarationActions';
-import type { DeclarationFormValues, PurchaseOldGold } from '../../types';
 import { endImpersonation } from '../../store/auth/authSlice';
 import { toast } from '../../components/common/Toast';
 import ImpersonationBlockModal from '../../components/ImpersonationBlockModal';
@@ -248,19 +243,6 @@ const CreateInvoiceScreen = () => {
 
   const [invoiceNo, setInvoiceNo] = useState<string>('---');
 
-  // Declaration generated inline, right after this invoice saves — see the
-  // "Generate Declaration" checkbox in the exchange section. Neither modal
-  // can ever block or undo the invoice save: both open only after it has
-  // already succeeded.
-  const [declarationPrefill, setDeclarationPrefill] = useState<DeclarationFormValues | null>(null);
-  const [declarationSaving, setDeclarationSaving] = useState(false);
-  const [savedDeclaration, setSavedDeclaration] = useState<PurchaseOldGold | null>(null);
-  const [declarationPhotosFailed, setDeclarationPhotosFailed] = useState(false);
-  // Kept separately from declarationPrefill (which clears once saved) so a
-  // failed upload can be retried without the source photos being lost.
-  const [declarationRetryPhotos, setDeclarationRetryPhotos] = useState<
-    JewelleryFormValues['ornamentPhotos']
-  >([]);
   // Set once the invoice this declaration attaches to actually has an id —
   // editOrderId for an edit save, newly.id for a fresh one. The "Declaration /
   // Affidavit" button on the success screen needs this even when the
@@ -393,87 +375,6 @@ const CreateInvoiceScreen = () => {
     }
   };
 
-  // Optional declaration for the old ornaments taken in on this invoice.
-  // Hands the exchange rows to the shared declaration screen prefilled, so the
-  // shopkeeper only has to add the ID proof and (optionally) photos.
-  // The "Declaration / Affidavit" button on the success screen — for when
-  // "Generate Declaration" was not ticked during creation but the shopkeeper
-  // wants one anyway. Opens the same modal the checkbox opens automatically,
-  // rather than navigating to a separate screen: the exchange already has
-  // everything a declaration needs except what the modal asks for.
-  const handleDeclaration = () => {
-    if (!invoiceData || !savedInvoiceId) return;
-    const customer = customers.find(c => c.id === invoiceData.customerId);
-    setDeclarationPrefill(
-      buildExchangeDeclarationPrefill({
-        orderId: savedInvoiceId,
-        customer,
-        customerId: invoiceData.customerId || '',
-        invoiceDate: invoiceData.invoiceDate,
-        exchanges: invoiceData.exchanges,
-        grandTotal: Number(invoiceData.grandTotal) || 0,
-        pendingPhotos: invoiceData.ornamentPhotos,
-        language: declarationLanguage,
-      }),
-    );
-  };
-
-  const handleGenerateDeclaration = async (values: DeclarationFormValues) => {
-    setDeclarationSaving(true);
-    try {
-      const { declaration, photosFailed, idPhotosFailed, customerPhotoFailed } =
-        await saveDeclarationRecord(dispatch, values);
-      setDeclarationPrefill(null);
-      setSavedDeclaration(declaration);
-      setDeclarationPhotosFailed(photosFailed);
-      setDeclarationRetryPhotos(photosFailed ? values.pendingPhotos : []);
-      // Toasts rather than a retry banner: the retry above re-sends ornament
-      // photos only, and the declaration itself is saved either way.
-      if (idPhotosFailed) {
-        toast.error(
-          t('declaration.idProof.photos.uploadFailed') ||
-            'ID photos could not be uploaded. The declaration was saved.',
-        );
-      }
-      if (customerPhotoFailed) {
-        toast.error(
-          t('declaration.customer.photoUploadFailed') ||
-            'The retailer photo could not be uploaded. The declaration was saved without it.',
-        );
-      }
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save declaration');
-    } finally {
-      setDeclarationSaving(false);
-    }
-  };
-
-  const handleRetryDeclarationPhotos = async () => {
-    if (!savedDeclaration || (declarationRetryPhotos?.length ?? 0) === 0) return;
-    const action = await dispatch(
-      uploadPurchaseOldGoldPhotos({
-        declarationId: savedDeclaration.id,
-        photos: declarationRetryPhotos!,
-      }),
-    );
-    if (uploadPurchaseOldGoldPhotos.fulfilled.match(action) && action.payload) {
-      setSavedDeclaration(action.payload as PurchaseOldGold);
-      setDeclarationPhotosFailed(false);
-      setDeclarationRetryPhotos([]);
-    } else {
-      toast.error('Photos could not be uploaded.');
-    }
-  };
-
-  const handlePrintDeclaration = async () => {
-    if (!savedDeclaration) return;
-    await printDeclarationAction(savedDeclaration, shopDetails, declarationLanguage, t);
-  };
-
-  const handleShareDeclaration = async () => {
-    if (!savedDeclaration) return;
-    await shareDeclarationAction(savedDeclaration, shopDetails, declarationLanguage, t);
-  };
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [invoiceErrors, setInvoiceErrors] = useState<string[]>([]);
@@ -737,29 +638,6 @@ const CreateInvoiceScreen = () => {
                     };
                     uploadPhotos();
 
-                    // "Generate Declaration" was ticked — open the modal for
-                    // whatever the exchange itself couldn't already supply.
-                    // Non-blocking: the invoice above is saved either way.
-                    if (
-                      newly?.id &&
-                      invoiceData.generateDeclaration &&
-                      invoiceData.enableExchange &&
-                      invoiceData.exchanges.length > 0
-                    ) {
-                      const customer = customers.find(c => c.id === invoiceData.customerId);
-                      setDeclarationPrefill(
-                        buildExchangeDeclarationPrefill({
-                          orderId: newly.id,
-                          customer,
-                          customerId: invoiceData.customerId || '',
-                          invoiceDate: invoiceData.invoiceDate,
-                          exchanges: invoiceData.exchanges,
-                          grandTotal: Number(invoiceData.grandTotal) || 0,
-                          pendingPhotos: invoiceData.ornamentPhotos,
-                          language: declarationLanguage,
-                        }),
-                      );
-                    }
                   }
                   // Deduct stock for tracked catalog products (non-blocking).
                   if (addOrder.fulfilled.match(resultAction)) {
@@ -826,14 +704,6 @@ const CreateInvoiceScreen = () => {
             onPrint={handlePrint}
             printTargetLabel={targetLabel}
             onChangePrinter={canChoosePrinter ? openChooser : undefined}
-            // Only offered when old ornaments were actually taken in. Optional
-            // by design: the plain "name + amount deducted" exchange flow is
-            // untouched and never asks for any of the declaration's fields.
-            onDeclaration={
-              invoiceData.enableExchange && invoiceData.exchanges?.length
-                ? handleDeclaration
-                : undefined
-            }
             // onDownload={handleDownload}
             onShare={handleShare}
             onDone={() =>
@@ -875,28 +745,6 @@ const CreateInvoiceScreen = () => {
         onClose={() => setBlockModalVisible(false)}
       />
       {printerChooser}
-
-      {declarationPrefill && (
-        <DeclarationDetailsModal
-          isOpen={!!declarationPrefill}
-          onClose={() => setDeclarationPrefill(null)}
-          initialValues={declarationPrefill}
-          isSubmitting={declarationSaving}
-          onSubmit={handleGenerateDeclaration}
-        />
-      )}
-
-      {savedDeclaration && (
-        <DeclarationGeneratedSheet
-          isOpen={!!savedDeclaration}
-          declarationNumber={savedDeclaration.declarationNumber}
-          photosFailed={declarationPhotosFailed}
-          onRetryPhotos={handleRetryDeclarationPhotos}
-          onPrint={handlePrintDeclaration}
-          onShare={handleShareDeclaration}
-          onDone={() => setSavedDeclaration(null)}
-        />
-      )}
     </Box>
   );
 };

@@ -57,10 +57,12 @@ import {
   fetchShopDetails,
   fetchCustomers,
   addPaymentToAdvanceOrder,
+  fetchRetailerAccount,
+  applyMeltCredit,
+  allocateCash,
   updatePaymentInAdvanceOrder,
   deletePaymentFromAdvanceOrder,
   fetchMetalRates,
-  fetchPurchaseOldGold,
   uploadPurchaseOldGoldPhotos,
   uploadExchangePhotos,
   uploadOrderOrnamentPhotos,
@@ -74,31 +76,15 @@ import { toast } from '../../components/common/Toast';
 import ImpersonationBlockModal from '../../components/ImpersonationBlockModal';
 import { buildBillHTML } from '../../print/billTemplate';
 import { usePrintBill } from '../../hooks/usePrintBill';
-import {
-  printDeclarationAction,
-  shareDeclarationAction,
-  downloadDeclarationAction,
-} from '../../print/declarationActions';
-import ExchangeTotalsRow from '../../components/oldGold/ExchangeTotalsRow';
-import OrnamentPhotoViewer from '../../components/oldGold/OrnamentPhotoViewer';
-import AddPhotosModal from '../../components/oldGold/AddPhotosModal';
+import PhotoViewer from '../../components/photos/PhotoViewer';
 import DocumentActionsRow from '../../components/common/DocumentActionsRow';
 import PrintDetailsCard from '../../components/common/PrintDetailsCard';
-import DeclarationDetailsModal from '../../components/oldGold/DeclarationDetailsModal';
 import PrintTargetNote from '../../components/common/PrintTargetNote';
-import DeclarationGeneratedSheet from '../../components/oldGold/DeclarationGeneratedSheet';
-import {
-  generateDeclaration as saveDeclarationRecord,
-  buildExchangeDeclarationPrefill,
-} from '../../utils/declarationHelpers';
-import type {
-  DeclarationFormValues,
-  PendingDeclarationPhoto,
-  PurchaseOldGold,
-} from '../../types';
 import DatePickerModal from '../../components/common/DatePickerModal';
 import { buildPdfFileName, generateInvoicePDF, sharePDF, downloadPDFToDevice } from '../../utils/pdfService';
 import Share from 'react-native-share';
+import { formatGrams, CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
+import { useShopRate } from '../../hooks/useShopRate';
 import { openWhatsApp, formatWhatsAppPhone } from '../../utils/whatsappUtils';
 import { downloadInvoiceA4Pdf } from '../../utils/invoicePdfWeb';
 import { prepareShopForPrint, prepareBillForPrint, getFullImageUrl } from '../../utils/imageUtils';
@@ -128,6 +114,31 @@ function getItemLabel(item: any, fallback: string): string {
   );
 }
 
+/**
+ * The grams a payment covered, BOTH legs of it.
+ *
+ * A retailer settles in cash, in metal, or in both, and the two are stored in
+ * different fields:
+ *
+ *   - `weightCovered` — grams the CASH bought, at that payment's own rate.
+ *   - `goldWeight`    — ornaments actually handed over, which the order's
+ *                       pre-save hook converts to 99.50 and stores as
+ *                       `fineWeight`.
+ *
+ * Every screen here read only the first, so gold handed over rendered as
+ * "₹0 — 0.000 gm @ ₹0/gm" while the order's own balance had moved by the full
+ * weight. The figures were never wrong on the server; they were invisible.
+ *
+ * `fineWeight` is preferred over `goldWeight` because it is the settlement-
+ * fineness figure the metal account is denominated in. The raw weight is only a
+ * fallback for a payment read before the hook has run over it.
+ */
+const paymentLegs = (p: any) => {
+  const cashGrams = Number(p?.weightCovered ?? p?.weight_covered ?? 0) || 0;
+  const metalGrams = Number(p?.fineWeight ?? p?.goldWeight ?? 0) || 0;
+  return { cashGrams, metalGrams, totalGrams: cashGrams + metalGrams };
+};
+
 export default function OrderDetailsScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProps>();
@@ -153,7 +164,6 @@ export default function OrderDetailsScreen() {
   // paper has to be applied on this path too or the shared file would be A4
   // while the printed one is not.
   const paper = useAppSelector(s => s.printPrefs.paper);
-  const metalRates = useAppSelector(s => s.data.metalRates);
   const purchaseOldGold = useAppSelector(s => s.data.purchaseOldGold);
   const dataLoading = useAppSelector(s => s.data.loading);
   const { impersonateUserId, impersonatePhone } = useAppSelector(s => s.auth);
@@ -195,9 +205,20 @@ export default function OrderDetailsScreen() {
     dispatch(fetchShopDetails());
     dispatch(fetchCustomers());
     dispatch(fetchMetalRates());
-    // Needed to know whether this order already has a declaration, so the
-    // sheet can offer Print/Share rather than Create.
-    dispatch(fetchPurchaseOldGold());
+    // `fetchPurchaseOldGold()` used to run here, to know whether this order
+    // already has a declaration so the sheet could offer Print/Share rather
+    // than Create.
+    //
+    // It is not called because there is nothing to call: the app talks to
+    // GET /api/purchase-old-gold, and the backend has no such module — no
+    // route, no model, no controller. Every open of this screen fired a
+    // request that 404'd, logged a "Route not found" through the error
+    // middleware, and left `purchaseOldGold` empty, which is exactly where it
+    // starts. Removing the call changes no behaviour and removes the noise.
+    //
+    // Put it back in the same breath as the backend module. The thunk, the
+    // types and 182 translated `declaration.*` strings are all still here
+    // waiting for it.
   }, [dispatch]);
 
   const onRefresh = React.useCallback(async () => {
@@ -281,7 +302,11 @@ export default function OrderDetailsScreen() {
       amount: Number(p.amount || 0).toFixed(2),
       date: p.date ? new Date(p.date).toLocaleDateString('en-IN') : '',
       goldRate: Number(p.goldRate || 0).toFixed(2),
-      weightCovered: Number(p.weightCovered || 0).toFixed(3),
+      // The TOTAL this payment covered, so a bill showing an installment that
+      // was settled in gold does not print it as 0.000 gm. The printed bill has
+      // no separate column for the metal leg, and "weight covered" is exactly
+      // what this figure means to whoever reads the bill.
+      weightCovered: paymentLegs(p).totalGrams.toFixed(3),
       purity: p.purity || '',
       notes: p.notes || p.remarks || '',
     }));
@@ -491,78 +516,6 @@ export default function OrderDetailsScreen() {
    * collections behind separate endpoints, and posting an invoice id to the
    * orders route 404s. Same split the creation path already makes.
    */
-  /** Attaches photos to the exchange row the sheet was opened from. */
-  const handleUploadExchangeRowPhotos = React.useCallback(
-    async (photos: PendingDeclarationPhoto[]): Promise<boolean> => {
-      if (!order?.id || addPhotosExchangeIndex === null) return false;
-      const action = await dispatch(
-        uploadExchangePhotos({
-          id: order.id,
-          kind: order.type === 'full' ? 'invoice' : 'order',
-          exchangeIndex: addPhotosExchangeIndex,
-          photos,
-        }),
-      );
-      if (uploadExchangePhotos.fulfilled.match(action)) return true;
-      toast.error(
-        String((action as any).payload || '') ||
-          t('declaration.photos.uploadFailed') ||
-          'Photos could not be uploaded.',
-      );
-      return false;
-    },
-    [dispatch, order, addPhotosExchangeIndex, t],
-  );
-
-  const handleUploadOrnamentPhotos = React.useCallback(
-    async (photos: PendingDeclarationPhoto[]): Promise<boolean> => {
-      if (!order?.id) return false;
-      const action =
-        order.type === 'full'
-          ? await dispatch(uploadInvoiceOrnamentPhotos({ invoiceId: order.id, photos }))
-          : await dispatch(uploadOrderOrnamentPhotos({ orderId: order.id, photos }));
-
-      const ok =
-        order.type === 'full'
-          ? uploadInvoiceOrnamentPhotos.fulfilled.match(action)
-          : uploadOrderOrnamentPhotos.fulfilled.match(action);
-      if (!ok) {
-        toast.error(
-          String((action as any).payload || '') ||
-            t('declaration.photos.uploadFailed') ||
-            'Photos could not be uploaded.',
-        );
-        return false;
-      }
-      toast.success(t('declaration.photos.uploaded') || 'Photos added');
-      return true;
-    },
-    [dispatch, order?.id, order?.type, t],
-  );
-
-  const handleDeleteOrnamentPhoto = React.useCallback(
-    async (fileId: string): Promise<boolean> => {
-      if (!order?.id) return false;
-      const action = await dispatch(
-        removeOrnamentPhoto({
-          id: order.id,
-          fileId,
-          kind: order.type === 'full' ? 'invoice' : 'order',
-        }),
-      );
-      if (!removeOrnamentPhoto.fulfilled.match(action)) {
-        toast.error(
-          String((action as any).payload || '') ||
-            t('declaration.photos.deleteFailed') ||
-            'Photo could not be removed.',
-        );
-        return false;
-      }
-      return true;
-    },
-    [dispatch, order?.id, order?.type, t],
-  );
-
   const exchangeValue = useMemo(
     () =>
       (order?.exchanges || []).reduce(
@@ -571,112 +524,6 @@ export default function OrderDetailsScreen() {
       ),
     [order?.exchanges],
   );
-
-  const handlePrintDeclaration = async () => {
-    if (!orderDeclaration) return;
-    await printDeclarationAction(orderDeclaration, shopDetails, declarationLanguage, t);
-  };
-
-  const handleShareDeclaration = async () => {
-    if (!orderDeclaration) return;
-    await shareDeclarationAction(orderDeclaration, shopDetails, declarationLanguage, t);
-  };
-
-  // Saves the PDF rather than opening the share sheet — the button says
-  // "Download Declaration", so it must actually download.
-  const handleDownloadDeclaration = async () => {
-    if (!orderDeclaration) return;
-    await downloadDeclarationAction(orderDeclaration, shopDetails, declarationLanguage, t);
-  };
-
-  // Declaration generated inline via a modal rather than a separate screen —
-  // the order already has everything a declaration needs except ownership, ID
-  // proof, receipt, payout and witnesses, which is exactly what the modal asks
-  // for. Reuses the order's own photos, so nothing has to be recaptured.
-  const [declarationPrefill, setDeclarationPrefill] = React.useState<DeclarationFormValues | null>(null);
-  const [declarationSaving, setDeclarationSaving] = React.useState(false);
-  const [generatedDeclaration, setGeneratedDeclaration] = React.useState<PurchaseOldGold | null>(null);
-  const [generatedDeclarationPhotosFailed, setGeneratedDeclarationPhotosFailed] = React.useState(false);
-  const [generatedDeclarationRetryPhotos, setGeneratedDeclarationRetryPhotos] = React.useState<
-    DeclarationFormValues['pendingPhotos']
-  >([]);
-
-  const handleCreateDeclaration = () => {
-    if (!order) return;
-    const customer = customers.find(c => c.id === order.customerId);
-    setDeclarationPrefill(
-      buildExchangeDeclarationPrefill({
-        orderId: order.id,
-        customer,
-        customerId: order.customerId || '',
-        invoiceDate: order.date,
-        exchanges: order.exchanges || [],
-        grandTotal: Number(order.amount) || 0,
-        pendingPhotos: (order.ornamentPhotos || []).map((p: any) => ({ uri: p.url })),
-        language: declarationLanguage,
-      }),
-    );
-  };
-
-  const handleGenerateDeclaration = async (values: DeclarationFormValues) => {
-    setDeclarationSaving(true);
-    try {
-      const { declaration, photosFailed, idPhotosFailed, customerPhotoFailed } =
-        await saveDeclarationRecord(dispatch, values);
-      setDeclarationPrefill(null);
-      setGeneratedDeclaration(declaration);
-      setGeneratedDeclarationPhotosFailed(photosFailed);
-      setGeneratedDeclarationRetryPhotos(photosFailed ? values.pendingPhotos : []);
-      // Toasts rather than a retry banner: the retry above re-sends ornament
-      // photos only, and the declaration itself is saved either way.
-      if (idPhotosFailed) {
-        toast.error(
-          t('declaration.idProof.photos.uploadFailed') ||
-            'ID photos could not be uploaded. The declaration was saved.',
-        );
-      }
-      if (customerPhotoFailed) {
-        toast.error(
-          t('declaration.customer.photoUploadFailed') ||
-            'The retailer photo could not be uploaded. The declaration was saved without it.',
-        );
-      }
-      // Also fetch, so `orderDeclaration` below picks it up and the button
-      // reads "Download Declaration" without waiting for a manual refresh.
-      dispatch(fetchPurchaseOldGold({ force: true }));
-    } catch (err: any) {
-      toast.error(err?.message || 'Failed to save declaration');
-    } finally {
-      setDeclarationSaving(false);
-    }
-  };
-
-  const handleRetryGeneratedDeclarationPhotos = async () => {
-    if (!generatedDeclaration || (generatedDeclarationRetryPhotos?.length ?? 0) === 0) return;
-    const action = await dispatch(
-      uploadPurchaseOldGoldPhotos({
-        declarationId: generatedDeclaration.id,
-        photos: generatedDeclarationRetryPhotos!,
-      }),
-    );
-    if (uploadPurchaseOldGoldPhotos.fulfilled.match(action) && action.payload) {
-      setGeneratedDeclaration(action.payload as PurchaseOldGold);
-      setGeneratedDeclarationPhotosFailed(false);
-      setGeneratedDeclarationRetryPhotos([]);
-    } else {
-      toast.error('Photos could not be uploaded.');
-    }
-  };
-
-  const handlePrintGeneratedDeclaration = async () => {
-    if (!generatedDeclaration) return;
-    await printDeclarationAction(generatedDeclaration, shopDetails, declarationLanguage, t);
-  };
-
-  const handleShareGeneratedDeclaration = async () => {
-    if (!generatedDeclaration) return;
-    await shareDeclarationAction(generatedDeclaration, shopDetails, declarationLanguage, t);
-  };
 
   const handlePrint = async () => {
     if (!order) return;
@@ -861,8 +708,10 @@ export default function OrderDetailsScreen() {
 
     const payments = (order as any).payments || (order as any).paymentSummary?.payments || [];
     if (!Array.isArray(payments)) return 0;
+    // Both legs — cash-bought grams AND metal handed over. Summing only the
+    // first under-reports every order settled partly in gold.
     return payments.reduce(
-      (sum: number, p: any) => sum + Number(p.weightCovered || p.weight_covered || 0),
+      (sum: number, p: any) => sum + paymentLegs(p).totalGrams,
       0,
     );
   }, [order]);
@@ -942,18 +791,23 @@ export default function OrderDetailsScreen() {
     return firstWithRate ? Number(firstWithRate.goldRate) : null;
   }, [order]);
 
-  const defaultCurrentRatePerGram = useMemo(() => {
-    const p = paymentPurity || purity;
-    if (p.includes('24K')) return metalRates?.gold?.goldPrice24K995GW;
-    if (p.includes('18K')) return metalRates?.gold?.goldPrice18K;
-    if (p.includes('14K')) return metalRates?.gold?.goldPrice14K;
-    if (p.includes('Silver')) {
-      return p.includes('Coin')
-        ? metalRates?.silver?.silverBarPrice
-        : metalRates?.silver?.silverPrice;
-    }
-    return metalRates?.gold?.goldPrice22K;
-  }, [metalRates, paymentPurity, purity]);
+  /**
+   * There is one rate: 24K at 99.50.
+   *
+   * This used to branch on the purity LABEL — "22K - 91.6%" and friends — to
+   * pick a per-karat rate. Two things killed that. A wholesale position is
+   * denominated in fine 99.50 and settles at that one rate whatever the
+   * ornament's own purity, so a per-karat rate would price the metal twice.
+   * And `purity` is now a number (91.6), so calling `.includes` on it threw
+   * `p.includes is not a function` and took the whole screen down through the
+   * error boundary — which is how this was found.
+   */
+  // The shop's own rate for today when they have set one, the live feed when
+  // they have not — see useShopRate. Everything below that prices metal on this
+  // screen (the balance, the credit conversion, a payment's default rate) runs
+  // off this, so the order screen and the bill cannot quote different numbers.
+  const shopRate = useShopRate();
+  const defaultCurrentRatePerGram = shopRate.rate;
 
   const currentRatePerGram =
     useCustomRate && customGoldRate
@@ -972,6 +826,86 @@ export default function OrderDetailsScreen() {
     0;
 
   const estimatedGoldBalance = remainingWeight * balanceRatePerGram;
+
+  /**
+   * Credit this retailer is holding here, and the two ways to spend it.
+   *
+   * Both halves were reachable only while CREATING an order — melt credit had a
+   * field on the new-order screen and held cash had nothing at all — so a
+   * retailer who built up credit could never put it against a bill that already
+   * existed. The balance sat on their account and the order went on showing the
+   * full amount outstanding, which is exactly what it looked like: broken.
+   */
+  const account = useAppSelector(
+    s => (order?.customerId ? s.data.retailerAccounts[order.customerId] : undefined),
+  );
+  const [applyingCredit, setApplyingCredit] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!order?.customerId) return;
+    dispatch(fetchRetailerAccount({ customerId: order.customerId }));
+  }, [dispatch, order?.customerId]);
+
+  const creditMeltAvailable = Number(account?.meltCredit || 0);
+  const creditCashAvailable = Number(account?.heldCash || 0);
+
+  /**
+   * Never more than the order still owes.
+   *
+   * Spending credit past the balance would push the order into overpayment and
+   * bounce straight back onto the same account as held cash — a round trip that
+   * moves a retailer's money twice and settles nothing.
+   */
+  const meltToApply = Math.min(creditMeltAvailable, remainingWeight);
+  const cashRateForCredit = balanceRatePerGram > 0 ? balanceRatePerGram : 0;
+  const cashToApply = cashRateForCredit > 0
+    ? Math.min(creditCashAvailable, Math.max(0, remainingWeight - meltToApply) * cashRateForCredit)
+    : 0;
+
+  const canUseCredit =
+    order?.status === 'pending'
+    && remainingWeight > WEIGHT_SETTLED_EPSILON_GM
+    && (meltToApply > WEIGHT_SETTLED_EPSILON_GM || cashToApply > CASH_SETTLED_EPSILON);
+
+  const onUseCredit = React.useCallback(async () => {
+    if (!order?.customerId || !order?.id || applyingCredit) return;
+    setApplyingCredit(true);
+    try {
+      // Metal first, then cash. Metal settles gram for gram at no rate, so
+      // spending it first leaves the smallest possible remainder to be bought
+      // with cash at today's rate — which is the leg that costs the retailer
+      // something when the rate has moved against them.
+      if (meltToApply > WEIGHT_SETTLED_EPSILON_GM) {
+        const res: any = await dispatch(applyMeltCredit({
+          customerId: order.customerId,
+          orderId: order.id,
+          weight: meltToApply,
+        }) as any);
+        if (!applyMeltCredit.fulfilled.match(res)) {
+          toast.error(String(res.payload || 'Could not apply the melt credit'));
+          return;
+        }
+      }
+
+      if (cashToApply > CASH_SETTLED_EPSILON && cashRateForCredit > 0) {
+        const res: any = await dispatch(allocateCash({
+          customerId: order.customerId,
+          orderId: order.id,
+          amount: Number(cashToApply.toFixed(2)),
+          goldRate: cashRateForCredit,
+        }) as any);
+        if (!allocateCash.fulfilled.match(res)) {
+          toast.error(String(res.payload || 'Could not apply the credit'));
+          return;
+        }
+      }
+
+      toast.success(t('credit.applied') || 'Credit applied to this order');
+    } finally {
+      setApplyingCredit(false);
+    }
+  }, [order, applyingCredit, meltToApply, cashToApply, cashRateForCredit, dispatch, t]);
+
 
   const estimatedMakingCharges = useMemo(() => {
     const goldCostForTotalWeight = orderTotalWeight * balanceRatePerGram;
@@ -1822,6 +1756,67 @@ export default function OrderDetailsScreen() {
                   )}
                 </HStack>
 
+                {/* Credit sitting on this retailer's account, and a way to
+                    spend it here. Shown only when there is credit AND this
+                    order still owes something — a card offering to apply
+                    nothing, or to apply it to a settled bill, is a control
+                    that cannot do anything. */}
+                {canUseCredit && (
+                  <Box
+                    bg="#F0FDF4"
+                    rounded="$xl"
+                    p="$4"
+                    mb="$3"
+                    borderWidth={1}
+                    borderColor="#BBF7D0"
+                  >
+                    <Text fontSize={13} fontWeight="$bold" color="#166534" mb="$1">
+                      {t('credit.available') || 'Credit available'}
+                    </Text>
+                    <Text fontSize={12} color="$coolGray600" mb="$3">
+                      {[
+                        creditMeltAvailable > WEIGHT_SETTLED_EPSILON_GM
+                          ? `${formatGrams(creditMeltAvailable, t('common.gramShort') || 'gm')} ${t('statement.meltCredit') || 'Melt credit'}`
+                          : '',
+                        creditCashAvailable > CASH_SETTLED_EPSILON
+                          ? `${formatCurrencyValue(creditCashAvailable)} ${t('statement.credit') || 'Credit with us'}`
+                          : '',
+                      ].filter(Boolean).join('  ·  ')}
+                    </Text>
+
+                    {/* What pressing it will actually do, spelled out. The
+                        amounts are capped at what this order owes, so they are
+                        usually smaller than the balances above and the
+                        difference has to be visible before the tap, not after. */}
+                    <Text fontSize={12} color="#166534" mb="$3">
+                      {t('credit.willApply') || 'Apply to this order'}:{' '}
+                      {[
+                        meltToApply > WEIGHT_SETTLED_EPSILON_GM
+                          ? formatGrams(meltToApply, t('common.gramShort') || 'gm')
+                          : '',
+                        cashToApply > CASH_SETTLED_EPSILON
+                          ? formatCurrencyValue(cashToApply)
+                          : '',
+                      ].filter(Boolean).join(' + ')}
+                    </Text>
+
+                    <Pressable onPress={onUseCredit} disabled={applyingCredit}>
+                      <Box
+                        bg={applyingCredit ? '#A7F3D0' : '#15803D'}
+                        rounded="$lg"
+                        py="$2.5"
+                        alignItems="center"
+                      >
+                        <Text color="$white" fontWeight="$bold" fontSize={14}>
+                          {applyingCredit
+                            ? (t('common.saving') || 'Saving…')
+                            : (t('credit.use') || 'Use credit')}
+                        </Text>
+                      </Box>
+                    </Pressable>
+                  </Box>
+                )}
+
                 {/* Old gold settles weight like a payment does, but is NOT one —
                     no money changed hands, so it sits outside the payment list
                     and outside totalPaid. Shown here because this is where a
@@ -1919,12 +1914,18 @@ export default function OrderDetailsScreen() {
                                 </Box>
                                 <VStack flex={1}>
                                   <HStack justifyContent="space-between" alignItems="center">
+                                    {/* Metal-only payments have no rupee figure
+                                        at all, so the weight is the headline —
+                                        "₹0" for five grams of gold handed over
+                                        reads as a payment of nothing. */}
                                     <Text
                                       fontSize="$md"
                                       fontWeight="$bold"
                                       color="$coolGray900"
                                     >
-                                      ₹{(p.amount || 0).toLocaleString()}
+                                      {(p.amount || 0) > 0
+                                        ? `₹${(p.amount || 0).toLocaleString()}`
+                                        : `${paymentLegs(p).metalGrams.toFixed(3)} gm`}
                                     </Text>
                                     <Text fontSize={12} color="$coolGray500">
                                       {new Date(p.date).toLocaleDateString(
@@ -1934,7 +1935,26 @@ export default function OrderDetailsScreen() {
                                     </Text>
                                   </HStack>
                                   <Text fontSize={13} color="$coolGray600" mt="$1" fontWeight="$medium">
-                                    {Number(p.weightCovered || 0).toFixed(3)} gm @ ₹{(p.goldRate || 0).toLocaleString()}/gm
+                                    {(() => {
+                                      const { cashGrams, metalGrams } = paymentLegs(p);
+                                      const parts: string[] = [];
+                                      if (cashGrams > 0) {
+                                        parts.push(`${cashGrams.toFixed(3)} gm @ ₹${(p.goldRate || 0).toLocaleString()}/gm`);
+                                      }
+                                      if (metalGrams > 0) {
+                                        // When the weight is already the
+                                        // headline, naming the leg is all this
+                                        // line has left to add.
+                                        parts.push(
+                                          (p.amount || 0) > 0
+                                            ? `+ ${metalGrams.toFixed(3)} gm ${t('orders.details.inGold') || 'in gold'}`
+                                            : (t('orders.details.goldReceived') || 'Gold received'),
+                                        );
+                                      }
+                                      return parts.length > 0
+                                        ? parts.join(' · ')
+                                        : `0.000 gm @ ₹${(p.goldRate || 0).toLocaleString()}/gm`;
+                                    })()}
                                   </Text>
                                   {!!p.notes && (
                                     <Text fontSize={12} color="$coolGray400" mt="$1" italic>
@@ -2014,65 +2034,6 @@ export default function OrderDetailsScreen() {
                   </>
                 ),
               },
-              // Only where there is something to declare. An ordinary sale
-              // has nothing, and this collapses back to a single plain card.
-              ...(hasExchange
-                ? [{
-                    key: 'declaration',
-                    label: t('declaration.title') || 'Declaration / Affidavit',
-                    content: orderDeclaration ? (
-                      <>
-                        <DocumentActionsRow
-                          onPrint={handlePrintDeclaration}
-                          onDownload={handleDownloadDeclaration}
-                          onShare={handleShareDeclaration}
-                        />
-                        {/* Edit rides the printer note rather than taking a
-                            line of its own. Both are small print under the
-                            buttons, and on a phone a lone Edit on its own row
-                            below a centred caption reads as a stray link. */}
-                        <HStack alignItems="center" mt="$2" space="sm">
-                          <Box flex={1}>
-                            <PrintTargetNote mt="$0" />
-                          </Box>
-                          {/* Corrections after the fact - a wrong ID number or
-                              the wrong language is otherwise unfixable. */}
-                          <Pressable
-                            onPress={() =>
-                              navigation.navigate('OldGoldPurchase', { editId: orderDeclaration.id })
-                            }
-                            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                          >
-                            <HStack alignItems="center" space="xs">
-                              <Icon as={Pencil} size="xs" color={PURPLE} />
-                              <Text color={PURPLE} fontWeight="$medium" fontSize="$xs">
-                                {t('declaration.editDeclaration') || t('common.edit') || 'Edit'}
-                              </Text>
-                            </HStack>
-                          </Pressable>
-                        </HStack>
-                      </>
-                    ) : (
-                      /* Nothing declared yet - the capture modal was never
-                         completed. Understated on purpose, so it does not read
-                         as a document that already exists. */
-                      <VStack space="sm">
-                        <Text fontSize="$xs" color="$coolGray500">
-                          {t('declaration.notGeneratedHint') ||
-                            'No declaration has been generated for this exchange yet.'}
-                        </Text>
-                        <Pressable onPress={handleCreateDeclaration} alignSelf="flex-start">
-                          <HStack alignItems="center" space="xs" py="$1">
-                            <FileSignature size={16} color={PURPLE} />
-                            <Text fontSize="$sm" fontWeight="$bold" color={PURPLE}>
-                              {t('declaration.generateButton') || 'Generate Declaration'}
-                            </Text>
-                          </HStack>
-                        </Pressable>
-                      </VStack>
-                    ),
-                  }]
-                : []),
             ]}
           />
 
@@ -2619,7 +2580,7 @@ export default function OrderDetailsScreen() {
                         {t('orders.details.weightCovered') || 'Weight Covered'}
                       </Text>
                       <Text fontWeight="$bold" color={PURPLE}>
-                        {(selectedPayment.weightCovered || 0).toFixed(3)} gm
+                        {paymentLegs(selectedPayment).totalGrams.toFixed(3)} gm
                       </Text>
                     </HStack>
                     {selectedPayment.notes && (
@@ -2739,58 +2700,13 @@ export default function OrderDetailsScreen() {
       />
       {printerChooser}
 
-      {declarationPrefill && (
-        <DeclarationDetailsModal
-          isOpen={!!declarationPrefill}
-          onClose={() => setDeclarationPrefill(null)}
-          initialValues={declarationPrefill}
-          isSubmitting={declarationSaving}
-          onSubmit={handleGenerateDeclaration}
-        />
-      )}
-
-      {generatedDeclaration && (
-        <DeclarationGeneratedSheet
-          isOpen={!!generatedDeclaration}
-          declarationNumber={generatedDeclaration.declarationNumber}
-          photosFailed={generatedDeclarationPhotosFailed}
-          onRetryPhotos={handleRetryGeneratedDeclarationPhotos}
-          onPrint={handlePrintGeneratedDeclaration}
-          onShare={handleShareGeneratedDeclaration}
-          onDone={() => setGeneratedDeclaration(null)}
-        />
-      )}
-
-      <OrnamentPhotoViewer
-        photos={exchangePhotos}
-        initialIndex={photoViewerIndex ?? 0}
-        isOpen={photoViewerIndex !== null}
-        onClose={() => setPhotoViewerIndex(null)}
-      />
-
-      <OrnamentPhotoViewer
+      {/* Item photos. The exchange viewer and the add-photos sheet that used
+          to sit beside this went with the old-gold removal. */}
+      <PhotoViewer
         photos={itemPhotoViewer?.photos ?? []}
         initialIndex={itemPhotoViewer?.index ?? 0}
         isOpen={itemPhotoViewer !== null}
         onClose={() => setItemPhotoViewer(null)}
-      />
-
-      <AddPhotosModal
-        isOpen={addPhotosOpen}
-        onClose={() => setAddPhotosOpen(false)}
-        existing={
-          addPhotosExchangeIndex === null
-            ? exchangePhotos
-            : ((order?.exchanges || [])[addPhotosExchangeIndex] as any)?.photos || []
-        }
-        onUpload={
-          addPhotosExchangeIndex === null
-            ? handleUploadOrnamentPhotos
-            : handleUploadExchangeRowPhotos
-        }
-        onDelete={
-          addPhotosExchangeIndex === null ? handleDeleteOrnamentPhoto : undefined
-        }
       />
     </Box>
   );

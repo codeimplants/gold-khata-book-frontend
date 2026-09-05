@@ -10,28 +10,24 @@ import {
   InputField,
   Icon,
 } from "@gluestack-ui/themed";
-import { X, Contact, ChevronDown, ChevronUp, ChevronLeft } from "lucide-react-native";
-import SelectField from "./common/SelectField";
-import CustomerPhotoPicker from "./common/CustomerPhotoPicker";
+import { X, Contact, ChevronLeft } from "lucide-react-native";
 import { ToastViewport } from "./common/Toast";
-import { ID_PROOF_TYPES } from "../constants/idProof";
-import type { IdProofType, PendingDeclarationPhoto } from "../types";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { addCustomer, clearUserData, uploadCustomerPhoto } from "../store/data/dataSlice";
+import { addCustomer, clearUserData } from "../store/data/dataSlice";
 import { endImpersonation } from "../store/auth/authSlice";
 import { useSheetBottomInset } from "../hooks/useSheetBottomInset";
 import ImpersonationBlockModal from "./ImpersonationBlockModal";
 import ConfirmModal from "./ConfirmModal";
-import OrderTypeModal from "./OrderTypeModal";
 import { parseApiErrorList } from "../utils/errorUtils";
 import { capitalizeWords } from "../utils/textUtils";
 import ValidationErrorModal from "./ValidationErrorModal";
 import { toast } from "./common/Toast";
 import { LAYOUT } from "../constants/layout";
 import { INPUT_LIMITS, clampToLimit, validateText } from "../constants/inputLimits";
+import { retailerDisplayName } from "../utils/retailerName";
 import CharCounter from "./common/CharCounter";
 import ContactsStep from "./customers/ContactsStep";
 
@@ -47,24 +43,26 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
   // button sits underneath the three-button controls. See useSheetBottomInset.
   const bottomInset = useSheetBottomInset(24);
 
+  /**
+   * Owner name, shop name, phone. Nothing else.
+   *
+   * The OWNER is the required one: a wholesaler always knows who they are
+   * dealing with, while plenty of small retailers trade under their own name
+   * and have no shop name to record. `customer.name` — the identity everything
+   * downstream reads — is derived from the two, never typed. See
+   * `retailerDisplayName`.
+   *
+   * This form used to ask for address, email, ID proof and a portrait as well:
+   * the shape of a RETAIL customer, which is what the app was before it became
+   * a wholesaler's book. Someone adding a retailer mid-transaction, with a
+   * counter full of gold, skipped past every one of them.
+   */
   const [form, setForm] = useState({
-    name: "",
+    ownerName: "",
+    shopName: "",
     phone: "",
-    email: "",
-    address: "",
-    idProofType: "" as IdProofType | "",
-    idProofNumber: "",
   });
-  // Collapsed by default — most shopkeepers never touch this, and it exists
-  // purely so a repeat customer's declaration does not have to ask for ID
-  // proof again. See declarationHelpers.buildExchangeDeclarationPrefill.
-  const [showIdProof, setShowIdProof] = useState(false);
-  // Held locally until the customer exists — there is no id to upload against
-  // until the save succeeds.
-  const [pendingPhoto, setPendingPhoto] = useState<PendingDeclarationPhoto | null>(null);
-  const [showOrderModal, setShowOrderModal] = useState(false);
-  const [newCustomerId, setNewCustomerId] = useState<string | undefined>(undefined);
-  const [fieldErrors, setFieldErrors] = useState<{ name?: boolean; phone?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ ownerName?: boolean; phone?: boolean }>({});
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
   // The name of an existing customer this one collides with, when saving
@@ -77,20 +75,21 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
   const { phone: userPhone, impersonateUserId, impersonatePhone } = useAppSelector((state) => state.auth);
   const { customers, shopDetails } = useAppSelector((state) => state.data);
   const [blockModalVisible, setBlockModalVisible] = useState(false);
-  // Two views inside one Modal rather than two Modals. iOS presents a single
-  // modal at a time from the root view controller, so the old picker-over-form
-  // arrangement never appeared at all.
-  // Web never gets the contact step — there is no phone book to read — so it
-  // opens straight onto the form exactly as it always did.
-  const [step, setStep] = useState<'contacts' | 'form'>(
-    LAYOUT.isWeb ? 'form' : 'contacts',
-  );
+
+  /**
+   * The phone book, opened from the Phone field rather than as a first step.
+   *
+   * It used to be the screen this modal OPENED on. It no longer is, because a
+   * contact cannot fill the whole form — it holds a person and a number, which
+   * is the owner name and the phone, but never the shop name. Opening on a
+   * picker that can only ever fill part of the form put a step in front of
+   * every retailer added by hand.
+   *
+   * From the field it is offered at the moment it can actually help.
+   */
+  const [pickingContact, setPickingContact] = useState(false);
 
   const navigation = useNavigation<any>();
-
-  React.useEffect(() => {
-    if (isOpen) setStep(LAYOUT.isWeb ? 'form' : 'contacts');
-  }, [isOpen]);
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
@@ -101,31 +100,34 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
   const handleAddCustomer = () => {
     if (impersonateUserId) { setBlockModalVisible(true); return; }
     const errors: string[] = [];
-    const fields: { name?: boolean; phone?: boolean } = {};
+    const fields: { ownerName?: boolean; phone?: boolean } = {};
 
-    if (!form.name.trim()) {
-      errors.push(t('customers.validation.nameRequired') || 'Name is required');
-      fields.name = true;
+    if (!form.ownerName.trim()) {
+      errors.push(t('customers.validation.ownerNameRequired') || 'Owner name is required');
+      fields.ownerName = true;
     } else {
-      // The contact picker can drop in a name longer than the field allows, so
+      // The contact picker can drop in a value longer than the field allows, so
       // the cap has to be re-checked here and not just on the input.
-      const nameError = validateText(form.name, { label: t('customers.name') || 'Name', limit: INPUT_LIMITS.customerName });
-      if (nameError) { errors.push(nameError); fields.name = true; }
+      const ownerError = validateText(form.ownerName, { label: t('customers.ownerName') || 'Owner Name', limit: INPUT_LIMITS.customerName });
+      if (ownerError) { errors.push(ownerError); fields.ownerName = true; }
     }
 
-    const emailError = validateText(form.email, { label: t('customers.email') || 'Email', limit: INPUT_LIMITS.email });
-    if (emailError) errors.push(emailError);
-    const addressError = validateText(form.address, { label: t('customers.address') || 'Address', limit: INPUT_LIMITS.customerAddress });
-    if (addressError) errors.push(addressError);
+    // Optional, so only checked for length when something was actually typed.
+    const shopError = validateText(form.shopName, { label: t('customers.shopName') || 'Shop Name', limit: INPUT_LIMITS.customerName });
+    if (shopError) errors.push(shopError);
 
-    // Optional: a walk-in buying a small item routinely will not give a number,
-    // and the shopkeeper still has to bill them. Everything below only applies
-    // once one has actually been entered — an optional field still has to be a
-    // valid number when it is filled in.
+    /**
+     * Optional, like it was before.
+     *
+     * A wholesaler adding a retailer mid-transaction may not have the number to
+     * hand, and refusing to save the retailer over it would stop the order.
+     * Everything below applies only once a number has actually been entered —
+     * an optional field still has to be a valid number when it is filled in.
+     */
     const trimmedPhone = form.phone.trim();
     if (!trimmedPhone) {
       // Nothing to validate, and nothing to check for duplicates against. The
-      // duplicate-name warning below is what stands in for the phone check.
+      // duplicate shop-name warning below is what stands in for the phone check.
     } else if (trimmedPhone.length !== 10) {
       errors.push(t('customers.validation.phoneLengthError') || 'Please enter a valid 10-digit phone number');
       fields.phone = true;
@@ -153,13 +155,18 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
       return;
     }
 
-    // Without a phone number there is nothing left to detect a duplicate with,
-    // so a matching name is all there is. Advisory, never a block: two
-    // customers really can be called Ramesh Patel, and the shopkeeper is the
-    // one who knows whether this is the same person.
+    /**
+     * Without a number there is nothing stronger than the shop name to detect a
+     * duplicate with, so a matching one is all there is.
+     *
+     * Advisory, never a block: two retailers really can both be "Krishna
+     * Jewellers", and the shopkeeper is the one who knows whether this is the
+     * same shop. The per-shop customer code is what tells them apart after.
+     */
+    const displayName = retailerDisplayName(form.shopName, form.ownerName);
     if (!trimmedPhone && !confirmedDuplicateName) {
       const clash = customers.find(
-        (c) => c.name.trim().toLowerCase() === form.name.trim().toLowerCase(),
+        (c) => c.name.trim().toLowerCase() === displayName.toLowerCase(),
       );
       if (clash) {
         setDuplicateNameMatch(clash.name.trim());
@@ -173,33 +180,31 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
   /** The save itself, split out so the duplicate-name prompt can re-enter it. */
   const saveCustomer = (trimmedPhone: string) => {
     dispatch(addCustomer({
-      name: form.name,
-      // Omitted rather than sent as "" — the backend stores an absent phone and
-      // an empty one differently (see the partial unique index on the model).
+      // Derived, never typed — see retailerDisplayName.
+      name: retailerDisplayName(form.shopName, form.ownerName),
+      ownerName: form.ownerName.trim(),
+      // Omitted rather than sent as "" so an unnamed shop stays absent on the
+      // record instead of being stored as an empty string.
+      ...(form.shopName.trim() ? { shopName: form.shopName.trim() } : {}),
+      // Same, and here it matters more than tidiness: the backend's unique
+      // index is partial on `phone: {$type: "string"}`, so an empty string is a
+      // VALUE — store it and the second phoneless retailer collides with the
+      // first. See the index at the bottom of customer.model.ts.
       ...(trimmedPhone ? { phone: trimmedPhone } : {}),
-      email: form.email,
-      address: form.address,
-      ...(form.idProofType ? { idProofType: form.idProofType } : {}),
-      ...(form.idProofNumber.trim() ? { idProofNumber: form.idProofNumber.trim() } : {}),
     })).unwrap()
       .then((updatedCustomers) => {
         const newest = updatedCustomers[0];
-        setNewCustomerId(newest.id);
-        // Not awaited into the failure path: the customer is saved, and a photo
-        // that fails to upload must not read as "the customer was not added".
-        if (pendingPhoto && newest?.id) {
-          dispatch(uploadCustomerPhoto({ customerId: newest.id, photo: pendingPhoto }));
-        }
-        setPendingPhoto(null);
-        setForm({ name: "", phone: "", email: "", address: "", idProofType: "", idProofNumber: "" });
-        setShowIdProof(false);
+        setForm({ ownerName: "", shopName: "", phone: "" });
         setFieldErrors({});
         setValidationErrors([]);
         setDuplicateNameMatch(null);
         setConfirmedDuplicateName(false);
         toast.success('Retailer added');
         onClose();
-        setShowOrderModal(true);
+        // Straight into the order with the new retailer already chosen — the
+        // step that used to ask "what kind of order?" is gone, since the
+        // payment section answers that now.
+        if (newest?.id) navigation.navigate('NewOrder', { customerId: newest.id });
       })
       .catch((err) => {
         const apiErrors = parseApiErrorList(err);
@@ -207,25 +212,14 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
       });
   };
 
-  const handleCloseAll = () => {
-    setShowOrderModal(false);
-  };
-
   return (
     <>
-      {/* Stood down while the order-type modal is up. iOS presents each RN Modal
-          on the root view controller and presents only one at a time, so a
-          sibling modal raised while this one is open never appears. The contact
-          picker no longer needs this guard: it is a step inside this modal now,
-          which is what stopped it being a second modal in the first place.
-
-          Standing down is only right for the order-type modal, because that is
-          a hand-off: this form is finished and handleCloseAll closes it. The
-          validation, duplicate-name and impersonation modals interrupt a form
-          the shopkeeper is still filling in, so they are nested inside this
-          Modal instead - see the bottom of it. */}
+      {/* The validation, duplicate-name and impersonation modals interrupt a
+          form still being filled in, so they are nested inside this Modal
+          rather than raised as siblings — iOS presents one modal at a time,
+          and a sibling raised over this one never appears. */}
       <Modal
-        visible={isOpen && !showOrderModal}
+        visible={isOpen}
         transparent
         animationType="fade"
         onRequestClose={onClose}
@@ -252,15 +246,15 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
             onPress={(e) => e.stopPropagation()}
           >
 
-            {/* Header. The back arrow only exists on the form, and returns to
-                the contact list rather than closing — someone who picked the
-                wrong Prakash should not have to start over. */}
+            {/* The back arrow exists only over the contact list, and returns to
+                the form rather than closing — someone who opened the picker by
+                mistake should not lose what they have already typed. */}
             <HStack justifyContent="center" alignItems="center" mb="$4">
-              {step === 'form' && !LAYOUT.isWeb && (
+              {pickingContact && (
                 <Pressable
                   position="absolute"
                   left={0}
-                  onPress={() => setStep('contacts')}
+                  onPress={() => setPickingContact(false)}
                   hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                   accessibilityLabel={t('common.back') || 'Back'}
                 >
@@ -268,7 +262,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
                 </Pressable>
               )}
               <Text fontSize={20} fontWeight="$bold">
-                {step === 'contacts' ? t('customers.pickFromContacts') : t('customers.addNew')}
+                {pickingContact ? t('customers.pickFromContacts') : t('customers.addNew')}
               </Text>
 
               <Pressable
@@ -280,63 +274,82 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
               </Pressable>
             </HStack>
 
-            {step === 'contacts' && !LAYOUT.isWeb && (
+            {/* The picker fills the person and the number — the two fields a
+                phone contact actually holds. The shop name is left alone: it is
+                not in a contact, and clobbering a typed one would be worse than
+                filling nothing. */}
+            {pickingContact && !LAYOUT.isWeb && (
               <ContactsStep
                 onPickContact={picked => {
                   setForm(f => ({
                     ...f,
-                    name: picked.name ? clampToLimit(picked.name, INPUT_LIMITS.customerName) : f.name,
+                    ownerName: picked.name ? clampToLimit(picked.name, INPUT_LIMITS.customerName) : f.ownerName,
                     phone: picked.phone ? clampToLimit(picked.phone, INPUT_LIMITS.phone) : f.phone,
                   }));
-                  setFieldErrors(e => ({ ...e, name: undefined, phone: undefined }));
-                  setStep('form');
+                  setFieldErrors(e => ({ ...e, ownerName: undefined, phone: undefined }));
+                  setPickingContact(false);
                 }}
-                onAddManually={() => setStep('form')}
+                onAddManually={() => setPickingContact(false)}
               />
             )}
 
-            {(step === 'form' || LAYOUT.isWeb) && (
-            <>
-
-            {/* Optional portrait. Above the fields because it is the one thing
-                here that identifies the person at a glance. */}
-            <HStack mb="$4">
-              <CustomerPhotoPicker
-                value={pendingPhoto}
-                name={form.name}
-                onPick={setPendingPhoto}
-                onRemove={() => setPendingPhoto(null)}
-              />
-            </HStack>
-
-            {/* Form */}
+            {/* Two fields, both about the shop. Everything else this form used
+                to ask — address, email, ID proof, portrait — belonged to a
+                retail customer, not to a retailer a wholesaler bills. */}
             <VStack space="md">
 
-              {/* Name */}
+              {/* Owner name — the required one, and so the first one. */}
               <VStack space="xs">
-                <Text fontWeight="$semibold" color={fieldErrors.name ? "$red500" : "$coolGray800"}>{t("customers.name")}</Text>
+                <Text fontWeight="$semibold" color={fieldErrors.ownerName ? "$red500" : "$coolGray800"}>
+                  {t("customers.ownerName") || "Owner Name"}
+                </Text>
                 <Input
-                  borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.name ? '#EF4444' : '#c5c5c5' }}
+                  borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.ownerName ? '#EF4444' : '#c5c5c5' }}
                 >
                   <InputField
-                    placeholder={t("customers.placeholders.name")}
-                    value={form.name}
-                    onChangeText={(text) => { setForm({ ...form, name: text }); setFieldErrors(e => ({ ...e, name: undefined })); }}
+                    placeholder={t("customers.placeholders.ownerName") || "e.g. Ramesh Patel"}
+                    value={form.ownerName}
+                    onChangeText={(text) => { setForm({ ...form, ownerName: text }); setFieldErrors(e => ({ ...e, ownerName: undefined })); }}
                     // Title-cased once the field is done rather than on every
                     // keystroke, which re-cases mid-word and makes a deliberate
                     // lower-case letter impossible to keep.
-                    onBlur={() => setForm(f => ({ ...f, name: capitalizeWords(f.name) }))}
+                    onBlur={() => setForm(f => ({ ...f, ownerName: capitalizeWords(f.ownerName) }))}
                     maxLength={INPUT_LIMITS.customerName}
-                    returnKeyType="done"
-                    onSubmitEditing={Keyboard.dismiss}
+                    returnKeyType="next"
                   />
                 </Input>
-                <CharCounter value={form.name} limit={INPUT_LIMITS.customerName} />
+                <CharCounter value={form.ownerName} limit={INPUT_LIMITS.customerName} />
               </VStack>
 
-              {/* Phone */}
+              {/* Shop name. Optional — plenty of retailers trade under the
+                  owner's own name, and there is nothing else to record. When
+                  it is given it becomes the name on the bill; when it is not,
+                  the owner's name is. See retailerDisplayName. */}
               <VStack space="xs">
-                <Text fontWeight="$semibold" color={fieldErrors.phone ? "$red500" : "$coolGray800"}> {t("customers.phoneOptional") || t("customers.phone")}</Text>
+                <Text fontWeight="$semibold" color="$coolGray800">
+                  {t("customers.shopName") || "Shop Name"}
+                </Text>
+                <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
+                  <InputField
+                    placeholder={t("customers.placeholders.shopName") || "e.g. Krishna Jewellers"}
+                    value={form.shopName}
+                    onChangeText={(text) => setForm({ ...form, shopName: text })}
+                    onBlur={() => setForm(f => ({ ...f, shopName: capitalizeWords(f.shopName) }))}
+                    maxLength={INPUT_LIMITS.customerName}
+                    returnKeyType="next"
+                  />
+                </Input>
+                <CharCounter value={form.shopName} limit={INPUT_LIMITS.customerName} />
+              </VStack>
+
+              {/* Phone. Optional — a wholesaler adding a retailer mid-order may
+                  not have the number to hand, and blocking the save over it
+                  would stop the transaction. The contact button fills this and
+                  the owner name together, which is what a phone contact holds. */}
+              <VStack space="xs">
+                <Text fontWeight="$semibold" color={fieldErrors.phone ? "$red500" : "$coolGray800"}>
+                  {t("customers.phoneOptional") || "Phone (optional)"}
+                </Text>
                 <Input borderWidth={1} rounded="$xl" style={{ borderColor: fieldErrors.phone ? '#EF4444' : '#c5c5c5' }}>
                   <InputField
                     placeholder={t("customers.placeholders.phone")}
@@ -347,93 +360,20 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
                     returnKeyType="done"
                     onSubmitEditing={Keyboard.dismiss}
                   />
+                  {/* Web has no phone book to read, so the button is native-only
+                      — exactly as it was before. */}
                   {!LAYOUT.isWeb && (
-                    <Pressable onPress={() => setStep('contacts')} pr="$3" pl="$2" alignItems="center" justifyContent="center">
+                    <Pressable
+                      onPress={() => setPickingContact(true)}
+                      pr="$3" pl="$2"
+                      alignItems="center" justifyContent="center"
+                      accessibilityLabel={t('customers.pickFromContacts') || 'Pick from contacts'}
+                    >
                       <Icon as={Contact} size="sm" color="#6366F1" />
                     </Pressable>
                   )}
                 </Input>
               </VStack>
-
-              {/* Address */}
-              <VStack space="xs">
-                <Text fontWeight="$semibold">{t("customers.address")}</Text>
-                <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                  <InputField
-                    placeholder={t("customers.placeholders.address")}
-                    value={form.address}
-                    onChangeText={(text) => setForm({ ...form, address: text })}
-                    onBlur={() => setForm(f => ({ ...f, address: capitalizeWords(f.address) }))}
-                    maxLength={INPUT_LIMITS.customerAddress}
-                    returnKeyType="done"
-                    onSubmitEditing={Keyboard.dismiss}
-                  />
-                </Input>
-                <CharCounter value={form.address} limit={INPUT_LIMITS.customerAddress} />
-              </VStack>
-
-              {/* Rarely filled in at the counter: email, plus the ID proof that
-                  only matters later if this customer ever brings in old gold.
-                  Collapsed so the common case stays name, phone and address. */}
-              <Pressable onPress={() => setShowIdProof(v => !v)}>
-                <HStack justifyContent="space-between" alignItems="center" py="$1">
-                  <Text fontSize={13} fontWeight="$medium" color="$coolGray600">
-                    {t("customers.moreDetails") || "More details (optional)"}
-                  </Text>
-                  <Icon as={showIdProof ? ChevronUp : ChevronDown} size="sm" color="$coolGray500" />
-                </HStack>
-              </Pressable>
-
-              {showIdProof && (
-                <VStack space="sm">
-                  <VStack space="xs">
-                    <Text fontSize={12} color="$coolGray600">{t("customers.email")}</Text>
-                    <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                      <InputField
-                        placeholder={t("customers.placeholders.email")}
-                        value={form.email}
-                        onChangeText={(text) => setForm({ ...form, email: text })}
-                        maxLength={INPUT_LIMITS.email}
-                        returnKeyType="done"
-                        onSubmitEditing={Keyboard.dismiss}
-                        keyboardType="email-address"
-                      />
-                    </Input>
-                    <CharCounter value={form.email} limit={INPUT_LIMITS.email} />
-                  </VStack>
-                  <VStack space="xs">
-                    <Text fontSize={12} color="$coolGray600">
-                      {t("customers.idProof.type") || "ID Proof Type"}
-                    </Text>
-                    <SelectField
-                      value={form.idProofType}
-                      items={ID_PROOF_TYPES.map(v => ({
-                        label: t(`declaration.idProof.types.${v}`) || v,
-                        value: v,
-                      }))}
-                      placeholder={t("customers.idProof.selectType") || "Select..."}
-                      title={t("customers.idProof.title") || "ID Proof"}
-                      onValueChange={v => setForm(f => ({ ...f, idProofType: v as IdProofType }))}
-                    />
-                  </VStack>
-                  <VStack space="xs">
-                    <Text fontSize={12} color="$coolGray600">
-                      {t("customers.idProof.number") || "ID Proof Number"}
-                    </Text>
-                    <Input borderWidth={1} rounded="$xl" style={{ borderColor: '#c5c5c5' }}>
-                      <InputField
-                        placeholder={t("customers.idProof.numberPlaceholder") || "e.g. ABCDE1234F"}
-                        value={form.idProofNumber}
-                        maxLength={INPUT_LIMITS.idProofNumber}
-                        autoCapitalize="characters"
-                        onChangeText={(text) => setForm(f => ({ ...f, idProofNumber: text }))}
-                        returnKeyType="done"
-                        onSubmitEditing={Keyboard.dismiss}
-                      />
-                    </Input>
-                  </VStack>
-                </VStack>
-              )}
 
             </VStack>
 
@@ -471,8 +411,6 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
                 <Text fontWeight="$medium">{t("customers.cancel")}</Text>
               </Box>
             </Pressable>
-            </>
-            )}
 
           </Pressable>
         </Pressable>
@@ -491,10 +429,10 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
 
         <ConfirmModal
           visible={Boolean(duplicateNameMatch)}
-          title={t('customers.validation.duplicateNameTitle') || 'Retailer with this name exists'}
+          title={t('customers.validation.duplicateShopTitle') || 'Retailer with this shop name exists'}
           description={
-            (t('customers.validation.duplicateNameMessage') ||
-              'You already have a retailer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?'
+            (t('customers.validation.duplicateShopMessage') ||
+              'You already have a retailer called {name}. Add this one anyway?'
             ).replace('{name}', duplicateNameMatch || '')
           }
           confirmLabel={t('customers.validation.duplicateNameConfirm') || 'Add anyway'}
@@ -503,7 +441,9 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
           onConfirm={() => {
             setDuplicateNameMatch(null);
             setConfirmedDuplicateName(true);
-            saveCustomer(form.phone.trim());
+            // This prompt only appears when the phone is blank, so there is
+            // never a number to carry through here.
+            saveCustomer('');
           }}
         />
 
@@ -518,12 +458,6 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
             viewport sits under this modal's own native layer. */}
         <ToastViewport />
       </Modal>
-
-      <OrderTypeModal
-        isOpen={showOrderModal}
-        onClose={handleCloseAll}
-        preSelectedCustomerId={newCustomerId}
-      />
     </>
   );
 };

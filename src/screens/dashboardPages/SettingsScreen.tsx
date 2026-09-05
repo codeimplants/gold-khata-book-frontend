@@ -32,6 +32,8 @@ import {
   FileSignature,
   Star,
   PlayCircle,
+  Coins,
+  TrendingUp,
 } from "lucide-react-native";
 import { AppReview } from "@codeimplants/app-review";
 
@@ -41,7 +43,11 @@ import { useTranslation } from "../../hooks/useTranslation";
 import { useFeatureFlag } from "../../hooks/useFeatureFlag";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logout } from "../../store/auth/authSlice";
-import { fetchShopDetails } from "../../store/data/dataSlice";
+import { fetchShopDetails, updateShopPreferences } from "../../store/data/dataSlice";
+import SetRateModal from "../../components/common/SetRateModal";
+import { useShopRate } from "../../hooks/useShopRate";
+import { formatCurrencyValue } from "../../utils/formatter";
+import { toast } from "../../components/common/Toast";
 import { setBiometricLockEnabled } from "../../store/security/securitySlice";
 import { useBiometric } from "../../hooks/useBiometric";
 import { BannerHeightContext } from "../../navigation/MainTabs";
@@ -139,6 +145,18 @@ const SettingsScreen = () => {
   const { t } = useTranslation();
   const dispatch = useAppDispatch();
   const tutorialsEnabled = useFeatureFlag('tutorials');
+  /**
+   * The flag decides whether the SETTING exists; the setting decides whether
+   * the melt controls do. A shop that has not switched it on sees this row and
+   * nothing else — no Take Old Gold on the FAB, no Melt field on an order.
+   */
+  const meltFlagEnabled = useFeatureFlag('oldGoldMelt');
+  const [isTogglingMelt, setIsTogglingMelt] = React.useState(false);
+
+  /** Today's rate, so this row can say which one is actually in force rather
+   *  than just offering to change something unnamed. */
+  const shopRate = useShopRate();
+  const [rateModalOpen, setRateModalOpen] = React.useState(false);
   // Centres and caps content on iPad; no-op on phones.
   const contentStyle = useContentContainerStyle();
   const { isGuest, phone } = useAppSelector((s) => s.auth);
@@ -303,6 +321,20 @@ const SettingsScreen = () => {
         {/* Business */}
         <SectionTitle first>{t("settings.business") || "BUSINESS"}</SectionTitle>
         <Box bg="$white" rounded="$2xl" px="$5" style={styles.card}>
+          {/* First in Business: it is the number every bill raised today is
+              struck at, and the subtitle says which rate is in force so the
+              answer is readable without opening anything. */}
+          <SettingRow
+            title={t("rate.title") || "Today's Rate"}
+            subtitle={
+              shopRate.isOverride
+                ? `${t("rate.usingYours") || "Your rate for today"} · ${formatCurrencyValue(shopRate.rate)} / ${t("common.gramShort") || "gm"} (${t("rate.fineness") || "99.50"})`
+                : (t("rate.usingLiveShort") || "Using the live rate")
+            }
+            icon={TrendingUp}
+            onPress={() => setRateModalOpen(true)}
+          />
+          <Box h={1} bg="$coolGray100" />
           <SettingRow
             title={
               hasShopDetails
@@ -324,6 +356,42 @@ const SettingsScreen = () => {
             icon={FileText}
             onPress={() => nav.navigate("InvoiceBillSettings")}
           />
+          {/* Does this wholesaler take old ornaments for melt at all.
+              Off for a shop that has never answered, because a wholesaler who
+              does not do melt should never meet a Melt field on an order.
+              Guests are excluded: melt credit is a per-retailer balance that
+              only exists on the server, and a guest install has neither a shop
+              record to hold this nor an account to hold a balance. */}
+          {meltFlagEnabled && !isGuest && (
+            <>
+              <Box h={1} bg="$coolGray100" />
+              <SecurityToggleRow
+                title={t("settings.menu.melt") || "Old Gold / Melt"}
+                subtitle={
+                  t("settings.menu.meltSub") ||
+                  "Take old ornaments in and set them against a retailer's bills"
+                }
+                icon={Coins}
+                value={shopDetails?.oldGoldMelt === true}
+                disabled={isTogglingMelt || !hasShopDetails}
+                onValueChange={async (next: boolean) => {
+                  setIsTogglingMelt(true);
+                  const action = await dispatch(
+                    updateShopPreferences({ oldGoldMelt: next }) as any,
+                  );
+                  setIsTogglingMelt(false);
+                  // Reported rather than swallowed: this changes what the order
+                  // screen offers, so a silent failure would leave the shop
+                  // believing melt is on until the next launch says otherwise.
+                  if (!updateShopPreferences.fulfilled.match(action)) {
+                    toast.error(
+                      String(action.payload || t("settings.menu.meltFailed") || "Could not save the setting"),
+                    );
+                  }
+                }}
+              />
+            </>
+          )}
           <Box h={1} bg="$coolGray100" />
           <SettingRow
             title={t("settings.menu.items") || "Items / Products"}
@@ -365,16 +433,6 @@ const SettingsScreen = () => {
             subtitle={t("settings.menu.printSub")}
             icon={Printer}
             onPress={() => nav.navigate("PrintSettings")}
-          />
-          <Box h={1} bg="$coolGray100" />
-          <SettingRow
-            title={t("settings.menu.downloadForms") || "Download Forms"}
-            subtitle={
-              t("settings.menu.downloadFormsSub") ||
-              "Blank forms to print, fill by hand or share"
-            }
-            icon={FileSignature}
-            onPress={() => nav.navigate("DownloadForms")}
           />
           <Box h={1} bg="$coolGray100" />
           <SettingRow
@@ -530,6 +588,13 @@ const SettingsScreen = () => {
           )}
         </Box>
       </ScrollView>
+
+      <SetRateModal
+        isOpen={rateModalOpen}
+        onClose={() => setRateModalOpen(false)}
+        liveRate={shopRate.liveRate}
+        currentOverride={shopRate.isOverride ? shopRate.rate : undefined}
+      />
 
       <LogoutModal
         visible={showLogoutModal}

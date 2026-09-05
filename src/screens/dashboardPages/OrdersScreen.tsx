@@ -44,10 +44,9 @@ import {
   permanentDeleteAdvanceOrder,
   deleteInvoice,
   loadDeletedOrderIds,
-  fetchPurchaseOldGold,
 } from '../../store/data/dataSlice';
-import OrderTypeModal from '../../components/OrderTypeModal';
 import ConfirmModal from '../../components/ConfirmModal';
+import RemindButton from '../../components/customers/RemindButton';
 import { calcItemTotal, calculateItemMakingCharge } from '../../utils/calculations';
 import { formatNumber, formatOrderDateTime } from '../../utils/formatter';
 import GradientSurface from '../../components/common/GradientSurface';
@@ -308,6 +307,12 @@ const OrderItemCard = memo(({ order, customerName, shopDetails, hasDeclaration, 
           </VStack>
 
           <HStack alignItems="center" space="sm">
+            {/* Pending only. A settled bill has nothing to chase, and the
+                action sends the RETAILER's whole statement rather than this one
+                line — an order row is where the question gets asked, not what
+                the message is about. See useRetailerReminder. */}
+            {isPending && <RemindButton customerId={order.customerId} compact />}
+
             {order.status === 'completed' || order.type === 'full' ? (
               <Text color="#059669" fontWeight="$black" fontSize={18}>
                 ₹{amountStr}
@@ -487,7 +492,6 @@ const OrdersScreen = () => {
     [purchaseOldGold],
   );
 
-  const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
   const [sortBy, setSortBy] = useState('newest');
@@ -511,7 +515,6 @@ const OrdersScreen = () => {
     // Feeds the declaration marker on exchange rows. Cheap: the thunk has a
     // stale-time condition, so this is a no-op when the dashboard already
     // fetched - but Orders is reachable directly and cannot assume it did.
-    dispatch(fetchPurchaseOldGold());
     dispatch(fetchTrashedOrders());
     dispatch(purgeExpiredDeleted());
   }, [dispatch]);
@@ -605,7 +608,17 @@ const OrdersScreen = () => {
     return list;
   }, [activeOrders, q, activeFilter, sortBy, getCustomerName, shopDetails]);
 
-  const handleNewOrder = useCallback(() => setOpen(true), []);
+  /**
+   * Straight to the order screen, no chooser in between.
+   *
+   * This used to open the Full/Advance popup, and when that was removed the
+   * `setOpen(true)` it called was left behind pointing at state nothing read —
+   * so both New Order buttons on this tab silently did nothing, while the
+   * dashboard FAB (which navigates directly) kept working. NewOrder infers
+   * full vs part payment from what is actually paid, so there is nothing left
+   * to ask before opening it.
+   */
+  const handleNewOrder = useCallback(() => navigation.navigate('NewOrder'), [navigation]);
 
   const handleSoftDelete = useCallback((id: string, type: 'full' | 'advance') => {
     setSoftDeleteTarget({ id, type });
@@ -881,11 +894,6 @@ const OrdersScreen = () => {
         maxToRenderPerBatch={10}
         windowSize={5}
         removeClippedSubviews={true}
-      />
-
-      <OrderTypeModal
-        isOpen={open}
-        onClose={() => setOpen(false)}
       />
 
       <SortModal

@@ -30,7 +30,6 @@ import GstReportScreen from '../screens/dashboardPages/GstReportScreen';
 import PurchasesScreen from '../screens/drawer/PurchasesScreen';
 import CustomersScreen from '../screens/dashboardPages/CustomersScreen';
 import AdvanceOrderSuccessScreen from '../screens/orders/AdvanceOrderSuccessScreen';
-import OldGoldPurchaseScreen from '../screens/oldGold/OldGoldPurchaseScreen';
 
 import AddShopDetailsScreen from '../screens/drawer/AddShopDetailsScreen';
 import ItemsProductsScreen from '../screens/drawer/ItemsProductsScreen';
@@ -71,8 +70,6 @@ const AppNavigator = () => {
 
       <Stack.Screen name="AdvanceOrder" component={AdvanceOrderScreen} />
       <Stack.Screen name="AdvanceOrderSuccess" component={AdvanceOrderSuccessScreen} />
-
-      <Stack.Screen name="OldGoldPurchase" component={OldGoldPurchaseScreen} />
 
       <Stack.Screen name="BillHistory" component={BillHistoryScreen} />
       <Stack.Screen name="SalesReport" component={SalesReportScreen} />

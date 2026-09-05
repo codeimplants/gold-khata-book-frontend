@@ -21,8 +21,7 @@ import {
   Check,
   CheckCircle,
   Clock,
-  Scale,
-  ShoppingBag,
+  Coins,
   Trash2,
 } from "lucide-react-native";
 import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
@@ -35,7 +34,6 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   fetchCustomers,
   fetchOrders,
-  fetchPurchaseOldGold,
   deleteCustomer,
   clearUserData,
 } from "../../store/data/dataSlice";
@@ -53,7 +51,8 @@ import WatchTutorialLink from "../../components/common/WatchTutorialLink";
 import { HELP_TOPICS } from "../../tutorials/catalog";
 import { INPUT_LIMITS } from "../../constants/inputLimits";
 import { BannerHeightContext } from "../../navigation/MainTabs";
-import { isStandalonePurchase } from '../../utils/oldGoldPurchases';
+import { orderOutstanding, formatGrams } from '../../utils/dues';
+import RemindButton from '../../components/customers/RemindButton';
 
 /* ---------------- SUB-COMPONENTS ---------------- */
 const Header = React.memo(({ t, count, onAdd }: any) => {
@@ -113,11 +112,9 @@ const Header = React.memo(({ t, count, onAdd }: any) => {
 /** Accent for this tab — matches the Customers header gradient, where Orders uses purple. */
 const ACCENT = "#F97316";
 
-// `sold` counts standalone old-gold purchases - what "Sold to us" means.
-// `declarations` counts every declaration including exchanges, and exists only
-// for the delete warning, which is about what gets orphaned rather than about
-// what the customer sold us.
-const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, sold: 0, declarations: 0, total: 0, lastDate: 0 };
+// `goldDue`/`cashDue` are this retailer's two outstanding positions summed
+// across their orders — the pair a wholesaler actually needs from a list.
+const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, total: 0, lastDate: 0 };
 
 /** One stat column: label, its number centred under it, and an optional
     breakdown of that number below. Anything passed as children belongs to this
@@ -140,6 +137,7 @@ const MiniStat = ({ icon, label, value, color, flex = 1, children }: any) => (
 const CustomerCard = React.memo(({ customer, stats, onPress, onDelete, t }: any) => {
   const gid = useMemo(() => `cgrad_${customer.id || Math.random()}`, [customer.id]);
   const s = stats || EMPTY_STATS;
+  const gramShort = t('common.gramShort') || 'gm';
 
   return (
     <Pressable onPress={onPress}>
@@ -203,6 +201,13 @@ const CustomerCard = React.memo(({ customer, stats, onPress, onDelete, t }: any)
           </HStack>
 
           <HStack alignItems="center" space="sm">
+            {/* Only for a retailer with something on their account. A Remind
+                button on a settled retailer sends "Nothing due", which is a
+                message nobody wants to receive and nobody meant to send. */}
+            {(s.goldDue > 0 || s.cashDue > 0) && (
+              <RemindButton customerId={customer.id} compact />
+            )}
+
             <Icon as={ChevronRight} color="$coolGray400" size="sm" />
             {/* Matches the Orders list: stopPropagation so the tap deletes
                 rather than opening the customer behind it. */}
@@ -221,52 +226,28 @@ const CustomerCard = React.memo(({ customer, stats, onPress, onDelete, t }: any)
             bought from me", and hiding it would make the cards uneven. */}
         <Box borderTopWidth={1} borderTopColor="$coolGray100" mt="$3" pt="$3">
           <HStack alignItems="flex-start">
-            {/* Pending and Complete are the two halves of Orders, not stats of
-                their own — an advance order still owing money, and one settled
-                in full. They live inside the Orders column so they are read as
-                its breakdown; on a full-width line under the row, "Complete"
-                sat beneath "Sold to us" and read as that column's number.
-                Stacked rather than inline because one column is too narrow for
-                both on a line. Matches the customer details screen. */}
+            {/* Only what this retailer owes, which is the one thing a
+                wholesaler scans this list for.
+
+                The order count with its Pending/Complete breakdown used to
+                lead here and is gone: it answered "how many transactions",
+                which is a retail question, and it was redundant besides — an
+                advance order carrying dues IS the pending one, so the two
+                columns below already say it. Dashes rather than zeroes when an
+                account is clear, so the eye lands only on the rows that owe. */}
             <MiniStat
-              icon={ShoppingBag}
-              label={t("customers.stats.orders") || "Orders"}
-              value={s.orders}
-              color="#6366F1"
-              flex={1.25}
-            >
-              {s.orders > 0 && (
-                <VStack space="xs" alignItems="center">
-                  <HStack alignItems="center" space="xs">
-                    <Icon as={Clock} size="xs" color={s.pending > 0 ? "#F59E0B" : "#9CA3AF"} />
-                    <Text fontSize={11} color="$coolGray500">
-                      {s.pending} {t("customers.stats.pending") || "Pending"}
-                    </Text>
-                  </HStack>
-                  <HStack alignItems="center" space="xs">
-                    <Icon as={CheckCircle} size="xs" color={s.completed > 0 ? "#10B981" : "#9CA3AF"} />
-                    <Text fontSize={11} color="$coolGray500">
-                      {s.completed} {t("customers.stats.completed") || "Complete"}
-                    </Text>
-                  </HStack>
-                </VStack>
-              )}
-            </MiniStat>
-            <MiniStat
-              icon={Scale}
-              label={t("customers.stats.soldToUs") || "Sold to us"}
-              value={s.sold}
-              color="#10B981"
+              icon={Coins}
+              label={t("dashboard.dues.gold") || "Gold"}
+              value={s.goldDue > 0 ? formatGrams(s.goldDue, gramShort) : "—"}
+              color="#B45309"
+              flex={1}
             />
-            {/* Money stays flush with the card edge rather than centred — the
-                amount is the widest thing in the row and a ragged right edge
-                reads worse than the mismatch with the two columns beside it. */}
             <VStack flex={1.3} space="xs" alignItems="flex-end">
               <Text fontSize={11} color="$coolGray500">
-                {t("customers.stats.totalPurchase") || "Total purchase"}
+                {t("dashboard.dues.cash") || "Cash"}
               </Text>
-              <Text fontSize={15} fontWeight="$bold" color={ACCENT} numberOfLines={1}>
-                {formatCurrencyValue(s.total)}
+              <Text fontSize={15} fontWeight="$bold" color={s.cashDue > 0 ? "#4338CA" : "$coolGray400"} numberOfLines={1}>
+                {s.cashDue > 0 ? formatCurrencyValue(s.cashDue) : "—"}
               </Text>
             </VStack>
           </HStack>
@@ -334,7 +315,7 @@ const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
   );
 };
 
-type FilterType = 'all' | 'pending' | 'completed' | 'sellers' | 'noOrders';
+type FilterType = 'all' | 'pending' | 'completed' | 'owing' | 'noOrders';
 
 export default function CustomersScreen() {
   const navigation = useNavigation<any>();
@@ -343,7 +324,7 @@ export default function CustomersScreen() {
   const dispatch = useAppDispatch();
   // Centres and caps content on iPad; no-op on phones.
   const contentStyle = useContentContainerStyle();
-  const { customers, orders, purchaseOldGold } = useAppSelector((state) => state.data);
+  const { customers, orders } = useAppSelector((state) => state.data);
   const { impersonateUserId, impersonatePhone } = useAppSelector((state) => state.auth);
 
   const [open, setOpen] = useState(false);
@@ -363,7 +344,6 @@ export default function CustomersScreen() {
     // needs orders and declarations even though it never lists them. Both
     // thunks are cached — this is a no-op when the dashboard already loaded them.
     dispatch(fetchOrders());
-    dispatch(fetchPurchaseOldGold());
   }, [dispatch]);
 
   // Arrived from the dashboard's "Sold to Us" tile. The param is consumed
@@ -397,7 +377,6 @@ export default function CustomersScreen() {
     await Promise.all([
       dispatch(fetchCustomers({ force: true })),
       dispatch(fetchOrders({ force: true })),
-      dispatch(fetchPurchaseOldGold({ force: true })),
     ]);
     setRefreshing(false);
   }, [dispatch]);
@@ -411,11 +390,11 @@ export default function CustomersScreen() {
    * a customer's total, exactly as it does on the Orders tab.
    */
   const statsByCustomer = useMemo(() => {
-    const map = new Map<string, { orders: number; pending: number; completed: number; sold: number; declarations: number; total: number; lastDate: number }>();
+    const map = new Map<string, { orders: number; pending: number; completed: number; goldDue: number; cashDue: number; total: number; lastDate: number }>();
     const entry = (id: string) => {
       let e = map.get(id);
       if (!e) {
-        e = { orders: 0, pending: 0, completed: 0, sold: 0, declarations: 0, total: 0, lastDate: 0 };
+        e = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, total: 0, lastDate: 0 };
         map.set(id, e);
       }
       return e;
@@ -431,26 +410,19 @@ export default function CustomersScreen() {
       if (o.status === 'pending') e.pending += 1;
       else if (o.status === 'completed') e.completed += 1;
       e.total += Number(o.amount) || 0;
+
+      // Read through the same helper the dashboard and the detail screen use,
+      // so a retailer's dues read identically wherever they appear.
+      const due = orderOutstanding(o);
+      e.goldDue += due.gold;
+      e.cashDue += due.cash;
+
       const ts = o.date ? new Date(o.date).getTime() : 0;
       if (ts > e.lastDate) e.lastDate = ts;
     });
 
-    // Two counts from one pass, because they answer different questions.
-    // `sold` drives the "Sold to us" column and the sellers filter, which mean
-    // "customers we bought old gold from outright" — so exchanges are excluded,
-    // as they belong to their bill. `declarations` counts everything, and feeds
-    // only the delete confirmation: an exchange declaration is orphaned by a
-    // customer delete just the same, and a warning that undercounts what is
-    // about to be stranded is worse than no warning.
-    (purchaseOldGold || []).forEach((d: any) => {
-      if (!d?.customerId) return;
-      const e = entry(d.customerId);
-      e.declarations += 1;
-      if (isStandalonePurchase(d)) e.sold += 1;
-    });
-
     return map;
-  }, [orders, purchaseOldGold]);
+  }, [orders]);
 
   const baseList = useMemo(
     () => (customers || []).filter(c => c && (c.id || c._id) && c.name),
@@ -458,15 +430,15 @@ export default function CustomersScreen() {
   );
 
   const filterCounts = useMemo(() => {
-    let pending = 0, completed = 0, sellers = 0, noOrders = 0;
+    let pending = 0, completed = 0, owing = 0, noOrders = 0;
     baseList.forEach((c: any) => {
       const s = statsByCustomer.get(c.id) || EMPTY_STATS;
       if (s.pending > 0) pending += 1;
       if (s.completed > 0) completed += 1;
       if (s.orders === 0) noOrders += 1;
-      if (s.sold > 0) sellers += 1;
+      if (s.goldDue > 0 || s.cashDue > 0) owing += 1;
     });
-    return { all: baseList.length, pending, completed, sellers, noOrders };
+    return { all: baseList.length, pending, completed, owing, noOrders };
   }, [baseList, statsByCustomer]);
 
   const filteredCustomers = useMemo(() => {
@@ -477,7 +449,7 @@ export default function CustomersScreen() {
         const s = statsByCustomer.get(c.id) || EMPTY_STATS;
         if (activeFilter === 'pending') return s.pending > 0;
         if (activeFilter === 'completed') return s.completed > 0;
-        if (activeFilter === 'sellers') return s.sold > 0;
+        if (activeFilter === 'owing') return s.goldDue > 0 || s.cashDue > 0;
         return s.orders === 0;
       });
     }
@@ -517,7 +489,7 @@ export default function CustomersScreen() {
     { key: 'all', label: t('customers.filters.all') || 'All', count: filterCounts.all },
     { key: 'pending', label: t('customers.filters.pending') || 'Pending', count: filterCounts.pending },
     { key: 'completed', label: t('customers.filters.completed') || 'Complete', count: filterCounts.completed },
-    { key: 'sellers', label: t('customers.filters.sellers') || 'Sold to us', count: filterCounts.sellers },
+    { key: 'owing', label: t('customers.filters.owing') || 'Owing', count: filterCounts.owing },
     { key: 'noOrders', label: t('customers.filters.noOrders') || 'No orders', count: filterCounts.noOrders },
   ]), [t, filterCounts]);
 
@@ -576,7 +548,7 @@ export default function CustomersScreen() {
     ? statsByCustomer.get(pendingDelete.id) || EMPTY_STATS
     : EMPTY_STATS;
   const pendingHasRecords =
-    pendingDeleteStats.orders > 0 || pendingDeleteStats.declarations > 0;
+    pendingDeleteStats.orders > 0;
 
   const keyExtractor = useCallback((item: any, index: number) => item.id || item._id || index.toString(), []);
 
@@ -635,8 +607,8 @@ export default function CustomersScreen() {
                       {item.key === 'pending' && (
                         <Icon as={Clock} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
                       )}
-                      {item.key === 'sellers' && (
-                        <Icon as={Scale} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
+                      {item.key === 'owing' && (
+                        <Icon as={Coins} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
                       )}
                       {item.key === 'completed' && (
                         <Icon as={CheckCircle} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
@@ -742,11 +714,6 @@ export default function CustomersScreen() {
                 {pendingDeleteStats.pending > 0 && (
                   <Text fontSize={13} fontWeight="$bold" color="#B91C1C" textAlign="center">
                     {pendingDeleteStats.pending} {t('customers.delete.records.pending')}
-                  </Text>
-                )}
-                {pendingDeleteStats.declarations > 0 && (
-                  <Text fontSize={13} fontWeight="$bold" color="#B91C1C" textAlign="center">
-                    {pendingDeleteStats.declarations} {t('customers.delete.records.sold')}
                   </Text>
                 )}
               </VStack>

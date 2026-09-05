@@ -11,7 +11,7 @@ import { getFullImageUrl } from '../../utils/imageUtils';
 import { pickPhotos } from '../../utils/photoPicker';
 import PhotoSourceSheet from './PhotoSourceSheet';
 import AddPhotosButton from './AddPhotosButton';
-import OrnamentPhotoViewer from '../oldGold/OrnamentPhotoViewer';
+import PhotoViewer from './PhotoViewer';
 import type { PendingDeclarationPhoto } from '../../types';
 
 export interface SavedPhoto {
@@ -246,7 +246,7 @@ const PhotoField = ({
         onPick={pick}
       />
 
-      <OrnamentPhotoViewer
+      <PhotoViewer
         photos={viewable}
         initialIndex={viewerAt ?? 0}
         isOpen={viewerAt !== null}

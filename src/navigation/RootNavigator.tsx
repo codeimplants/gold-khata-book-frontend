@@ -21,11 +21,13 @@ import SalesReportScreen from '../screens/dashboardPages/SalesReportScreen';
 import GstReportScreen from '../screens/dashboardPages/GstReportScreen';
 import PurchasesScreen from '../screens/drawer/PurchasesScreen';
 import CustomersScreen from '../screens/dashboardPages/CustomersScreen';
+import NewOrderScreen from '../screens/orders/NewOrderScreen';
+import TakeMeltScreen from '../screens/orders/TakeMeltScreen';
+import MeltLotsScreen from '../screens/orders/MeltLotsScreen';
+import MeltLotScreen from '../screens/orders/MeltLotScreen';
 import MetalRatesScreen from '../screens/dashboardPages/MetalRatesScreen';
 import AdvanceOrderScreen from '../screens/dashboardPages/AdvanceOrderScreen';
 import AdvanceOrderSuccessScreen from '../screens/orders/AdvanceOrderSuccessScreen';
-import OldGoldPurchaseScreen from '../screens/oldGold/OldGoldPurchaseScreen';
-import SoldToUsDetailsScreen from '../screens/oldGold/SoldToUsDetailsScreen';
 import SelectCustomerScreen from '../screens/orders/SelectCustomerScreen';
 import CustomerDetailsScreen from '../screens/customers/CustomerDetailsScreen';
 import OrderDetailsScreen from '../screens/orders/OrderDetailsScreen';
@@ -34,8 +36,6 @@ import AddShopDetailsScreen from '../screens/drawer/AddShopDetailsScreen';
 import ItemsProductsScreen from '../screens/drawer/ItemsProductsScreen';
 import GstScreen from '../screens/drawer/GstScreen';
 import PrintSettingsScreen from '../screens/drawer/PrintSettingsScreen';
-import DownloadFormsScreen from '../screens/drawer/DownloadFormsScreen';
-import FormDetailScreen from '../screens/drawer/FormDetailScreen';
 import ThermalPrinterSetupScreen from '../screens/drawer/ThermalPrinterSetupScreen';
 import InvoiceBillSettingsScreen from '../screens/drawer/InvoiceBillSettingsScreen';
 import LanguageScreen from '../screens/drawer/LanguageScreen';
@@ -106,27 +106,19 @@ const RootNavigator = () => {
             name="AdvanceOrderSuccess"
             component={AdvanceOrderSuccessScreen}
           />
-          <Stack.Screen
-            name="OldGoldPurchase"
-            component={OldGoldPurchaseScreen}
-          />
           <Stack.Screen name="BillHistory" component={BillHistoryScreen} />
           <Stack.Screen name="SalesReport" component={SalesReportScreen} />
           <Stack.Screen name="GstReport" component={GstReportScreen} />
           <Stack.Screen name="Customers" component={CustomersScreen} />
+            <Stack.Screen name="NewOrder" component={NewOrderScreen} />
+          <Stack.Screen name="TakeMelt" component={TakeMeltScreen} />
+          <Stack.Screen name="MeltLots" component={MeltLotsScreen} />
+          <Stack.Screen name="MeltLot" component={MeltLotScreen} />
           <Stack.Screen
             name="CustomerDetails"
             component={CustomerDetailsScreen}
           />
           <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
-          <Stack.Screen
-            name="SoldToUsDetails"
-            component={SoldToUsDetailsScreen}
-            // Only the browser tab title (see webDocumentTitle in App.tsx);
-            // headerShown is false, so nothing renders it in the app. Spelled
-            // out because splitting the route name gives "Sold To Us Details".
-            options={{ title: 'Sold to Us Details' }}
-          />
           <Stack.Screen
             name="CompleteAdvanceOrder"
             component={CompleteAdvanceOrderScreen}
@@ -144,14 +136,6 @@ const RootNavigator = () => {
           <Stack.Screen
             name="PrintSettings"
             component={PrintSettingsScreen}
-          />
-          <Stack.Screen
-            name="DownloadForms"
-            component={DownloadFormsScreen}
-          />
-          <Stack.Screen
-            name="FormDetail"
-            component={FormDetailScreen}
           />
           <Stack.Screen
             name="ThermalPrinterSetup"

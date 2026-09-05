@@ -590,6 +590,10 @@ export default {
       items: 'Inventory / Products',
       itemsSub: 'Manage products & stock',
 
+      melt: 'Old Gold / Melt',
+      meltSub: "Take old ornaments in and set them against a retailer's bills",
+      meltFailed: 'Could not save the setting',
+
       history: 'Bill History',
       historySub: 'View past invoices',
 
@@ -684,6 +688,7 @@ export default {
       pending: 'Pending',
       completed: 'Complete',
       sellers: 'Sold to us',
+      owing: 'Owing',
       noOrders: 'No orders',
     },
     sort: {
@@ -748,6 +753,10 @@ export default {
     continueLabel: 'Continue',
 
     name: 'Name *',
+    // The Add Retailer form's two fields. `shopName` labels the record's
+    // `name` — see AddCustomerModal for why the field was not renamed.
+    shopName: 'Shop Name',
+    ownerName: 'Owner Name *',
     phone: 'Phone *',
     phoneOptional: 'Phone (optional)',
     noPhone: 'No phone number',
@@ -756,6 +765,8 @@ export default {
 
     placeholders: {
       name: 'Retailer name',
+      shopName: 'e.g. Krishna Jewellers',
+      ownerName: 'e.g. Ramesh Patel',
       phone: '10-digit mobile number (optional)',
       email: 'Email address (optional)',
       address: 'Address (optional)',
@@ -790,6 +801,7 @@ export default {
       noInvoicesFound: 'No invoices found',
       noAdvanceOrdersFound: 'No advance orders found',
       dueLabel: 'Due',
+      outstanding: 'Outstanding',
       editTitle: 'Edit Retailer',
       saveChanges: 'Save Changes',
       validationErrorTitle: 'Validation Error',
@@ -804,6 +816,10 @@ export default {
       shopPhoneError: "You cannot use your shop's phone number",
       ownPhoneError: 'You cannot use your own registered number',
       phoneExists: 'A retailer with this phone number already exists',
+      ownerNameRequired: 'Owner name is required',
+      duplicateShopTitle: 'A retailer by this name already exists',
+      duplicateShopMessage:
+        'You already have a retailer called {name}. Add this one anyway?',
       duplicateNameTitle: 'Retailer with this name exists',
       duplicateNameMessage:
         'You already have a retailer named {name}. Without a phone number there is no way to tell them apart later. Add anyway?',
@@ -871,6 +887,61 @@ export default {
 
     itemsFallback: 'Item',
 
+    /**
+     * NewOrderScreen — the one order screen.
+     *
+     * These are flat labels rather than a `fullPayment` / `advancePayment`
+     * split because that screen infers full vs part payment from what is
+     * actually paid; there is no type the shopkeeper picks. Do not read
+     * `orders.fullPayment` from it — that key is the chooser's {title, desc}
+     * object, and rendering an object as a React child crashes the screen.
+     */
+    orderDate: 'Order Date',
+    itemsCount: 'items',
+    addItem: 'Add Item',
+    addAnotherHint: 'Add another item to this order.',
+    finishItemHint: 'Finish this item to add another.',
+    noItemsYet: 'No items added yet',
+    noItemsHint: 'Tap "Add Item" to start',
+    item: 'Item',
+    itemName: 'Item Name',
+    chooseFromCatalog: 'Choose from catalog...',
+    weightGrams: 'Weight (grams)',
+    purityPct: 'Purity (%)',
+    wastagePct: 'Wastage (%)',
+    purityWord: 'purity',
+    wastageWord: 'wastage',
+    goldRate: 'Gold Rate (₹/gram)',
+    liveRate: 'Live',
+    fineAt995: 'fine 99.50',
+    paymentNow: 'Paying now',
+    cashAmount: 'Cash (₹)',
+    goldWeight: 'Gold',
+    addGst: 'Add GST (3%)',
+    settles: 'Settles',
+    remaining: 'Remaining',
+    /** Shown in place of Remaining when the payment exceeds the order. */
+    excess: 'Paid extra',
+    /** The Remaining row when what is being paid covers the whole order. */
+    paidInFull: 'Full payment',
+    totalFine: 'TOTAL FINE 99.50',
+    value: 'VALUE',
+    createOrder: 'Create Order',
+    created: 'Order created',
+    selectRetailerFirst: 'Choose a retailer first',
+    addOneItem: 'Add at least one item with a weight and purity',
+
+    // Melt credit spent on this order. Taking it IN lives under `melt` — the
+    // two are separate screens because they happen on separate days.
+    meltCredit: 'Melt credit',
+    meltAvailable: 'Available',
+    meltUseAll: 'Use all',
+    meltOverdrawn: 'That is more melt credit than this retailer has',
+    // The order saved but a payment leg did not go on it. Deliberately not a
+    // success message: the bill exists and is short a payment, and the only
+    // way to fix it is to know that.
+    savedPaymentFailed: 'Order saved, but a payment did not go on it',
+
     share: {
       invoiceFromPrefix: 'Invoice from',
       invoiceNumberLabel: 'Invoice No',
@@ -893,6 +964,12 @@ export default {
       rateLabel: 'Rate',
       amountLabel: 'Amount',
       piecesShort: 'Qty',
+      itemFallback: 'Item',
+      // A payment's metal leg — ornaments handed over, as opposed to grams the
+      // cash bought. `goldReceived` is used when there is no cash at all, so
+      // the weight is already the headline and only the leg needs naming.
+      inGold: 'in gold',
+      goldReceived: 'Gold received',
       totalAmount: 'Total Amount',
       makingCharges: 'Making Charges',
       otherCharges: 'Other Charges',
@@ -1177,7 +1254,7 @@ export default {
     viewAll: 'View All',
 
     gold22: 'Gold (22K)',
-    gold24: 'Gold (24K)',
+    gold24: 'Gold 24K (99.50)',
     silver: 'Silver',
     per1gm: 'per gram',
     perKg: 'per kg',
@@ -1510,6 +1587,7 @@ export default {
     cancel: 'Cancel',
     back: 'Back',
     loading: 'Loading…',
+    saving: 'Saving…',
     add: 'Add',
     remove: 'Remove',
     done: 'Done',
@@ -1589,6 +1667,7 @@ export default {
 
     invoiceNo: 'Invoice No',
     date: 'Date',
+    phone: 'Phone',
 
     billTo: 'Bill To',
     itemsTotal: 'Items Total',
@@ -1813,6 +1892,128 @@ export default {
   /* Old-gold declaration / affidavit.
      Entirely optional: a shopkeeper who only wants to note an old ornament's
      name and the amount deducted from the bill never sees any of this. */
+  /* Old gold taken in for melt.
+     Only reachable when the shop has switched melt on — see useOldGoldMelt.
+     Spending the credit is on the order screen and lives under `orders.melt*`. */
+  /* The retailer's account, sent to them — the WhatsApp text and the PDF
+     share these labels so the two copies cannot drift apart. */
+  statement: {
+    title: 'Account Statement',
+    asOn: 'Balance as on',
+    orderCol: 'Bill',
+    dateCol: 'Date',
+    dueCol: 'Outstanding',
+    settled: 'settled',
+    due: 'due',
+    totalDue: 'Total due',
+    // Restates the metal balance in rupees. Never added to it — see the note
+    // in retailerStatement.ts about the two accounts.
+    approxAt: 'Approx',
+    nothingDue: 'Nothing due',
+    // Listed separately from what is owed, never netted off it.
+    heldTitle: 'Held for this retailer',
+    credit: 'Credit with us',
+    meltCredit: 'Melt credit',
+    // Short form, for the button that sits on a list row.
+    remind: 'Remind',
+    sendWhatsApp: 'Remind on WhatsApp',
+    pdf: 'PDF',
+    pdfFailed: 'Could not create the statement PDF',
+  },
+  /* Retailer credit applied to a bill that already exists. */
+  credit: {
+    available: 'Credit available',
+    willApply: 'Apply to this order',
+    use: 'Use credit',
+    applied: 'Credit applied to this order',
+  },
+  /* The rate the shop is dealing at today. Set from the once-a-day prompt,
+     the dashboard card or Settings; a day with none uses the live feed and
+     every screen says so rather than leaving it to be inferred. */
+  rate: {
+    title: 'Today’s Rate',
+    liveIs: 'Live rate',
+    yourRate: 'Your rate',
+    perGram: '₹/gram',
+    unitNote: 'Per gram of 99.50 fine gold',
+    fineness: '99.50',
+    hint: 'Used for every order raised today',
+    save: 'Set today’s rate',
+    useLive: 'Use the live rate',
+    saved: 'Today’s rate saved',
+    failed: 'Could not save the rate',
+    usingYours: 'Your rate for today',
+    usingLive: 'Using the live rate — tap to set your own',
+    usingLiveShort: 'Using the live rate',
+    shopRateShort: 'Shop',
+    set: 'Set',
+    change: 'Change',
+  },
+  melt: {
+    title: 'Take Old Gold',
+    newLot: 'New Melt Lot',
+    newLotSub: 'Step 1 of 3 — weigh into the pot',
+    stage1Hint: 'The melted and tested weights are recorded later, from the Old Gold list',
+    receivedOn: 'Received on',
+    intoPot: 'INTO THE POT',
+    openLot: 'Open Lot',
+    lotOpened: 'Lot opened',
+    needPotWeight: 'Enter the weight going into the pot',
+    listTitle: 'Old Gold',
+    openLots: 'lots open',
+    openLotsTitle: 'Old gold in the pot',
+    openSection: 'OPEN',
+    creditedSection: 'CREDITED',
+    awaitingMelt: 'Waiting to be melted',
+    awaitingTest: 'Waiting on the test',
+    noLots: 'No melt lots yet',
+    noLotsHint: 'Open a lot when a retailer hands over old ornaments',
+    stages: 'Weighings',
+    recordMelt: 'Record the melted weight',
+    saveMelt: 'Save melted weight',
+    meltRecorded: 'Melted weight recorded',
+    recordTest: 'Record the test',
+    saveTest: 'Test & credit',
+    lotClosed: 'This lot is closed. The credit is on the retailer’s account.',
+    lotNotFound: 'This lot could not be found',
+    deleteTitle: 'Delete this lot?',
+    deleteDesc: 'The weighings recorded so far will be lost. Nothing has been credited yet.',
+    lotDeleted: 'Lot deleted',
+    subtitle: 'Credit fine weight to a retailer',
+    fabTitle: 'Take Old Gold',
+    date: 'Melt Date',
+
+    lotTitle: 'Melt lot',
+    lotHint: 'Weigh at each stage — the credit is worked out from them',
+    potWeight: 'Into the pot',
+    potHint: 'After stones, lac and attachments are off',
+    afterMelt: 'After melting',
+    afterMeltHint: 'The lagdi, once impurities have burnt off',
+    afterTesting: 'After testing',
+    afterTestingHint: 'Skin test and rubbing take a little more off',
+    purity: 'Purity (%)',
+    meltLoss: 'Lost in the pot',
+    testLoss: 'Lost in testing',
+    fineAt999: 'Fine 99.9',
+    creditAt995: 'Credit',
+    needStages: 'Enter all four weighings',
+    meltAbovePot: 'Weight after melting cannot exceed the pot weight',
+    testAboveMelt: 'Weight after testing cannot exceed the melted weight',
+    purityTooHigh: 'Purity cannot exceed 100%',
+    notes: 'Notes',
+    notesHint: 'e.g. 3 bangles, tested 91.6',
+
+    valueToday: 'Value at today’s rate',
+    creditAfter: 'Credit after this',
+    alreadyHolding: 'Already holding',
+    crediting: 'CREDITING',
+
+    save: 'Add Melt Credit',
+    needWeight: 'Enter the fine weight of the melt',
+    credited: 'Melt credited',
+    failed: 'Could not add the melt credit',
+  },
+
   signature: {
     title: 'Signature',
     shopTitle: 'Your signature',
