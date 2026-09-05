@@ -19,9 +19,19 @@
     "supportsTablet": true
   },
 
+  "//liveVersions": [
+    "Null because com.goldkhatabook.app has never been published on either store.",
+    "These held SoneBill's live versions (iOS 1.0.15 build 10, Android versionCode 15),",
+    "inherited with the fork, so the Play versioning check failed this app's very first",
+    "build for not beating a release that belongs to a different product. The version",
+    "itself was deliberately reset to 1.0.0 / build 1; this is the record that was missed.",
+    "Both checks treat null as 'cannot verify' and warn instead of failing, which is the",
+    "honest state pre-launch. Fill them in after each real release - that is what turns",
+    "the warning back into a genuine guard against a reused versionCode."
+  ],
   "liveVersions": {
-    "ios": { "version": "1.0.15", "build": 10 },
-    "android": { "versionCode": 15, "versionName": "1.0.15" }
+    "ios": null,
+    "android": null
   },
 
   "allowedPermissions": [
