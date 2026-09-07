@@ -21,6 +21,7 @@ import {
 import { useOldGoldMelt } from '../../hooks/useOldGoldMelt';
 import { useShopRate } from '../../hooks/useShopRate';
 import FloatingLabelInput from '../../components/common/FloatingLabelInput';
+import { formatPurityBreakdown } from '../../utils/purityBreakdown';
 import { toast, ToastViewport } from '../../components/common/Toast';
 import { priceLine, totalFine995, cashValueOfFine995, isLinePriceable } from '../../utils/goldPricing';
 import { formatCurrencyValue } from '../../utils/formatter';
@@ -618,12 +619,19 @@ const NewOrderScreen = () => {
                       value={item.weight}
                       onChangeText={v => patch(item.key, 'weight', v)}
                     />
+                    {/* The wholesaler types the ROUNDED purity they charge on —
+                        92 for 22K, 84 for 20K — not the metal's real fineness.
+                        The hint states what that number contains, because the
+                        uplift is money: 0.4% of 100 g at 15,270 is about
+                        ₹6,100, and folding it silently into a total is how a
+                        retailer ends up querying a bill nobody can explain. */}
                     <FloatingLabelInput
                       label={t('orders.purityPct') || 'Purity (%)'}
                       required
                       keyboardType="decimal-pad"
                       value={item.purity}
                       onChangeText={v => patch(item.key, 'purity', v)}
+                      hint={formatPurityBreakdown(item.purity) || undefined}
                     />
                   </HStack>
 

@@ -9,7 +9,7 @@ import { useAppDispatch } from '../../store/hooks';
 import { setShopRate, clearShopRate } from '../../store/data/dataSlice';
 import { useSheetBottomInset } from '../../hooks/useSheetBottomInset';
 import GradientSurface from './GradientSurface';
-import FloatingLabelInput from './FloatingLabelInput';
+import FloatingLabelInput, { type FloatingLabelInputHandle } from './FloatingLabelInput';
 import { toast } from './Toast';
 import { formatCurrencyValue } from '../../utils/formatter';
 import { LAYOUT } from '../../constants/layout';
@@ -42,6 +42,22 @@ const SetRateModal = ({
 
   const [value, setValue] = React.useState('');
   const [saving, setSaving] = React.useState(false);
+  const inputRef = React.useRef<FloatingLabelInputHandle>(null);
+
+  /**
+   * Focus once the modal's window actually exists.
+   *
+   * `autoFocus` on the field did not work: inside a React Native Modal it fires
+   * before the window is attached, so the field took focus and the keyboard
+   * never opened — which read as "the rate cannot be edited at all". Modal's
+   * own `onShow` is the first moment the window is real. The extra frame is for
+   * Android, where onShow can still land marginally ahead of the window being
+   * ready to accept input.
+   */
+  const focusRate = React.useCallback(() => {
+    if (Platform.OS === 'web') return;
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
 
   // Seeded each time it opens, from whatever is in force. Not held across
   // opens: a half-typed rate from this morning is not an answer for tonight.
@@ -76,7 +92,13 @@ const SetRateModal = ({
   };
 
   return (
-    <Modal visible={isOpen} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={isOpen}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onShow={focusRate}
+    >
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -96,7 +118,16 @@ const SetRateModal = ({
               LAYOUT.isWeb && LAYOUT.contentContainerStyle,
               LAYOUT.isWeb && { alignSelf: 'center', width: '100%', borderRadius: 24 },
             ]}
-            onPress={(e: any) => e.stopPropagation?.()}
+            onPress={() => {
+              // Empty on purpose. React Native has no event bubbling to stop —
+              // this Pressable claims the touch responder, which is what keeps
+              // the backdrop behind it from seeing the press at all.
+              //
+              // It previously called `e.stopPropagation?.()`, a DOM API that
+              // does not exist on a React Native press event. The optional
+              // chaining swallowed it, so the sheet looked shielded from the
+              // backdrop's Keyboard.dismiss while being shielded by nothing.
+            }}
           >
             <HStack justifyContent="center" alignItems="center" mb="$4">
               <Text fontSize={20} fontWeight="$bold">
@@ -130,12 +161,17 @@ const SetRateModal = ({
               </HStack>
             )}
 
+            {/* containerStyle resets the field's default `flex: 1`. That default
+                suits the order screens, where fields share an HStack; here the
+                field is a child of a COLUMN, so `flex: 1` stretched it down the
+                sheet and drew the value over the two unit hints below. */}
             <FloatingLabelInput
+              ref={inputRef}
+              containerStyle={{ flex: 0, alignSelf: 'stretch' }}
               label={`${t('rate.yourRate') || 'Your rate'} (${t('rate.perGram') || '₹/gram'})`}
               keyboardType="decimal-pad"
               value={value}
               onChangeText={setValue}
-              autoFocus
             />
             {/* The unit, said explicitly. Everything in this app is
                 denominated in fine gold at 99.50 and a shopkeeper typing a

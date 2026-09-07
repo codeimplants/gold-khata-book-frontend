@@ -33,25 +33,65 @@ interface Props {
   onBlur?: () => void;
   /** Turns the border red and prints the reason under the field. */
   error?: string;
+  /**
+   * A quiet line under the field explaining what was entered — the purity
+   * split, for one. Suppressed while `error` is showing: the reason a value is
+   * rejected must not compete with a note about what it means.
+   */
+  hint?: string;
   autoFocus?: boolean;
+  /**
+   * Overrides the wrapper's layout. Needed because the default is `flex: 1`,
+   * which is right in the order screens — the fields sit in HStacks and share
+   * the row evenly — and wrong anywhere the field is a child of a COLUMN, where
+   * `flex: 1` makes it grow to fill the sheet and overlap whatever follows.
+   *
+   * That is not hypothetical: it stretched the rate field down SetRateModal and
+   * drew the value on top of the two unit hints beneath it.
+   */
+  containerStyle?: object;
 }
 
 /**
- * The field's own palette — a pale lavender ground with a violet keyline and a
- * violet label, rather than grey-on-white.
+ * The field's own palette — a pale lavender ground with a violet keyline,
+ * rather than grey-on-white.
  *
  * It reads as one tinted block per field, which is what keeps a six-field
  * order line legible: the eye separates the fields by their fill instead of
- * hunting for hairline borders on a white card.
+ * hunting for hairline borders on a white card. That part stands.
+ *
+ * The RESTING LABEL is now grey, not violet. It was violet on the same
+ * reasoning as the fill, and at rest the label is doing a placeholder's job —
+ * naming an empty field — so violet made every unfilled field read as active
+ * and the form as a wall of purple. Grey at rest, violet on focus, is the
+ * standard signal: colour marks the one field you are in.
+ *
+ * #9CA3AF matches `placeholderTextColor` already used in AdminHomeScreen and
+ * CompleteRegistrationScreen, so a resting label and a plain placeholder are
+ * the same grey rather than two greys a shade apart.
  */
 const ACCENT = '#7C3AED';
 const REST_BORDER = '#E9DCF7';
-const REST_LABEL = '#8B5CF6';
+const REST_LABEL = '#9CA3AF';
+/** Violet, kept for the suffix — a live-rate hint is information, not a label. */
+const SUFFIX_COLOR = '#8B5CF6';
 const FILL = '#FCFAFE';
 const FILL_DISABLED = '#F4F4F6';
 const DANGER = '#DC2626';
 
-const FloatingLabelInput = ({
+/** What a parent can do to the field from outside. */
+export interface FloatingLabelInputHandle {
+  focus: () => void;
+}
+
+/**
+ * forwardRef so a parent can focus the field *after* deciding the moment is
+ * right. `autoFocus` cannot do that inside a React Native `Modal`: the modal's
+ * window is not attached when autofocus fires, so the field takes focus and the
+ * soft keyboard never opens — the field looks active and cannot be typed into.
+ * SetRateModal focuses from the Modal's own `onShow` instead.
+ */
+const FloatingLabelInput = React.forwardRef<FloatingLabelInputHandle, Props>(({
   label,
   value,
   onChangeText,
@@ -62,10 +102,16 @@ const FloatingLabelInput = ({
   editable = true,
   onBlur,
   error,
+  hint,
   autoFocus,
-}: Props) => {
+  containerStyle,
+}: Props, ref) => {
   const [focused, setFocused] = React.useState(false);
   const inputRef = React.useRef<TextInput>(null);
+
+  React.useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+  }), []);
 
   const hasValue = String(value ?? '').length > 0;
   const lifted = focused || hasValue;
@@ -86,7 +132,7 @@ const FloatingLabelInput = ({
   const borderColor = error ? DANGER : focused ? ACCENT : REST_BORDER;
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, containerStyle]}>
       <Pressable onPress={() => inputRef.current?.focus()}>
         <View style={[styles.box, { borderColor, backgroundColor: editable ? FILL : FILL_DISABLED }]}>
           <Animated.Text
@@ -135,9 +181,12 @@ const FloatingLabelInput = ({
       </Pressable>
 
       {!!error && <Text style={styles.error}>{error}</Text>}
+      {!error && !!hint && <Text style={styles.hint}>{hint}</Text>}
     </View>
   );
-};
+});
+
+FloatingLabelInput.displayName = 'FloatingLabelInput';
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
@@ -171,8 +220,9 @@ const styles = StyleSheet.create({
     ...(Platform.OS === 'android' ? { paddingVertical: 0, height: 22 } : {}),
     ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {}),
   },
-  suffix: { fontSize: 13, color: REST_LABEL, marginLeft: 8 },
+  suffix: { fontSize: 13, color: SUFFIX_COLOR, marginLeft: 8 },
   error: { fontSize: 12, color: DANGER, marginTop: 4, marginLeft: 4 },
+  hint: { fontSize: 12, color: '#6B7280', marginTop: 4, marginLeft: 4 },
 });
 
 export default FloatingLabelInput;
