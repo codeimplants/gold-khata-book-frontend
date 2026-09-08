@@ -43,6 +43,7 @@ import {
   ChevronDown,
 } from "lucide-react-native";
 import { useTranslation } from "../../hooks/useTranslation";
+import { useRetail } from "../../hooks/useRetail";
 import { capitalizeWords } from "../../utils/textUtils";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -278,6 +279,7 @@ const StyledSelect = ({
 const ItemsProductsScreen = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const retailEnabled = useRetail();
   const dispatch = useAppDispatch();
   const { catalogProducts: items } = useAppSelector((s) => s.data);
   const { impersonateUserId, impersonatePhone } = useAppSelector(s => s.auth);
@@ -588,49 +590,58 @@ const ItemsProductsScreen = () => {
                 )}
               </HStack>
 
-              <HStack space="md">
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.makingChargeType")}</FieldLabel>
-                  <StyledSelect
-                    value={draft.makingChargeType}
-                    onValueChange={(v) => updateDraft("makingChargeType", v)}
-                    items={makingChargeOptions}
-                    placeholder={selectPlaceholder}
-                  />
-                </Box>
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.makingCharges")}</FieldLabel>
-                  <StyledInput
-                    value={draft.makingCharges}
-                    onChangeText={(v) => updateDraft("makingCharges", v)}
-                    keyboardType="numeric"
-                    maxLength={INPUT_LIMITS.amount}
-                    placeholder={t("items.form.placeholders.makingCharges")}
-                  />
-                </Box>
-              </HStack>
+              {/* Retail-only, hidden unless this shop bills walk-in customers.
+                  Making charges and discount are how a RETAIL bill reaches its
+                  total; a wholesale line is priced in grams of fine gold and
+                  never reads them. Hidden rather than deleted — see the `retail`
+                  flag in featureFlags/registry.ts for why. */}
+              {retailEnabled && (
+                <HStack space="md">
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.makingChargeType")}</FieldLabel>
+                    <StyledSelect
+                      value={draft.makingChargeType}
+                      onValueChange={(v) => updateDraft("makingChargeType", v)}
+                      items={makingChargeOptions}
+                      placeholder={selectPlaceholder}
+                    />
+                  </Box>
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.makingCharges")}</FieldLabel>
+                    <StyledInput
+                      value={draft.makingCharges}
+                      onChangeText={(v) => updateDraft("makingCharges", v)}
+                      keyboardType="numeric"
+                      maxLength={INPUT_LIMITS.amount}
+                      placeholder={t("items.form.placeholders.makingCharges")}
+                    />
+                  </Box>
+                </HStack>
+              )}
 
-              <HStack space="md">
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.discountType")}</FieldLabel>
-                  <StyledSelect
-                    value={draft.discountType}
-                    onValueChange={(v) => updateDraft("discountType", v)}
-                    items={discountOptions}
-                    placeholder={selectPlaceholder}
-                  />
-                </Box>
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.discount")}</FieldLabel>
-                  <StyledInput
-                    value={draft.discount}
-                    onChangeText={(v) => updateDraft("discount", v)}
-                    keyboardType="numeric"
-                    maxLength={INPUT_LIMITS.amount}
-                    placeholder={t("items.form.placeholders.discount")}
-                  />
-                </Box>
-              </HStack>
+              {retailEnabled && (
+                <HStack space="md">
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.discountType")}</FieldLabel>
+                    <StyledSelect
+                      value={draft.discountType}
+                      onValueChange={(v) => updateDraft("discountType", v)}
+                      items={discountOptions}
+                      placeholder={selectPlaceholder}
+                    />
+                  </Box>
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.discount")}</FieldLabel>
+                    <StyledInput
+                      value={draft.discount}
+                      onChangeText={(v) => updateDraft("discount", v)}
+                      keyboardType="numeric"
+                      maxLength={INPUT_LIMITS.amount}
+                      placeholder={t("items.form.placeholders.discount")}
+                    />
+                  </Box>
+                </HStack>
+              )}
 
               <HStack space="md">
                 <Box flex={1}>
@@ -655,41 +666,49 @@ const ItemsProductsScreen = () => {
                 </Box>
               </HStack>
 
-              <HStack space="md">
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.huid")}</FieldLabel>
-                  <StyledInput
-                    value={draft.huid}
-                    onChangeText={(v) => updateDraft("huid", v)}
-                    placeholder={t("items.form.placeholders.huid")}
-                    maxLength={INPUT_LIMITS.hsnCode}
-                  />
-                </Box>
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.pieces")}</FieldLabel>
-                  <StyledInput
-                    value={draft.pcs}
-                    onChangeText={(v) => updateDraft("pcs", v.replace(/[^0-9]/g, ""))}
-                    keyboardType="number-pad"
-                    maxLength={INPUT_LIMITS.quantity}
-                    placeholder={t("items.form.placeholders.pieces")}
-                  />
-                </Box>
-              </HStack>
+              {/* HUID is a BIS hallmarking id carried on a retail sale to a
+                  consumer; pieces and stock quantity are shop-floor inventory.
+                  None of the three describe a wholesale lot, which is priced by
+                  weight and purity. */}
+              {retailEnabled && (
+                <HStack space="md">
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.huid")}</FieldLabel>
+                    <StyledInput
+                      value={draft.huid}
+                      onChangeText={(v) => updateDraft("huid", v)}
+                      placeholder={t("items.form.placeholders.huid")}
+                      maxLength={INPUT_LIMITS.hsnCode}
+                    />
+                  </Box>
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.pieces")}</FieldLabel>
+                    <StyledInput
+                      value={draft.pcs}
+                      onChangeText={(v) => updateDraft("pcs", v.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                      maxLength={INPUT_LIMITS.quantity}
+                      placeholder={t("items.form.placeholders.pieces")}
+                    />
+                  </Box>
+                </HStack>
+              )}
 
-              <HStack space="md">
-                <Box flex={1}>
-                  <FieldLabel>{t("items.form.fields.stockQty") || "Stock Qty (pieces)"}</FieldLabel>
-                  <StyledInput
-                    value={draft.stockQty}
-                    onChangeText={(v) => updateDraft("stockQty", v.replace(/[^0-9]/g, ""))}
-                    keyboardType="number-pad"
-                    maxLength={INPUT_LIMITS.quantity}
-                    placeholder={t("items.form.placeholders.stockQty") || "Blank = not tracked"}
-                  />
-                </Box>
-                <Box flex={1} />
-              </HStack>
+              {retailEnabled && (
+                <HStack space="md">
+                  <Box flex={1}>
+                    <FieldLabel>{t("items.form.fields.stockQty") || "Stock Qty (pieces)"}</FieldLabel>
+                    <StyledInput
+                      value={draft.stockQty}
+                      onChangeText={(v) => updateDraft("stockQty", v.replace(/[^0-9]/g, ""))}
+                      keyboardType="number-pad"
+                      maxLength={INPUT_LIMITS.quantity}
+                      placeholder={t("items.form.placeholders.stockQty") || "Blank = not tracked"}
+                    />
+                  </Box>
+                  <Box flex={1} />
+                </HStack>
+              )}
 
               <HStack space="md">
                 <Box flex={1}>

@@ -23,6 +23,44 @@ const HIDDEN_ROUTES = ['AdminDashboard', 'AdminUserDetail'];
 // native; content-driven with no explicit height on web).
 const TAB_BAR_HEIGHT = LAYOUT.isWeb ? 80 : 96;
 
+/**
+ * Screens that pin their own action bar to the bottom edge — a "Create Order"
+ * or "Save" strip, usually with a running total above it.
+ *
+ * These need the same clearance the tab screens get, for the same reason, and
+ * not getting it is what put the button on top of the TOTAL FINE row on New
+ * Order. The tab bar was accounted for; a screen's own footer was not.
+ *
+ * Listed explicitly rather than measured: the footer is drawn by each screen
+ * with no shared component to ask, so there is nothing to measure from out
+ * here. A screen missing from this list overlaps its footer, which is visible
+ * the first time anyone opens it — a wrong entry costs only extra space.
+ */
+const ACTION_BAR_SCREENS = [
+  'NewOrder',
+  'CreateInvoice',
+  'AdvanceOrder',
+  'CompleteAdvanceOrder',
+  'TakeMelt',
+  'MeltLot',
+  'AddShopDetails',
+  'ItemsProducts',
+];
+
+/** Roughly a footer strip plus its running-total row. */
+const ACTION_BAR_HEIGHT = 104;
+
+/**
+ * 44, down from 56.
+ *
+ * 44 is the smallest a primary touch target should be (Apple's HIG minimum,
+ * and Android's 48dp guidance measured against a 4dp margin), so this is as
+ * small as it can go while staying reliably tappable by someone holding a
+ * phone in a busy shop. The menu it opens is unchanged — the button shrinks,
+ * what it opens does not.
+ */
+const FAB_SIZE = 44;
+
 interface GlobalSupportButtonProps {
   currentRouteName?: string;
   /**
@@ -55,7 +93,17 @@ export default function GlobalSupportButton({
   if (hidden) return null;
 
   const isTabScreen = currentRouteName != null && TAB_SCREENS.includes(currentRouteName);
-  const bottom = insets.bottom + (isTabScreen ? TAB_BAR_HEIGHT + 20 : 20);
+  const hasActionBar =
+    currentRouteName != null && ACTION_BAR_SCREENS.includes(currentRouteName);
+
+  // Only one of the two applies — a screen has the tab bar or its own footer,
+  // never both — so this is a choice, not a sum.
+  const footerClearance = isTabScreen
+    ? TAB_BAR_HEIGHT
+    : hasActionBar
+      ? ACTION_BAR_HEIGHT
+      : 0;
+  const bottom = insets.bottom + footerClearance + 20;
 
   const handleCall = () => {
     setOpen(false);
@@ -161,25 +209,32 @@ export default function GlobalSupportButton({
         <Pressable
           onPress={() => setOpen(!open)}
           style={{
-            width: 56,
-            height: 56,
-            borderRadius: 28,
+            width: FAB_SIZE,
+            height: FAB_SIZE,
+            borderRadius: FAB_SIZE / 2,
             justifyContent: 'center',
             alignItems: 'center',
             ...(Platform.OS !== 'web' ? { elevation: 6 } : {}),
           }}
         >
-          <Svg width="56" height="56">
+          <Svg width={FAB_SIZE} height={FAB_SIZE}>
             <Defs>
               <LinearGradient id="supportFabGrad" x1="0" y1="0" x2="1" y2="1">
                 <Stop offset="0" stopColor="#2DD4BF" />
                 <Stop offset="1" stopColor="#10B981" />
               </LinearGradient>
             </Defs>
-            <Rect width="56" height="56" rx="28" fill="url(#supportFabGrad)" />
+            <Rect
+              width={FAB_SIZE}
+              height={FAB_SIZE}
+              rx={FAB_SIZE / 2}
+              fill="url(#supportFabGrad)"
+            />
           </Svg>
           <Box position="absolute">
-            <Icon as={Headphones} color="$white" size="lg" />
+            {/* "sm" not "lg": the icon has to come down with the circle, or a
+                full-size glyph in a 44pt button reads as a cropped sticker. */}
+            <Icon as={Headphones} color="$white" size="sm" />
           </Box>
         </Pressable>
       </Box>

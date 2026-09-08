@@ -35,7 +35,7 @@
 
 import { APP_ENV } from '../config';
 
-export type FeatureFlagKey = 'tutorials' | 'oldGoldMelt' | 'photoUpload';
+export type FeatureFlagKey = 'tutorials' | 'oldGoldMelt' | 'photoUpload' | 'retail';
 
 type FeatureFlagDefinition = {
   /** Used when neither layer has an opinion. */
@@ -130,6 +130,37 @@ export const FEATURE_FLAGS: Record<FeatureFlagKey, FeatureFlagDefinition> = {
     default: false,
     description:
       'Photo upload and capture: shop logo and signature, item and retailer photos, and melt-lot audit photos. Requires ImageKit credentials on the backend.',
+  },
+
+  retail: {
+    /**
+     * The retail billing fields inherited from SoneBill: making charges,
+     * discount, HUID, pieces and stock quantity.
+     *
+     * OFF, so this is a wholesale app by default. The fields are HIDDEN rather
+     * than deleted — they are read in 19 files and ~265 places, including
+     * calculations.ts, the print templates and the 25-case thermal receipt
+     * test, and they are the whole of how a retail bill computes and prints its
+     * total. Deleting them removes retail billing; hiding them keeps it working
+     * for a wholesaler who also serves walk-ins.
+     *
+     * Pairs with `shopDetails.retailEnabled` through `useRetail()`, exactly as
+     * `oldGoldMelt` pairs with `shopDetails.oldGoldMelt`: this flag is the
+     * product's rollout control, the shop record is the shopkeeper's own answer,
+     * and collapsing them would either switch retail on for everyone the moment
+     * one shop asked, or let a shop enable something still being rolled out.
+     *
+     * NOT a per-order mode. A shop that does both still needs to say which a
+     * given bill is, and that switch does not exist yet — deferred deliberately.
+     * Until it does, retail-enabled shops see the fields on every bill.
+     *
+     * Safe to leave off: the wholesale order path never reads these. Verified —
+     * NewOrderScreen's fillFromCatalog pulls only name, purity and grossWt, so
+     * a catalog item's making charges cannot reach a wholesale line.
+     */
+    default: false,
+    description:
+      'Retail billing: making charges, discount, HUID, pieces and stock quantity on catalogue items and invoices.',
   },
 };
 
