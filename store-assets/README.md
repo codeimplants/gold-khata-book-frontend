@@ -18,8 +18,23 @@ store-assets/
       phone/          Required.
       tablet-7/       Required if the Play listing declares tablet support.
       tablet-10/      Required if the Play listing declares tablet support.
-  graphics/           Play feature graphic, and any promo art.
+  graphics/           App icon for the store listings, Play feature graphic, and any promo art.
 ```
+
+## App icon
+
+`graphics/app-icon-1024.png` and `graphics/app-icon-512.png` are the same
+artwork as the iOS asset catalog and `assets/logo.png`: opaque, full-bleed,
+square, no rounded corners. Both stores apply their own corner mask, and both
+reject an icon with an alpha channel.
+
+| Upload to | File | Spec |
+|---|---|---|
+| App Store Connect | `app-icon-1024.png` | 1024 × 1024, PNG, no alpha |
+| Play Console → Store listing → App icon | `app-icon-512.png` | 512 × 512, 32-bit PNG, ≤ 1 MB |
+
+Apple actually reads the marketing icon from the build's asset catalog, so the
+1024 file is only needed for the listing form and promo material.
 
 ## Sizes
 
