@@ -22,7 +22,8 @@ Character counts were checked with a script. Recount after any edit.
 | Promotional text | 170 | Know exactly how much fine gold and cash every retailer owes you. Record sales on account, take in gold or cash, and send statements on WhatsApp. *(145)* |
 | Keywords | 100 | `wholesale,bullion,fine gold,retailer,ledger,udhar,hisab,rojmel,melt,karigar,statement,dues,jama,999` *(99)* |
 | Primary category | | **Finance**, or Business if SoneBill is already in Finance. It should differ from SoneBill (owner decision, 2026-10-06) |
-| Support URL / Privacy URL | | This app's own pages, never SoneBill's |
+| Privacy Policy URL | | https://goldkhatabook.codeimplants.com/privacy-policy/ |
+| Support URL | | https://goldkhatabook.codeimplants.com/privacy-policy/ (its footer carries the company name and codeimplants@gmail.com). Never SoneBill's pages, and never goldkhatabook.web.app: the API refuses that origin, so its sign-in fails |
 
 The words of the name (Gold, Khata, Book) are left out of the keywords on
 purpose: Apple already indexes the name, so repeating them wastes characters.

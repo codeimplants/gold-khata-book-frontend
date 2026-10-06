@@ -475,7 +475,12 @@ scripts\deploy-web.cmd
 # deploy the already-built dist/ without rebuilding:
 scripts\deploy-web.cmd -SkipBuild
 ```
-Both build the web bundle and deploy it. On success the app is live at **https://goldkhatabook.web.app**.
+Both build the web bundle and deploy it. On success the app is live at **https://goldkhatabook.codeimplants.com**.
+
+> Use that address, not the Firebase default **goldkhatabook.web.app**: the same files are served there, but the
+> backend's CORS list (`src/server.ts` in the backend) only allows the codeimplants.com domain, so on web.app every
+> API call fails and the browser shows "Failed to fetch". The App Store privacy URL is
+> https://goldkhatabook.codeimplants.com/privacy-policy/ and the account-deletion page is /delete-account/.
 
 ### One-time setup — service account (no browser login)
 Deployment authenticates with a Firebase **service-account key** via an environment variable, so you
