@@ -164,10 +164,18 @@ const SetRateModal = ({
             {/* containerStyle resets the field's default `flex: 1`. That default
                 suits the order screens, where fields share an HStack; here the
                 field is a child of a COLUMN, so `flex: 1` stretched it down the
-                sheet and drew the value over the two unit hints below. */}
+                sheet and drew the value over the two unit hints below.
+
+                Longhands, not `flex: 0`. On native `flex: 0` means "size to
+                content", but react-native-web passes it to CSS as `flex: 0`,
+                which is `0 1 0%`: a zero basis that may shrink. In this
+                fixed-height card the field collapsed to nothing, its box drew
+                anyway, and the two hints below were laid out on top of the
+                value (seen on web, 2026-10-06). Basis auto and no shrink mean
+                "size to content" on both. */}
             <FloatingLabelInput
               ref={inputRef}
-              containerStyle={{ flex: 0, alignSelf: 'stretch' }}
+              containerStyle={{ flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch' }}
               label={`${t('rate.yourRate') || 'Your rate'} (${t('rate.perGram') || '₹/gram'})`}
               keyboardType="decimal-pad"
               value={value}
