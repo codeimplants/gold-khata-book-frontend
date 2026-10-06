@@ -1,34 +1,38 @@
+// The Retailers tab: every jewellery shop the wholesaler supplies, with what
+// each owes in fine gold and in cash.
+//
+// Presentation follows the Ledger design (src/theme/brand.ts). It used to be
+// SoneBill's customer list, under an orange gradient header, with avatar cards
+// and shadowed pill filters. App Review rejected this app as a SoneBill copy
+// under guideline 4.3(a) (APP_STORE_4.3_REWORK.md). The logic below is
+// unchanged: per-retailer dues through utils/dues.ts, trashed orders left out,
+// search, filters, sort and the guarded delete.
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { StyleSheet, RefreshControl, FlatList, Modal, ScrollView, Image } from "react-native";
-import { useSheetBottomInset } from "../../hooks/useSheetBottomInset";
 import {
-  Box,
-  Text,
-  HStack,
-  VStack,
+  StyleSheet,
+  RefreshControl,
+  FlatList,
+  Modal,
+  ScrollView,
+  Image,
   Pressable,
-  Input,
-  InputField,
-  Icon,
-  Center,
-} from "@gluestack-ui/themed";
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSheetBottomInset } from "../../hooks/useSheetBottomInset";
+import { VStack, Text as GText } from "@gluestack-ui/themed";
 import {
   Plus,
-  ChevronRight,
   Search,
-  User,
+  Store,
   ArrowUpDown,
   Check,
-  CheckCircle,
-  Clock,
-  Coins,
   Trash2,
 } from "lucide-react-native";
-import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import type { RouteProp } from "@react-navigation/native";
 import type { MainTabParamList } from "../../navigation/types";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -36,223 +40,111 @@ import {
   fetchOrders,
   deleteCustomer,
   clearUserData,
+  fetchRetailerAccounts,
 } from "../../store/data/dataSlice";
 import { endImpersonation } from "../../store/auth/authSlice";
 import ConfirmModal from "../../components/ConfirmModal";
 import ImpersonationBlockModal from "../../components/ImpersonationBlockModal";
 import { toast } from "../../components/common/Toast";
 import { formatCurrencyValue } from "../../utils/formatter";
-import CustomerCodeBadge from '../../components/customers/CustomerCodeBadge';
 import { getFullImageUrl } from "../../utils/imageUtils";
 import AddCustomerModal from "../../components/AddCustomerModal";
-import GradientSurface from "../../components/common/GradientSurface";
 import { LAYOUT, useContentContainerStyle } from "../../constants/layout";
 import WatchTutorialLink from "../../components/common/WatchTutorialLink";
 import { HELP_TOPICS } from "../../tutorials/catalog";
 import { INPUT_LIMITS } from "../../constants/inputLimits";
-import { BannerHeightContext } from "../../navigation/MainTabs";
-import { orderOutstanding, formatGrams } from '../../utils/dues';
+import { orderOutstanding, formatGrams, CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
 import RemindButton from '../../components/customers/RemindButton';
+import LedgerHeader, { LedgerHeaderAction } from "../../components/ledger/LedgerHeader";
+import { Brand, tabularNums } from "../../theme/brand";
 
 /* ---------------- SUB-COMPONENTS ---------------- */
-const Header = React.memo(({ t, count, onAdd }: any) => {
-  const insets = useSafeAreaInsets();
-  const bannerHeight = React.useContext(BannerHeightContext);
-  // Must match the list below, or the header sits off-centre from it on iPad.
-  const contentStyle = useContentContainerStyle();
-  // Same formula as the Dashboard header: clear the status bar dynamically
-  // instead of a hardcoded height, so all tab headers stay the same size
-  // relative to each other regardless of device/status-bar height.
-  const topPad = LAYOUT.isWeb ? 0 : (bannerHeight > 0 ? 0 : insets.top);
-
-  return (
-  <Box height={84 + topPad} overflow="hidden">
-    <GradientSurface colors={["#F97316", "#F59E0B"]} direction="horizontal" />
-
-    <HStack
-      px="$5"
-      justifyContent="space-between"
-      alignItems="center"
-      flex={1}
-      style={{
-        ...contentStyle,
-        paddingTop: topPad,
-      }}
-    >
-      <VStack>
-        <Text color="$white" fontSize={22} fontWeight="$bold">
-          {t("customers.title")}
-        </Text>
-
-        <Text color="$white" fontSize={13}>
-          {count} {t("customers.count")}
-        </Text>
-      </VStack>
-
-      <Pressable onPress={onAdd}>
-        <Box
-          bg="rgba(255,255,255,0.2)"
-          px="$4"
-          py="$2"
-          rounded="$xl"
-          flexDirection="row"
-          alignItems="center"
-        >
-          <Icon as={Plus} color="$white" size="sm" />
-          <Text color="$white" ml="$2" fontWeight="$bold">
-            {t("customers.add")}
-          </Text>
-        </Box>
-      </Pressable>
-    </HStack>
-  </Box>
-  );
-});
-
-/** Accent for this tab — matches the Customers header gradient, where Orders uses purple. */
-const ACCENT = "#F97316";
 
 // `goldDue`/`cashDue` are this retailer's two outstanding positions summed
 // across their orders — the pair a wholesaler actually needs from a list.
 const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, total: 0, lastDate: 0 };
 
-/** One stat column: label, its number centred under it, and an optional
-    breakdown of that number below. Anything passed as children belongs to this
-    column and stays inside its width — it must not run on under the next one. */
-const MiniStat = ({ icon, label, value, color, flex = 1, children }: any) => (
-  <VStack flex={flex} space="xs" alignItems="center">
-    <HStack alignItems="center" space="xs">
-      <Icon as={icon} size="xs" color={color} />
-      <Text fontSize={11} color="$coolGray500">
-        {label}
-      </Text>
-    </HStack>
-    <Text fontSize={15} fontWeight="$bold" color="$coolGray900">
-      {value}
-    </Text>
-    {children}
-  </VStack>
-);
-
-const CustomerCard = React.memo(({ customer, stats, onPress, onDelete, t }: any) => {
-  const gid = useMemo(() => `cgrad_${customer.id || Math.random()}`, [customer.id]);
+/**
+ * One retailer as a ledger row. Name, code and phone on the left; what they
+ * owe in fine gold and in cash in two aligned columns on the right.
+ *
+ * Only what the retailer owes is shown, which is the one thing a wholesaler
+ * scans this list for. Dashes rather than zeroes when an account is clear, so
+ * the eye lands only on the rows that owe.
+ */
+const RetailerRow = React.memo(({ customer, stats, held, onPress, onDelete, t }: any) => {
   const s = stats || EMPTY_STATS;
   const gramShort = t('common.gramShort') || 'gm';
+  const owes = s.goldDue > 0 || s.cashDue > 0;
 
   return (
-    <Pressable onPress={onPress}>
-      <Box
-        bg="$white"
-        p="$4"
-        rounded="$2xl"
-        mb="$3"
-        style={styles.card}
-      >
-        <HStack alignItems="center" justifyContent="space-between">
-          <HStack alignItems="center" space="md" flex={1}>
-            {/* Their photo when they have one, the gradient initial otherwise. */}
-            <Box width={50} height={50} rounded="$full" overflow="hidden">
-              {customer.profilePhoto?.url ? (
-                <Image
-                  source={{ uri: getFullImageUrl(customer.profilePhoto.url) || undefined }}
-                  style={{ width: '100%', height: '100%' }}
-                />
-              ) : (
-                <>
-                  <Svg width="100%" height="100%">
-                    <Defs>
-                      <LinearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-                        <Stop offset="0%" stopColor="#6366F1" />
-                        <Stop offset="100%" stopColor="#D946EF" />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect width="100%" height="100%" rx="25" fill={`url(#${gid})`} />
-                  </Svg>
-                  <Box position="absolute" top={0} left={0} right={0} bottom={0} justifyContent="center" alignItems="center">
-                    <Text color="$white" fontWeight="$bold" fontSize={18}>
-                      {customer.name?.charAt(0).toUpperCase()}
-                    </Text>
-                  </Box>
-                </>
-              )}
-            </Box>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
+      {/* Their photo when they have one, a monogram otherwise. */}
+      {customer.profilePhoto?.url ? (
+        <Image
+          source={{ uri: getFullImageUrl(customer.profilePhoto.url) || undefined }}
+          style={styles.photo}
+        />
+      ) : (
+        <View style={styles.monogram}>
+          <Text style={styles.monogramText}>{customer.name?.charAt(0).toUpperCase()}</Text>
+        </View>
+      )}
 
-            <VStack flex={1} mr="$2">
-              {/* The code sits on the name line, not under it: the pair is one
-                  identity, and a shopkeeper scanning a list of six Rameshes is
-                  reading across, not down. */}
-              <HStack alignItems="center" space="xs">
-                <Text fontWeight="$bold" fontSize={16} color="$coolGray900" numberOfLines={1} flexShrink={1}>
-                  {customer.name}
-                </Text>
-                <CustomerCodeBadge code={customer.customerCode} />
-              </HStack>
-              {customer.phone ? (
-                <Text color="$coolGray500" fontSize={14}>{customer.phone}</Text>
-              ) : (
-                // Placeholder rather than an empty line, so a row for a
-                // customer added without a number does not read as a
-                // half-rendered one.
-                <Text color="$coolGray400" fontSize={14} fontStyle="italic">
-                  {t('customers.noPhone') || 'No phone number'}
-                </Text>
-              )}
-            </VStack>
-          </HStack>
+      <View style={styles.colName}>
+        {/* The code sits on the name line, not under it: the pair is one
+            identity, and a wholesaler scanning a list of six Rameshes is
+            reading across, not down. */}
+        <Text style={styles.name} numberOfLines={1}>
+          {customer.name}
+          {customer.customerCode ? <Text style={styles.code}>{`  ${customer.customerCode}`}</Text> : null}
+        </Text>
+        {customer.phone ? (
+          <Text style={styles.sub}>{customer.phone}</Text>
+        ) : (
+          // Placeholder rather than an empty line, so a row for a retailer
+          // added without a number does not read as half-rendered.
+          <Text style={[styles.sub, { fontStyle: 'italic', color: Brand.inkFaint }]}>
+            {t('customers.noPhone') || 'No phone number'}
+          </Text>
+        )}
+      </View>
 
-          <HStack alignItems="center" space="sm">
-            {/* Only for a retailer with something on their account. A Remind
-                button on a settled retailer sends "Nothing due", which is a
-                message nobody wants to receive and nobody meant to send. */}
-            {(s.goldDue > 0 || s.cashDue > 0) && (
-              <RemindButton customerId={customer.id} compact />
-            )}
+      <View style={styles.colFigures}>
+        <Text style={[styles.figure, { color: s.goldDue > 0 ? Brand.gold : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
+          {s.goldDue > 0 ? formatGrams(s.goldDue, gramShort) : '—'}
+        </Text>
+        <Text style={[styles.figureSmall, { color: s.cashDue > 0 ? Brand.ink : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
+          {s.cashDue > 0 ? formatCurrencyValue(s.cashDue) : '—'}
+        </Text>
+        {/* What the shop holds for them: cash with the rate not fixed, an
+            advance, gold held. Beside the dues, never netted off them. */}
+        {(held?.cash >= CASH_SETTLED_EPSILON || held?.gold >= WEIGHT_SETTLED_EPSILON_GM) && (
+          <Text style={[styles.held, tabularNums]} numberOfLines={1}>
+            {t('khata.holds') || 'Holds'}{' '}
+            {[
+              held.cash >= CASH_SETTLED_EPSILON ? formatCurrencyValue(held.cash) : null,
+              held.gold >= WEIGHT_SETTLED_EPSILON_GM ? formatGrams(held.gold, gramShort) : null,
+            ].filter(Boolean).join(' · ')}
+          </Text>
+        )}
+      </View>
 
-            <Icon as={ChevronRight} color="$coolGray400" size="sm" />
-            {/* Matches the Orders list: stopPropagation so the tap deletes
-                rather than opening the customer behind it. */}
-            <Pressable
-              onPress={(e: any) => { e.stopPropagation?.(); onDelete?.(); }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              p="$1"
-            >
-              <Trash2 size={16} color="#EF4444" />
-            </Pressable>
-          </HStack>
-        </HStack>
-
-        {/* Counts and lifetime value. Rendered for everyone, including customers
-            with nothing yet — a row of zeros is the answer to "have they ever
-            bought from me", and hiding it would make the cards uneven. */}
-        <Box borderTopWidth={1} borderTopColor="$coolGray100" mt="$3" pt="$3">
-          <HStack alignItems="flex-start">
-            {/* Only what this retailer owes, which is the one thing a
-                wholesaler scans this list for.
-
-                The order count with its Pending/Complete breakdown used to
-                lead here and is gone: it answered "how many transactions",
-                which is a retail question, and it was redundant besides — an
-                advance order carrying dues IS the pending one, so the two
-                columns below already say it. Dashes rather than zeroes when an
-                account is clear, so the eye lands only on the rows that owe. */}
-            <MiniStat
-              icon={Coins}
-              label={t("dashboard.dues.gold") || "Gold"}
-              value={s.goldDue > 0 ? formatGrams(s.goldDue, gramShort) : "—"}
-              color="#B45309"
-              flex={1}
-            />
-            <VStack flex={1.3} space="xs" alignItems="flex-end">
-              <Text fontSize={11} color="$coolGray500">
-                {t("dashboard.dues.cash") || "Cash"}
-              </Text>
-              <Text fontSize={15} fontWeight="$bold" color={s.cashDue > 0 ? "#4338CA" : "$coolGray400"} numberOfLines={1}>
-                {s.cashDue > 0 ? formatCurrencyValue(s.cashDue) : "—"}
-              </Text>
-            </VStack>
-          </HStack>
-        </Box>
-      </Box>
+      <View style={styles.colActions}>
+        {/* Only for a retailer with something on their account. A Remind on a
+            settled retailer sends "Nothing due", which nobody wants. */}
+        {owes ? <RemindButton customerId={customer.id} compact /> : <View style={{ width: 32 }} />}
+        {/* stopPropagation would be a DOM API; a nested Pressable claims the
+            touch itself, so the tap deletes rather than opening the row. */}
+        <Pressable
+          onPress={onDelete}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel={t('customers.delete.title') || 'Delete retailer'}
+          style={styles.delete}
+        >
+          <Trash2 size={15} color={Brand.inkFaint} />
+        </Pressable>
+      </View>
     </Pressable>
   );
 });
@@ -270,46 +162,37 @@ const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
 
   return (
     <Modal visible={isOpen} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable flex={1} bg="rgba(0,0,0,0.4)" onPress={onClose}>
-        <Box flex={1} justifyContent={LAYOUT.isWeb ? "center" : "flex-end"}>
-          <Box
-            bg="$white"
-            p="$6"
-            pb="$4"
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <View style={[styles.sheetWrap, LAYOUT.isWeb && { justifyContent: 'center' }]}>
+          <Pressable
+            onPress={() => {}}
             style={[
-              { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingBottom: bottomInset },
-              LAYOUT.isWeb && { alignSelf: 'center', width: '100%', maxWidth: 450, borderRadius: 24 }
+              styles.sheet,
+              { paddingBottom: bottomInset },
+              LAYOUT.isWeb && { alignSelf: 'center', maxWidth: 450, borderRadius: 16 },
             ]}
           >
-            <Text fontSize={18} fontWeight="$bold" mb="$5">
-              {t('customers.sort.title') || 'Sort By'}
-            </Text>
-            <VStack space="sm">
-              {options.map((opt) => (
+            <Text style={styles.sheetTitle}>{t('customers.sort.title') || 'Sort By'}</Text>
+            {options.map((opt, i) => {
+              const active = sortBy === opt.key;
+              return (
                 <Pressable
                   key={opt.key}
                   onPress={() => {
                     onSelect(opt.key);
                     onClose();
                   }}
-                  p="$4"
-                  bg={sortBy === opt.key ? "$coolGray50" : "transparent"}
-                  rounded="$xl"
+                  style={[styles.sortRow, i < options.length - 1 && styles.rowDivider]}
                 >
-                  <HStack justifyContent="space-between" alignItems="center">
-                    <Text
-                      fontWeight={sortBy === opt.key ? "$bold" : "$medium"}
-                      color={sortBy === opt.key ? ACCENT : "$coolGray700"}
-                    >
-                      {opt.label}
-                    </Text>
-                    {sortBy === opt.key && <Icon as={Check} color={ACCENT} size="sm" />}
-                  </HStack>
+                  <Text style={[styles.sortText, active && { color: Brand.primary, fontWeight: '700' }]}>
+                    {opt.label}
+                  </Text>
+                  {active && <Check size={18} color={Brand.primary} />}
                 </Pressable>
-              ))}
-            </VStack>
-          </Box>
-        </Box>
+              );
+            })}
+          </Pressable>
+        </View>
       </Pressable>
     </Modal>
   );
@@ -325,6 +208,7 @@ export default function CustomersScreen() {
   // Centres and caps content on iPad; no-op on phones.
   const contentStyle = useContentContainerStyle();
   const { customers, orders } = useAppSelector((state) => state.data);
+  const accountsById = useAppSelector((state) => state.data.retailerAccounts);
   const { impersonateUserId, impersonatePhone } = useAppSelector((state) => state.auth);
 
   const [open, setOpen] = useState(false);
@@ -340,14 +224,15 @@ export default function CustomersScreen() {
 
   useEffect(() => {
     dispatch(fetchCustomers());
-    // The per-customer counts below are derived on the client, so this tab
-    // needs orders and declarations even though it never lists them. Both
-    // thunks are cached — this is a no-op when the dashboard already loaded them.
+    dispatch(fetchRetailerAccounts());
+    // The per-retailer figures below are derived on the client, so this tab
+    // needs orders even though it never lists them. Cached — a no-op when the
+    // Khata tab already loaded them.
     dispatch(fetchOrders());
   }, [dispatch]);
 
-  // Arrived from the dashboard's "Sold to Us" tile. The param is consumed
-  // immediately so it cannot re-apply on a later visit.
+  // Arrived with a filter param. Consumed immediately so it cannot re-apply on
+  // a later visit.
   //
   // Deliberately NOT inside the focus effect below: consuming the param changes
   // route.params, which would change that effect's identity, run its cleanup,
@@ -360,9 +245,9 @@ export default function CustomersScreen() {
   }, [route.params?.filter, navigation]);
 
   // Leaving the tab clears the view, filter included. Tab screens stay mounted,
-  // so without this a filter — often one the shopkeeper never chose, having
-  // arrived by tapping a dashboard tile — silently survives until they notice
-  // the list is short. Empty deps so only focus and blur drive it.
+  // so without this a filter the wholesaler never chose silently survives
+  // until they notice the list is short. Empty deps so only focus and blur
+  // drive it.
   useFocusEffect(
     useCallback(() => {
       return () => {
@@ -382,12 +267,12 @@ export default function CustomersScreen() {
   }, [dispatch]);
 
   /**
-   * Counts and lifetime value per customer, in one pass over each list rather
-   * than a filter per card — with a few hundred customers the per-card version
-   * is O(customers × orders) on every keystroke in the search box.
+   * Counts and dues per retailer, in one pass over the orders rather than a
+   * filter per row: with a few hundred retailers the per-row version is
+   * O(retailers × orders) on every keystroke in the search box.
    *
-   * Soft-deleted orders are excluded so a deleted bill stops counting towards
-   * a customer's total, exactly as it does on the Orders tab.
+   * Soft-deleted orders are excluded so a trashed sale stops counting towards
+   * a retailer, exactly as it does everywhere else.
    */
   const statsByCustomer = useMemo(() => {
     const map = new Map<string, { orders: number; pending: number; completed: number; goldDue: number; cashDue: number; total: number; lastDate: number }>();
@@ -404,15 +289,12 @@ export default function CustomersScreen() {
       if (!o?.customerId || o.deletedAt) return;
       const e = entry(o.customerId);
       e.orders += 1;
-      // Full-payment invoices are normalised to 'completed' in dataSlice, so
-      // this covers both a straight bill and an advance order that has been
-      // settled — the two things a customer can have "completed".
       if (o.status === 'pending') e.pending += 1;
       else if (o.status === 'completed') e.completed += 1;
       e.total += Number(o.amount) || 0;
 
-      // Read through the same helper the dashboard and the detail screen use,
-      // so a retailer's dues read identically wherever they appear.
+      // Read through the same helper the Khata tab and the retailer screen
+      // use, so a retailer's dues read identically wherever they appear.
       const due = orderOutstanding(o);
       e.goldDue += due.gold;
       e.cashDue += due.cash;
@@ -476,7 +358,7 @@ export default function CustomersScreen() {
         case 'ordersHigh':
           return (stat(b).orders || 0) - (stat(a).orders || 0);
         case 'recent':
-          // Never-bought customers have no date to rank by, so they sort last
+          // Retailers with no sales have no date to rank by, so they sort last
           // rather than sharing the top with the most recent buyer.
           return (stat(b).lastDate || 0) - (stat(a).lastDate || 0);
         default:
@@ -485,23 +367,24 @@ export default function CustomersScreen() {
     });
   }, [baseList, statsByCustomer, activeFilter, q, sortBy]);
 
+  // "Owing" comes first after All: who owes is the question this tab answers.
   const filterTabsData = useMemo(() => ([
     { key: 'all', label: t('customers.filters.all') || 'All', count: filterCounts.all },
+    { key: 'owing', label: t('customers.filters.owing') || 'Owing', count: filterCounts.owing },
     { key: 'pending', label: t('customers.filters.pending') || 'Pending', count: filterCounts.pending },
     { key: 'completed', label: t('customers.filters.completed') || 'Complete', count: filterCounts.completed },
-    { key: 'owing', label: t('customers.filters.owing') || 'Owing', count: filterCounts.owing },
     { key: 'noOrders', label: t('customers.filters.noOrders') || 'No orders', count: filterCounts.noOrders },
   ]), [t, filterCounts]);
 
-  /** Only filters that would return something, plus All — matches the Orders tab. */
+  /** Only filters that would return something, plus All. */
   const visibleFilterTabs = useMemo(
     () => filterTabsData.filter(f => f.key === 'all' || f.count > 0),
     [filterTabsData],
   );
 
-  // The active filter's chip can vanish under you — delete the last customer
-  // who sold you gold while looking at "Sold to us". Fall back to All rather
-  // than stranding them on an empty list with no chip selected.
+  // The active filter's tab can vanish under you, e.g. delete the last
+  // retailer that matched it. Fall back to All rather than stranding the user
+  // on an empty list with nothing selected.
   useEffect(() => {
     if (!visibleFilterTabs.some(f => f.key === activeFilter)) {
       setActiveFilter('all');
@@ -534,139 +417,125 @@ export default function CustomersScreen() {
   }, [dispatch, navigation]);
 
   const renderItem = useCallback(({ item }: any) => (
-    <CustomerCard
+    <RetailerRow
       customer={item}
       stats={statsByCustomer.get(item.id)}
+      held={accountsById?.[item.id]
+        ? { cash: accountsById[item.id].heldCash || 0, gold: accountsById[item.id].meltCredit || 0 }
+        : undefined}
       t={t}
       onPress={() => navigation.navigate("CustomerDetails", { customerId: item.id })}
       onDelete={() => handleRequestDelete(item)}
     />
-  ), [navigation, statsByCustomer, t, handleRequestDelete]);
+  ), [navigation, statsByCustomer, accountsById, t, handleRequestDelete]);
 
   /** Counts for the confirmation's "this would orphan…" list. */
   const pendingDeleteStats = pendingDelete
     ? statsByCustomer.get(pendingDelete.id) || EMPTY_STATS
     : EMPTY_STATS;
-  const pendingHasRecords =
-    pendingDeleteStats.orders > 0;
+  const pendingHasRecords = pendingDeleteStats.orders > 0;
 
   const keyExtractor = useCallback((item: any, index: number) => item.id || item._id || index.toString(), []);
 
   return (
-    <Box flex={1} bg="#F9FAFB">
-      <Header t={t} count={customers.length} onAdd={() => setOpen(true)} />
+    <View style={styles.screen}>
+      <LedgerHeader
+        title={t("customers.title") || "Retailers"}
+        subtitle={`${customers.length} ${t("customers.count") || "retailers"}`}
+        right={
+          <LedgerHeaderAction icon={Plus} label={t("customers.add") || "Add"} onPress={() => setOpen(true)} />
+        }
+      />
 
       <FlatList
         data={filteredCustomers}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         // The search box lives in ListHeaderComponent, so without this the first
-        // tap on a customer row while typing only dismisses the keyboard.
+        // tap on a row while typing only dismisses the keyboard.
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          padding: 16,
-          paddingBottom: 100,
-          ...contentStyle
-        }}
+        contentContainerStyle={[{ paddingBottom: 40 }, contentStyle]}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Brand.primary]} />
         }
         ListHeaderComponent={
-          <>
-            <Box bg="$white" rounded="$2xl" px="$4" py="$1" style={styles.card}>
-              <HStack alignItems="center">
-                <Icon as={Search} color="#9CA3AF" size="sm" />
-                <Input variant="outline" flex={1} ml="$1" borderWidth={0}>
-                  <InputField
-                    placeholder={t("customers.searchWithCode") || t("customers.search")}
-                    value={q}
-                    onChangeText={setQ}
-                    maxLength={INPUT_LIMITS.searchQuery}
-                    fontSize={14}
-                  />
-                </Input>
-                <Box h={20} w={1} bg="$coolGray200" mx="$2" />
-                <Pressable p="$2" onPress={() => setIsSortModalOpen(true)}>
-                  <Icon as={ArrowUpDown} color={sortBy !== 'nameAsc' ? ACCENT : "#9CA3AF"} size="sm" />
+          <View>
+            <View style={styles.searchWrap}>
+              <View style={styles.search}>
+                <Search size={18} color={Brand.inkFaint} />
+                <TextInput
+                  style={styles.searchInput}
+                  placeholder={t("customers.searchWithCode") || t("customers.search") || "Search"}
+                  placeholderTextColor={Brand.inkFaint}
+                  value={q}
+                  onChangeText={setQ}
+                  maxLength={INPUT_LIMITS.searchQuery}
+                />
+                <Pressable onPress={() => setIsSortModalOpen(true)} hitSlop={8} accessibilityLabel={t('customers.sort.title') || 'Sort By'}>
+                  <ArrowUpDown size={18} color={sortBy !== 'nameAsc' ? Brand.primary : Brand.inkFaint} />
                 </Pressable>
-              </HStack>
-            </Box>
+              </View>
+            </View>
 
-            <Box>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 16 }}
-              >
-                {visibleFilterTabs.map((item) => (
-                  <Pressable key={item.key} onPress={() => setActiveFilter(item.key as FilterType)}>
-                    <Box
-                      style={[styles.filter, activeFilter === item.key && styles.activeFilter]}
-                      mr="$3"
-                    >
-                      {item.key === 'pending' && (
-                        <Icon as={Clock} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
-                      )}
-                      {item.key === 'owing' && (
-                        <Icon as={Coins} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
-                      )}
-                      {item.key === 'completed' && (
-                        <Icon as={CheckCircle} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
-                      )}
-                      <Text
-                        style={{
-                          color: activeFilter === item.key ? '#fff' : '#1F2937',
-                          fontWeight: '600',
-                          fontSize: 13,
-                        }}
-                      >
-                        {item.label} ({item.count})
-                      </Text>
-                    </Box>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filters}
+            >
+              {visibleFilterTabs.map((item) => {
+                const active = activeFilter === item.key;
+                return (
+                  <Pressable
+                    key={item.key}
+                    onPress={() => setActiveFilter(item.key as FilterType)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: active }}
+                    style={styles.filterTab}
+                  >
+                    <Text style={[styles.filterText, active && styles.filterTextActive]}>
+                      {item.label} <Text style={styles.filterCount}>{item.count}</Text>
+                    </Text>
+                    <View style={[styles.filterLine, active && styles.filterLineActive]} />
                   </Pressable>
-                ))}
-              </ScrollView>
-            </Box>
-          </>
+                );
+              })}
+            </ScrollView>
+
+            {filteredCustomers.length > 0 && (
+              <View style={styles.tableHead}>
+                <View style={{ width: 52 }} />
+                <Text style={[styles.th, { flex: 1 }]}>{t('khata.colRetailer') || 'Retailer'}</Text>
+                <Text style={[styles.th, styles.colFigures]}>
+                  {t('khata.colGold') || 'Gold'} / {t('khata.colCash') || 'Cash'}
+                </Text>
+                <View style={styles.colActions} />
+              </View>
+            )}
+          </View>
         }
         ListEmptyComponent={
-          <Center mt="$20">
-            <VStack space="md" alignItems="center">
-              <Box p="$5" bg="$coolGray100" rounded="$full">
-                <Icon as={User} size="xl" color="$coolGray400" />
-              </Box>
-              <Text color="$coolGray400" fontWeight="$medium">
-                <Text style={{ fontSize: 16 }}>
-                  {q.trim() || activeFilter !== 'all'
-                    ? t("customers.noResults") || "No retailers match your search"
-                    : t("customers.noCustomers") || "No retailers found"}
-                </Text>
-              </Text>
-              {!q.trim() && activeFilter === 'all' && (
-                <>
-                  <Text color="$coolGray400" fontWeight="$medium" style={{ marginTop: -4 }}>
-                    <Text style={{ fontSize: 14 }}>{t("customers.emptySubHead") || "Add retailers manually or they're created when making invoices"}</Text>
-                  </Text>
-                  <Pressable
-                    px="$4"
-                    py="$2"
-                    mt="$2"
-                    rounded="$xl"
-                    flexDirection="row"
-                    alignItems="center"
-                    style={{ backgroundColor: '#F97316' }}
-                    onPress={() => setOpen(true)}
-                  >
-                    <Icon as={Plus} color="$white" size="sm" />
-                    <Text color="$white" ml="$2" fontWeight="$bold">
-                      {t("customers.addNew") || "Add New Retailer"}
-                    </Text>
-                  </Pressable>
-                  <WatchTutorialLink topic={HELP_TOPICS.customers} />
-                </>
-              )}
-            </VStack>
-          </Center>
+          <View style={styles.empty}>
+            <View style={styles.emptyIcon}>
+              <Store size={28} color={Brand.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>
+              {q.trim() || activeFilter !== 'all'
+                ? t("customers.noResults") || "No retailers match your search"
+                : t("customers.noCustomers") || "No retailers found"}
+            </Text>
+            {!q.trim() && activeFilter === 'all' && (
+              <VStack space="sm" alignItems="center">
+                <GText fontSize={14} color={Brand.inkMuted} textAlign="center">
+                  {t("customers.emptySubHead") || "Add the jewellery shops you supply"}
+                </GText>
+                <Pressable style={styles.emptyButton} onPress={() => setOpen(true)}>
+                  <Plus size={16} color="#FFFFFF" />
+                  <Text style={styles.emptyButtonText}>{t("customers.addNew") || "Add New Retailer"}</Text>
+                </Pressable>
+                <WatchTutorialLink topic={HELP_TOPICS.customers} />
+              </VStack>
+            )}
+          </View>
         }
         initialNumToRender={15}
         windowSize={5}
@@ -687,8 +556,8 @@ export default function CustomersScreen() {
         t={t}
       />
 
-      {/* Same warning as the customer details screen: the backend removes only
-          the customer row, so bills and declarations are left without one. */}
+      {/* Same warning as the retailer screen: the backend removes only the
+          retailer row, so their sales are left without one. */}
       <ConfirmModal
         visible={!!pendingDelete}
         onClose={() => setPendingDelete(null)}
@@ -702,24 +571,24 @@ export default function CustomersScreen() {
         description={
           pendingHasRecords ? (
             <VStack space="sm">
-              <Text fontSize={14} color="$coolGray500" textAlign="center" lineHeight={20}>
+              <GText fontSize={14} color={Brand.inkMuted} textAlign="center" lineHeight={20}>
                 {t('customers.delete.hasRecords')}
-              </Text>
-              <VStack space="xs" bg="#FEF2F2" rounded="$xl" px="$4" py="$3">
+              </GText>
+              <VStack space="xs" bg={Brand.dueSoft} rounded="$lg" px="$4" py="$3">
                 {pendingDeleteStats.orders > 0 && (
-                  <Text fontSize={13} fontWeight="$bold" color="#B91C1C" textAlign="center">
+                  <GText fontSize={13} fontWeight="$bold" color={Brand.due} textAlign="center">
                     {pendingDeleteStats.orders} {t('customers.delete.records.orders')}
-                  </Text>
+                  </GText>
                 )}
                 {pendingDeleteStats.pending > 0 && (
-                  <Text fontSize={13} fontWeight="$bold" color="#B91C1C" textAlign="center">
+                  <GText fontSize={13} fontWeight="$bold" color={Brand.due} textAlign="center">
                     {pendingDeleteStats.pending} {t('customers.delete.records.pending')}
-                  </Text>
+                  </GText>
                 )}
               </VStack>
-              <Text fontSize={13} color="$coolGray500" textAlign="center" lineHeight={18}>
+              <GText fontSize={13} color={Brand.inkMuted} textAlign="center" lineHeight={18}>
                 {t('customers.delete.recordsNote')}
-              </Text>
+              </GText>
             </VStack>
           ) : (
             t('customers.delete.plain')
@@ -733,29 +602,235 @@ export default function CustomersScreen() {
         onEndSession={handleEndSession}
         onClose={() => setBlockModalVisible(false)}
       />
-    </Box>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    elevation: 2,
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+  screen: {
+    flex: 1,
+    backgroundColor: Brand.paper,
   },
-  activeFilter: {
-    backgroundColor: ACCENT,
-  },
-  filter: {
-    backgroundColor: '#FFFFFF',
+
+  searchWrap: {
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingTop: 14,
+  },
+  search: {
     flexDirection: 'row',
     alignItems: 'center',
-    elevation: 1,
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    gap: 10,
+    height: 44,
+    paddingHorizontal: 12,
+    backgroundColor: Brand.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Brand.line,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    color: Brand.ink,
+    paddingVertical: 0,
+  },
+
+  filters: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    gap: 18,
+  },
+  filterTab: {
+    alignItems: 'center',
+  },
+  filterText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: Brand.inkMuted,
+  },
+  filterTextActive: {
+    color: Brand.primary,
+    fontWeight: '700',
+  },
+  filterCount: {
+    fontSize: 12,
+    color: Brand.inkFaint,
+  },
+  filterLine: {
+    height: 2,
+    alignSelf: 'stretch',
+    marginTop: 6,
+    backgroundColor: 'transparent',
+  },
+  filterLineActive: {
+    backgroundColor: Brand.goldFill,
+  },
+
+  tableHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: Brand.line,
+  },
+  th: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Brand.inkMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: Brand.card,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Brand.line,
+  },
+  rowDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Brand.line,
+  },
+  photo: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+  },
+  monogram: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monogramText: {
+    color: Brand.primary,
+    fontWeight: '700',
+    fontSize: 17,
+  },
+  colName: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  name: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: Brand.ink,
+  },
+  code: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Brand.inkFaint,
+  },
+  sub: {
+    fontSize: 13,
+    color: Brand.inkMuted,
+    marginTop: 2,
+  },
+  colFigures: {
+    width: 104,
+    alignItems: 'flex-end',
+    textAlign: 'right',
+  },
+  figure: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  figureSmall: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  held: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Brand.received,
+    marginTop: 2,
+  },
+  colActions: {
+    width: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 6,
+  },
+  delete: {
+    padding: 4,
+  },
+
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(29, 27, 22, 0.45)',
+  },
+  sheetWrap: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    width: '100%',
+    backgroundColor: Brand.card,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: Brand.ink,
+    marginBottom: 8,
+  },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+  },
+  sortText: {
+    fontSize: 15,
+    color: Brand.inkSoft,
+  },
+
+  empty: {
+    alignItems: 'center',
+    marginTop: 64,
+    paddingHorizontal: 24,
+    gap: 10,
+  },
+  emptyIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    backgroundColor: Brand.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Brand.inkSoft,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Brand.primary,
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    height: 42,
+    marginTop: 6,
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 15,
   },
 });

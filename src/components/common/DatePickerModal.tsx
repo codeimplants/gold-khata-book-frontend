@@ -12,7 +12,7 @@ import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useTranslation } from "../../hooks/useTranslation";
 import { LAYOUT } from "../../constants/layout";
 
-const PURPLE = '#6D5EF7';
+const PURPLE = '#0E4D3C';
 
 interface DatePickerModalProps {
     isOpen: boolean;
@@ -170,7 +170,7 @@ const DatePickerModal = ({ isOpen, onClose, date, onSelect }: DatePickerModalPro
                                                 height: 40,
                                                 justifyContent: 'center',
                                                 alignItems: 'center',
-                                                backgroundColor: isSelected ? PURPLE : (isToday ? 'rgba(109, 94, 247, 0.1)' : 'transparent'),
+                                                backgroundColor: isSelected ? PURPLE : (isToday ? 'rgba(14, 77, 60, 0.1)' : 'transparent'),
                                                 borderRadius: 12,
                                                 borderWidth: isToday ? 1 : 0,
                                                 borderColor: isToday ? PURPLE : 'transparent',
@@ -250,13 +250,13 @@ const DatePickerModal = ({ isOpen, onClose, date, onSelect }: DatePickerModalPro
                     <HStack space="md" mt="$5">
                         <TouchableOpacity
                             onPress={jumpToToday}
-                            style={{ flex: 1, padding: 12, backgroundColor: 'rgba(109, 94, 247, 0.05)', borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(109, 94, 247, 0.2)' }}
+                            style={{ flex: 1, padding: 12, backgroundColor: 'rgba(14, 77, 60, 0.05)', borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(14, 77, 60, 0.2)' }}
                         >
                             <Text fontWeight="$bold" color={PURPLE}>{t('common.today') || "Today"}</Text>
                         </TouchableOpacity>
                         <TouchableOpacity
                             onPress={onClose}
-                            style={{ flex: 1, padding: 12, backgroundColor: '#F9FAFB', borderRadius: 12, alignItems: 'center' }}
+                            style={{ flex: 1, padding: 12, backgroundColor: '#F2F4EF', borderRadius: 12, alignItems: 'center' }}
                         >
                             <Text fontWeight="$bold" color="$coolGray500">{t('common.cancel')}</Text>
                         </TouchableOpacity>

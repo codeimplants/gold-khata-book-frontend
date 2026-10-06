@@ -13,7 +13,7 @@ import {
   ScrollView,
   Center,
 } from '@gluestack-ui/themed';
-import { ArrowLeft, Plus, X, ChevronRight, Search, User, ChevronLeft, Contact } from 'lucide-react-native';
+import { Plus, X, ChevronRight, Search, User, ChevronLeft, Contact } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -25,7 +25,8 @@ import type { RootStackParamList } from '../../navigation/types';
 import { parseApiErrorList } from '../../utils/errorUtils';
 import { capitalizeWords } from '../../utils/textUtils';
 import ValidationErrorModal from '../../components/ValidationErrorModal';
-import GradientSurface from '../../components/common/GradientSurface';
+import LedgerHeader, { LedgerHeaderAction } from '../../components/ledger/LedgerHeader';
+import { Brand } from '../../theme/brand';
 import GradientButton from '../../components/GradientButton';
 import { LAYOUT } from "../../constants/layout";
 import CustomerCodeBadge from '../../components/customers/CustomerCodeBadge';
@@ -185,67 +186,21 @@ export default function SelectCustomerScreen() {
     navigation.navigate(next, { ...extraParams, customerId });
   };
 
-  const Header = () => (
-    <Box height={115} overflow="hidden">
-      <GradientSurface colors={['#F97316', '#F59E0B']} />
-
-      <HStack
-        px="$5"
-        pt="$12"
-        pb="$5"
-        justifyContent="space-between"
-        alignItems="center"
-        flex={1}
-        style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
-      >
-        <Box 
-          flexDirection="row" 
-          alignItems="center" 
-          justifyContent="space-between"
-          flex={1}
-          style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
-        >
-          <HStack alignItems="center" space="md">
-            <Pressable onPress={() => navigation.goBack()} p="$2" rounded="$lg">
-              <Icon as={ArrowLeft} color="$white" />
-            </Pressable>
-            <VStack>
-              <Text color="$white" fontSize={20} fontWeight="$bold">
-                {t('customers.title') || 'Retailers'}
-              </Text>
-              <Text color="$white" opacity={0.85}>
-                {t('orders.selectCustomer') || 'Select retailer to continue'}
-              </Text>
-            </VStack>
-          </HStack>
-        </Box>
-
-        <Pressable
-          bg="rgba(255,255,255,0.2)"
-          px="$4"
-          py="$2"
-          rounded="$xl"
-          flexDirection="row"
-          alignItems="center"
-          onPress={openAddCustomer}
-        >
-          <Icon as={Plus} color="$white" size="sm" />
-          <Text color="$white" ml="$2" fontWeight="$bold">
-            {t('customers.add')}
-          </Text>
-        </Pressable>
-      </HStack>
-    </Box>
-  );
-
   return (
-    <Box flex={1} bg="#F3F4F6">
-      <Header />
+    <Box flex={1} bg={Brand.paper}>
+      {/* The Ledger header (see LedgerHeader). It was SoneBill's orange
+          Customers gradient with a frosted Add pill. */}
+      <LedgerHeader
+        title={t('customers.title') || 'Retailers'}
+        subtitle={t('orders.selectCustomer') || 'Select retailer to continue'}
+        onBack={() => navigation.goBack()}
+        right={<LedgerHeaderAction icon={Plus} label={t('customers.add') || 'Add'} onPress={openAddCustomer} />}
+      />
 
       {/* Search */}
       <Box px="$4" mt="$4" style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}>
-        <HStack bg="$white" rounded="$xl" px="$3" py="$2" alignItems="center" style={styles.card}>
-          <Icon as={Search} color="#6B7280" />
+        <HStack bg={Brand.card} rounded="$md" px="$3" py="$1" alignItems="center" borderWidth={1} borderColor={Brand.line}>
+          <Icon as={Search} color="#6B665B" />
           <Input variant="rounded" flex={1} ml="$2" borderWidth={0}>
             <InputField
               placeholder={t('customers.searchWithCode') || 'Search by name, phone or code'}
@@ -275,7 +230,7 @@ export default function SelectCustomerScreen() {
         <VStack px="$4" mt="$4" space="md">
           {filteredCustomers.map(c => (
             <Pressable key={c.id || c._id} onPress={() => handleSelect(c.id || c._id || '')}>
-              <Box bg="$white" p="$4" rounded="$2xl" style={styles.card}>
+              <Box bg={Brand.card} p="$4" rounded="$lg" borderWidth={1} borderColor={Brand.line}>
                 <HStack alignItems="center" justifyContent="space-between">
                   <VStack flex={1} mr="$3">
                     {/* The code matters most here. Everywhere else it is a
@@ -324,7 +279,7 @@ export default function SelectCustomerScreen() {
                       rounded="$xl"
                       flexDirection="row"
                       alignItems="center"
-                      style={{ backgroundColor: '#F97316' }}
+                      style={{ backgroundColor: '#9A7425' }}
                       onPress={openAddCustomer}
                     >
                       <Icon as={Plus} color="$white" size="sm" />
@@ -458,7 +413,7 @@ export default function SelectCustomerScreen() {
                     />
                     {!LAYOUT.isWeb && (
                       <Pressable onPress={() => setStep('contacts')} pr="$3" pl="$2" alignItems="center" justifyContent="center">
-                        <Icon as={Contact} size="sm" color="#6366F1" />
+                        <Icon as={Contact} size="sm" color="#0E4D3C" />
                       </Pressable>
                     )}
                   </Input>
@@ -509,10 +464,6 @@ export default function SelectCustomerScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    elevation: 3,
-    shadowOpacity: 0.08,
-  },
   modalSheet: {
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,

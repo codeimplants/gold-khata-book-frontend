@@ -148,7 +148,7 @@ const ContactScreen = () => {
             title={t("contact.email")}
             value={supportEmail}
             icon={Mail}
-            colors={["#6366F1", "#D946EF"]}
+            colors={["#0E4D3C", "#0A3A2D"]}
             gid="emailGrad"
             onPress={() => Linking.openURL(`mailto:${supportEmail}`)}
           />
@@ -157,7 +157,7 @@ const ContactScreen = () => {
             title={t("contact.phone")}
             value={supportPhone}
             icon={Phone}
-            colors={["#2DD4BF", "#10B981"]}
+            colors={["#5FA88E", "#10B981"]}
             gid="phoneGrad"
             onPress={() => Linking.openURL(`tel:${supportPhone}`)}
           />
@@ -175,7 +175,7 @@ const ContactScreen = () => {
             title={t("contact.address")}
             value={supportAddress}
             icon={MapPin}
-            colors={["#FB7185", "#F97316"]}
+            colors={["#FB7185", "#9A7425"]}
             gid="addrGrad"
             onPress={() => Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(supportAddress)}`)}
           />

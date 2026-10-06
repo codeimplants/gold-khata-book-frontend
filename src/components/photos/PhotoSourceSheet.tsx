@@ -116,7 +116,7 @@ const PhotoSourceSheet = ({
               <Pressable onPress={() => choose('camera')}>
                 <HStack space="md" alignItems="center" style={styles.option}>
                   <Box style={styles.optionIcon}>
-                    <Icon as={Camera} size="md" color="#6D5EF7" />
+                    <Icon as={Camera} size="md" color="#0E4D3C" />
                   </Box>
                   <Text fontSize={15} color="$coolGray800">
                     {t('declaration.photos.takePhoto') || 'Take Photo'}
@@ -127,7 +127,7 @@ const PhotoSourceSheet = ({
               <Pressable onPress={() => choose('library')}>
                 <HStack space="md" alignItems="center" style={styles.option}>
                   <Box style={styles.optionIcon}>
-                    <Icon as={ImagePlus} size="md" color="#6D5EF7" />
+                    <Icon as={ImagePlus} size="md" color="#0E4D3C" />
                   </Box>
                   <Text fontSize={15} color="$coolGray800">
                     {t('declaration.photos.choosePhoto') || 'Choose Photo'}
@@ -161,7 +161,7 @@ const PhotoSourceSheet = ({
 };
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(17, 12, 46, 0.45)' },
+  backdrop: { flex: 1, backgroundColor: 'rgba(10, 22, 18, 0.45)' },
   backdropBottom: { justifyContent: 'flex-end' },
   backdropCentred: { justifyContent: 'center', alignItems: 'center', padding: 20 },
   panelWrap: { width: '100%' },
@@ -185,8 +185,8 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F9FAFB',
+    borderColor: '#DCE2D8',
+    backgroundColor: '#F2F4EF',
     paddingHorizontal: 14,
   },
   optionIcon: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(109, 94, 247, 0.12)',
+    backgroundColor: 'rgba(14, 77, 60, 0.12)',
   },
   optionDanger: {
     height: 56,

@@ -3,6 +3,12 @@
 Read this before changing anything. It is the short version of what this app is
 for and which parts will bite you.
 
+> **Work in progress: read [APP_STORE_4.3_REWORK.md](APP_STORE_4.3_REWORK.md)
+> first.** App Review rejected this app on 2026-09-25 as a clone of SoneBill
+> (guideline 4.3(a)), and the developer account is on Extended Review. That file
+> has the redesign plan, the rules for this work, and a progress log to resume
+> from.
+
 ## What this is
 
 A React Native app (Android, iOS, and web via react-native-web) for **gold
@@ -59,6 +65,30 @@ shipped as a real bug once.
 Only **pending advance** orders carry an outstanding. A full-payment order is
 settled when raised; a cancelled one was never owed.
 
+## Held money: `src/utils/heldMoney.ts`, `src/utils/dayBook.ts`
+
+A retailer can leave cash or gold with the wholesaler that is not against any
+sale: cash paid against a gold due with **the rate to be fixed later**, or an
+**advance** in cash or gold for purchases to come. The server keeps it per
+retailer (`/api/retailer-account`): `heldCash` in rupees, and `meltCredit`, which
+is ALL gold held in grams of 99.50 (melt lots and gold advances; the name is
+the wire format).
+
+- Shown **beside** dues, never netted off them (Khata "Held for retailers",
+  row notes "Holds …", the statement's "Held for this retailer").
+- Spent only explicitly. **Fix rate** (`allocateCash`) converts held cash at the
+  rate the retailer names, defaulting to today's, never a stored or booking
+  rate: that is the whole point of holding it. **Use gold held**
+  (`applyMeltCredit`) is gram for gram. Across a retailer's sales, oldest
+  first (`heldMoney.ts`).
+- In the day book, cash held and gold advances are money IN on the day they
+  came; payments drawn from them (`paymentType: 'credit'`) are transfers and
+  are never added to a day's totals.
+
+Receiving on account is the **Receive** button on the statement
+(`ReceiveOnAccountSheet`). A payment against one sale is still recorded on that
+sale.
+
 ## Money and weight arithmetic
 
 The server is authoritative. `src/utils/calculations.ts` and friends mirror it
@@ -84,6 +114,21 @@ Melting old metal is coming back as its own record **with photos for audit**,
 behind a feature flag (`src/featureFlags/registry.ts`) — many wholesalers do
 not melt at all. It is a melt lot producing a credit, never a declaration.
 
+**Removed in the App Store 4.3(a) rework (October 2026, see
+`APP_STORE_4.3_REWORK.md`):**
+- All of SoneBill's retail billing:
+  - screens: retail invoices, advance orders and their completion, bill history, sales and GST reports, purchases, GST settings, invoice templates and metal rates
+  - the `retail` feature flag, and the hidden making-charge, discount, HUID, pieces and stock fields in the item catalogue
+- Guest mode.
+- Edit and Complete on a sale. They opened the retail forms, which reprice without wastage. A sale completes when receipts clear both accounts.
+
+What the app looks like now (the Ledger design in `src/theme/brand.ts`, the tab
+layout, the day book and the statement) is described in that file. Keep new UI
+in that design: never SoneBill's purple, gradients or per-tab colours, and
+never the warm ivory, jaali lattice or mandala that SoneBill's design-lab
+branch is moving to. The jewellery look is the flat gold motifs in
+`src/components/ledger/Motifs.tsx` on the pearl ground.
+
 ## Running it
 
 ```
@@ -99,6 +144,7 @@ npx jest __tests__/thermalReceipt.test.ts __tests__/itemPlausibility.test.ts
 | 1) dev | `dev.api.goldkhatabook.codeimplants.com` — the default. Web window only. |
 | 2) prod | `api.goldkhatabook.codeimplants.com` — **read-only, enforced**. Web window only. |
 | 3) local | MongoDB + backend on this machine, as siblings of this repo. |
+| 4) demo | The same as local, but on the demo book (`gold_khata_book_demo`) that the store screenshots use. Refill it with `npm run seed:store` in the backend, with `DEV_DB_URL` pointed at that database. |
 
 Dev is the default because it is deployed and shared: no local database to seed
 or keep in step, and what you see is what a test APK sees.

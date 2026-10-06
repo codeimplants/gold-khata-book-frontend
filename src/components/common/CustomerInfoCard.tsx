@@ -34,8 +34,8 @@ const CustomerInfoCard = ({ customer, onChangeCustomer, readOnly }: CustomerInfo
         {/* flex + shrink so a long name yields to the Change button instead of
             pushing it off the card. */}
         <HStack alignItems="center" space="md" flex={1} mr="$2">
-          <Box w={44} h={44} rounded="$full" bg="#f0edff" alignItems="center" justifyContent="center">
-            <Icon as={User} size="md" color="#7857ff" />
+          <Box w={44} h={44} rounded="$full" bg="#E7F0EC" alignItems="center" justifyContent="center">
+            <Icon as={User} size="md" color="#0E4D3C" />
           </Box>
           <VStack flexShrink={1}>
             <HStack alignItems="center" space="xs">
@@ -79,7 +79,7 @@ const CustomerInfoCard = ({ customer, onChangeCustomer, readOnly }: CustomerInfo
             borderColor="$coolGray200"
           >
             <HStack alignItems="center" space="xs">
-              {/* <Icon as={RefreshCw} size="xs" color="#6B7280" /> */}
+              {/* <Icon as={RefreshCw} size="xs" color="#6B665B" /> */}
               <Text fontSize={12} color="$primary" fontWeight="$medium">
                 {t('common.change') || 'Change'}
               </Text>

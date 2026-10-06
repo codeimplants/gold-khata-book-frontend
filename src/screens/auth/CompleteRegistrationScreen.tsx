@@ -155,7 +155,7 @@ const CompleteRegistrationScreen = () => {
             <>
               <Card>
                 <HStack space="md" alignItems="center">
-                  <Box w="$12" h="$12" rounded="$full" bg="$purple600" alignItems="center" justifyContent="center">
+                  <Box w="$12" h="$12" rounded="$full" bg="$brand600" alignItems="center" justifyContent="center">
                     <Icon as={Store} size="xl" color="$white" />
                   </Box>
                   <VStack flex={1}>
@@ -185,7 +185,7 @@ const CompleteRegistrationScreen = () => {
                         onChangeText={(v) => { set("ownerName", capitalizeWords(v)); setFieldErrors((e) => ({ ...e, ownerName: undefined })); }}
                         maxLength={INPUT_LIMITS.ownerName}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.ownerName} limit={INPUT_LIMITS.ownerName} />
@@ -200,7 +200,7 @@ const CompleteRegistrationScreen = () => {
                         onChangeText={(v) => { set("shopName", capitalizeWords(v)); setFieldErrors((e) => ({ ...e, shopName: undefined })); }}
                         maxLength={INPUT_LIMITS.shopName}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.shopName} limit={INPUT_LIMITS.shopName} />
@@ -216,7 +216,7 @@ const CompleteRegistrationScreen = () => {
                         maxLength={INPUT_LIMITS.addressLine}
                         returnKeyType="done"
                         onSubmitEditing={Keyboard.dismiss}
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.address} limit={INPUT_LIMITS.addressLine} />

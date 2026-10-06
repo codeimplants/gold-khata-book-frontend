@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { Modal, TouchableOpacity, ScrollView } from "react-native";
 import { Box, HStack, Text, Icon, Pressable } from "@gluestack-ui/themed";
 import { ChevronDown, Check } from "lucide-react-native";
-import { AppColors } from "../../theme/colors";
+import { Brand } from "../../theme/brand";
 import { LAYOUT } from "../../constants/layout";
 
-const BORDER = "#E5E7EB";
+const BORDER = "#DCE2D8";
 
 export interface SelectFieldOption {
   label: string;
@@ -50,10 +50,10 @@ const SelectField = ({
           justifyContent="space-between"
           opacity={readOnly ? 0.5 : 1}
         >
-          <Text fontSize={14} color={selectedLabel ? "#111827" : "#9CA3AF"} numberOfLines={1}>
+          <Text fontSize={14} color={selectedLabel ? "#1D1B16" : "#A39E92"} numberOfLines={1}>
             {selectedLabel || placeholder}
           </Text>
-          <Icon as={ChevronDown} size="sm" color="#6B7280" />
+          <Icon as={ChevronDown} size="sm" color="#6B665B" />
         </Box>
       </Pressable>
 
@@ -81,7 +81,7 @@ const SelectField = ({
                     style={{
                       borderRadius: 12,
                       marginVertical: 2,
-                      backgroundColor: isSelected ? AppColors.accentPink : "transparent",
+                      backgroundColor: isSelected ? Brand.primary : "transparent",
                     }}
                   >
                     <HStack alignItems="center" justifyContent="space-between" px="$3" py="$3">

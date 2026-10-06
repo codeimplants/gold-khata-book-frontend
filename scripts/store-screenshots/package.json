@@ -1,0 +1,11 @@
+{
+  "name": "gkb-store-screenshots",
+  "private": true,
+  "description": "Captures Gold Khata Book's web build at store screenshot sizes. See APP_STORE_4.3_REWORK.md.",
+  "scripts": {
+    "capture": "node capture.js"
+  },
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}

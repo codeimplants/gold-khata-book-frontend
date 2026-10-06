@@ -1,0 +1,5 @@
+# Raw captures are intermediates: store.js makes them, and frame.js turns
+# them into the committed images in store-assets/screenshots/.
+raw/
+# capture.js's default output folder.
+out/

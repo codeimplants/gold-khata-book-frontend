@@ -31,7 +31,7 @@ const CustomerCodeBadge = ({ code, size = 'sm' }: CustomerCodeBadgeProps) => {
       px={size === 'md' ? '$2.5' : '$2'}
       py="$0.5"
       rounded="$full"
-      bg="#EEF2FF"
+      bg="#E7F0EC"
       // Never let a long code squeeze the name it sits beside — the name is
       // what the shopkeeper reads first, the code only disambiguates it.
       flexShrink={0}
@@ -39,7 +39,7 @@ const CustomerCodeBadge = ({ code, size = 'sm' }: CustomerCodeBadgeProps) => {
       <Text
         fontSize={size === 'md' ? 11 : 10}
         fontWeight="$bold"
-        color="#4338CA"
+        color="#0A3A2D"
         // The digits are the whole point; keep them from being re-wrapped or
         // hyphenated across the badge.
         numberOfLines={1}

@@ -93,7 +93,7 @@ th { text-align: left; font-size: 10px; letter-spacing: .6px; text-transform: up
 td { padding: 7px 4px; border-bottom: 1px solid #F3F4F6; }
 .num { text-align: right; ${NUM_FONT} }
 .ok { color: #15803D; }
-.credit { color: #B45309; }
+.credit { color: #87661F; }
 tfoot td { border-top: 2px solid #111827; border-bottom: none; font-weight: bold; padding-top: 9px; }
 </style></head><body>
   <div class="shop">

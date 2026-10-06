@@ -79,8 +79,8 @@ const FooterLink = ({
 }) => (
   <Pressable onPress={onPress}>
     <HStack alignItems="center" space="sm">
-      <Icon as={icon} size="sm" color="#6366F1" />
-      <Text color="#6366F1" fontWeight="$semibold">
+      <Icon as={icon} size="sm" color="#0E4D3C" />
+      <Text color="#0E4D3C" fontWeight="$semibold">
         {label}
       </Text>
     </HStack>

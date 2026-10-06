@@ -19,15 +19,12 @@ import {
   ScrollView,
   Center,
   Divider,
-  Badge,
-  BadgeText,
   Input,
   InputField,
   CheckIcon,
   Switch,
 } from '@gluestack-ui/themed';
 import {
-  ArrowLeft,
   CheckCircle,
   ArrowRight,
   Plus,
@@ -38,15 +35,11 @@ import {
   X,
   Clock,
   History,
-  Pencil,
   FileSignature,
   Scale,
 } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../navigation/types';
@@ -81,9 +74,13 @@ import DocumentActionsRow from '../../components/common/DocumentActionsRow';
 import PrintDetailsCard from '../../components/common/PrintDetailsCard';
 import PrintTargetNote from '../../components/common/PrintTargetNote';
 import DatePickerModal from '../../components/common/DatePickerModal';
+import FixRateSheet from '../../components/account/FixRateSheet';
+import UseGoldSheet from '../../components/account/UseGoldSheet';
 import { buildPdfFileName, generateInvoicePDF, sharePDF, downloadPDFToDevice } from '../../utils/pdfService';
 import Share from 'react-native-share';
-import { formatGrams, CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
+import { formatGrams, orderOutstanding, CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
+import LedgerHeader from '../../components/ledger/LedgerHeader';
+import { Brand, tabularNums } from '../../theme/brand';
 import { useShopRate } from '../../hooks/useShopRate';
 import { openWhatsApp, formatWhatsAppPhone } from '../../utils/whatsappUtils';
 import { downloadInvoiceA4Pdf } from '../../utils/invoicePdfWeb';
@@ -105,7 +102,7 @@ type RouteProps = NativeStackScreenProps<
   'OrderDetails'
 >['route'];
 
-const PURPLE = '#6D5EF7';
+const PURPLE = '#0E4D3C';
 
 function getItemLabel(item: any, fallback: string): string {
   if (!item) return fallback;
@@ -839,7 +836,6 @@ export default function OrderDetailsScreen() {
   const account = useAppSelector(
     s => (order?.customerId ? s.data.retailerAccounts[order.customerId] : undefined),
   );
-  const [applyingCredit, setApplyingCredit] = React.useState(false);
 
   React.useEffect(() => {
     if (!order?.customerId) return;
@@ -857,54 +853,57 @@ export default function OrderDetailsScreen() {
    * moves a retailer's money twice and settles nothing.
    */
   const meltToApply = Math.min(creditMeltAvailable, remainingWeight);
-  const cashRateForCredit = balanceRatePerGram > 0 ? balanceRatePerGram : 0;
-  const cashToApply = cashRateForCredit > 0
-    ? Math.min(creditCashAvailable, Math.max(0, remainingWeight - meltToApply) * cashRateForCredit)
-    : 0;
 
-  const canUseCredit =
-    order?.status === 'pending'
-    && remainingWeight > WEIGHT_SETTLED_EPSILON_GM
-    && (meltToApply > WEIGHT_SETTLED_EPSILON_GM || cashToApply > CASH_SETTLED_EPSILON);
+  const owesMetal = order?.status === 'pending' && remainingWeight > WEIGHT_SETTLED_EPSILON_GM;
+  const canUseGold = owesMetal && meltToApply > WEIGHT_SETTLED_EPSILON_GM;
+  const canFixRate = owesMetal && creditCashAvailable >= CASH_SETTLED_EPSILON;
+  const canUseCredit = canUseGold || canFixRate;
+  const [fixRateOpen, setFixRateOpen] = React.useState(false);
+  const [useGoldOpen, setUseGoldOpen] = React.useState(false);
 
-  const onUseCredit = React.useCallback(async () => {
-    if (!order?.customerId || !order?.id || applyingCredit) return;
-    setApplyingCredit(true);
-    try {
-      // Metal first, then cash. Metal settles gram for gram at no rate, so
-      // spending it first leaves the smallest possible remainder to be bought
-      // with cash at today's rate — which is the leg that costs the retailer
-      // something when the rate has moved against them.
-      if (meltToApply > WEIGHT_SETTLED_EPSILON_GM) {
-        const res: any = await dispatch(applyMeltCredit({
-          customerId: order.customerId,
-          orderId: order.id,
-          weight: meltToApply,
-        }) as any);
-        if (!applyMeltCredit.fulfilled.match(res)) {
-          toast.error(String(res.payload || 'Could not apply the melt credit'));
-          return;
-        }
-      }
-
-      if (cashToApply > CASH_SETTLED_EPSILON && cashRateForCredit > 0) {
-        const res: any = await dispatch(allocateCash({
-          customerId: order.customerId,
-          orderId: order.id,
-          amount: Number(cashToApply.toFixed(2)),
-          goldRate: cashRateForCredit,
-        }) as any);
-        if (!allocateCash.fulfilled.match(res)) {
-          toast.error(String(res.payload || 'Could not apply the credit'));
-          return;
-        }
-      }
-
-      toast.success(t('credit.applied') || 'Credit applied to this order');
-    } finally {
-      setApplyingCredit(false);
+  /** Gold held for the retailer (advances, melt credit) onto this sale, gram
+   *  for gram, all of what the sale owes or any part of it. No rate: it is
+   *  metal against metal. */
+  const onUseGoldHeld = React.useCallback(async (weight: number): Promise<string | null> => {
+    if (!order?.customerId || !order?.id) return null;
+    const res: any = await dispatch(applyMeltCredit({
+      customerId: order.customerId,
+      orderId: order.id,
+      weight,
+    }) as any);
+    if (!applyMeltCredit.fulfilled.match(res)) {
+      return String(res.payload || 'Could not use the gold held');
     }
-  }, [order, applyingCredit, meltToApply, cashToApply, cashRateForCredit, dispatch, t]);
+    toast.success(t('credit.applied') || 'Credit applied to this order');
+    return null;
+  }, [order, dispatch, t]);
+
+  /**
+   * Held cash onto this sale at the rate the retailer fixes.
+   *
+   * This used to convert at `balanceRatePerGram`, which is the sale's booking
+   * rate when it has one: the rate on the day of the FIRST payment. Cash is
+   * held precisely so it is NOT converted at an old rate; the retailer waits
+   * for one they like. So the rate is asked for, starting from today's
+   * (FixRateSheet), as the server's allocate route has always required.
+   */
+  const onFixRateHere = React.useCallback(async (amount: number, rate: number): Promise<string | null> => {
+    if (!order?.customerId || !order?.id) return null;
+    const res: any = await dispatch(allocateCash({
+      customerId: order.customerId,
+      orderId: order.id,
+      amount,
+      goldRate: rate,
+    }) as any);
+    if (!allocateCash.fulfilled.match(res)) {
+      return String(res.payload || 'Could not fix the rate');
+    }
+    toast.success(
+      (t('account.rateFixedToast') || 'Rate fixed. {grams} off their gold due.')
+        .replace('{grams}', formatGrams(amount / rate, t('common.gramShort') || 'gm')),
+    );
+    return null;
+  }, [order, dispatch, t]);
 
 
   const estimatedMakingCharges = useMemo(() => {
@@ -1150,18 +1149,14 @@ export default function OrderDetailsScreen() {
     setShowPaymentModal(true);
   };
 
-  const handleCompleteOrder = () => {
-    navigation.replace('CompleteAdvanceOrder', { orderId });
-  };
-
-  const handleEditOrder = () => {
-    if (!order) return;
-    if (order.type === 'full') {
-      (navigation as any).navigate('CreateInvoice', { customerId: order.customerId, editOrderId: order.id });
-    } else {
-      (navigation as any).navigate('AdvanceOrder', { customerId: order.customerId, editOrderId: order.id });
-    }
-  };
+  // No Edit and no "Complete & generate bill" here. Both opened SoneBill's
+  // retail forms (CreateInvoice / AdvanceOrder / CompleteAdvanceOrder), which
+  // price with making charges and know nothing of purity uplift or wastage:
+  // editing a wholesale sale there would have repriced it on retail rules.
+  // A wholesale sale completes on its own when receipts clear both the metal
+  // and the cash account (order.service addPayment). Removed in the 4.3(a)
+  // rework (APP_STORE_4.3_REWORK.md); a wholesale edit mode for NewOrderScreen
+  // is the follow-up if sales need correcting after the fact.
 
   const handleDeleteInvoice = () => {
     const label = order?.invoiceNumber || orderId.slice(-6).toUpperCase();
@@ -1225,37 +1220,11 @@ export default function OrderDetailsScreen() {
     }
 
     return (
-      <Box flex={1} bg="$white">
-        <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF' }}>
-          <Box
-            bg="$white"
-            borderBottomWidth={1}
-            borderBottomColor="$coolGray200"
-          >
-            <HStack 
-              px="$4" 
-              py="$3.5" 
-              alignItems="center" 
-              space="md"
-              style={{ ...(LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}) }}
-            >
-              <Pressable
-                onPress={() => navigation.goBack()}
-                p="$2"
-                rounded="$lg"
-              >
-                <ArrowLeft size={22} color="#111827" />
-              </Pressable>
-              <Text
-                fontWeight="$bold"
-                color="$coolGray900"
-                style={{ fontSize: 20 }}
-              >
-                {t('orders.detailsTitle') || 'Order Details'}
-              </Text>
-            </HStack>
-          </Box>
-        </SafeAreaView>
+      <Box flex={1} bg={Brand.paper}>
+        <LedgerHeader
+          title={t('orders.detailsTitle') || 'Sale'}
+          onBack={() => navigation.goBack()}
+        />
         <Center flex={1} px="$6">
           <Text color="$coolGray500">
             {t('orders.notFound') || 'Order not found'}
@@ -1266,77 +1235,45 @@ export default function OrderDetailsScreen() {
   }
 
   return (
-    <Box flex={1} bg="#F8FAFC">
-      <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF' }}>
-        <Box bg="$white" borderBottomWidth={1} borderBottomColor="$coolGray100">
-          <HStack
-            px="$4"
-            py="$4"
-            alignItems="center"
-            justifyContent="space-between"
-            style={{ ...(LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}) }}
-          >
-            <HStack alignItems="center" space="md">
+    <Box flex={1} bg={Brand.paper}>
+      {/* The Ledger header, as on every screen in the app (see LedgerHeader).
+          It was SoneBill's white header with a status pill. The sale number
+          leads, the retailer is under it, and the status sits on the green. */}
+      <LedgerHeader
+        title={order.invoiceNumber || order.orderNumber || (t('orders.detailsTitle') || 'Sale')}
+        subtitle={customer?.name || 'Walk-in Retailer'}
+        onBack={() => navigation.goBack()}
+        right={
+          <HStack alignItems="center" space="sm">
+            <Box
+              px="$2.5"
+              py="$1"
+              rounded="$md"
+              bg={order.status === 'completed' ? Brand.receivedSoft : Brand.goldSoft}
+            >
+              <Text
+                fontSize={11}
+                fontWeight="$bold"
+                color={order.status === 'completed' ? Brand.received : Brand.goldDark}
+                textTransform="uppercase"
+              >
+                {getStatusLabel(order.status)}
+              </Text>
+            </Box>
+            {order.type === 'full' && (
               <Pressable
-                onPress={() => navigation.goBack()}
+                onPress={handleDeleteInvoice}
                 p="$2"
                 rounded="$lg"
+                hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
               >
-                <ArrowLeft size={20} color="#111827" />
+                <Trash2 size={16} color="#FFFFFF" />
               </Pressable>
-              <VStack>
-                <Text fontWeight="$black" color="$coolGray900" fontSize="$md">
-                  {order.invoiceNumber || order.orderNumber}
-                </Text>
-                <Text fontSize="$xs" color="$coolGray500">
-                  {customer?.name || 'Walk-in Retailer'}
-                </Text>
-              </VStack>
-            </HStack>
-            <HStack alignItems="center" space="sm">
-              <Badge
-                variant="solid"
-                rounded="$full"
-                px="$3"
-                ml="$1"
-                bg={order.status === 'completed' ? '#DCFCE7' : '#FEF3C7'}
-              >
-                <BadgeText
-                  fontSize="$2xs"
-                  fontWeight="$bold"
-                  color={order.status === 'completed' ? '#166534' : '#B45309'}
-                  textTransform="capitalize"
-                >
-                  {getStatusLabel(order.status)}
-                </BadgeText>
-              </Badge>
-              {!(order as any).deletedAt && (order.type === 'full' || order.status !== 'completed') && (
-                <Pressable
-                  onPress={handleEditOrder}
-                  p="$2"
-                  rounded="$lg"
-                  bg="#EEF2FF"
-                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                >
-                  <Pencil size={16} color={PURPLE} />
-                </Pressable>
-              )}
-              {order.type === 'full' && (
-                <Pressable
-                  onPress={handleDeleteInvoice}
-                  p="$2"
-                  rounded="$lg"
-                  bg="#FEF2F2"
-                  hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-                >
-                  <Trash2 size={16} color="#EF4444" />
-                </Pressable>
-              )}
-              <HelpIconButton topic={HELP_TOPICS.orderDetails} />
-            </HStack>
+            )}
+            <HelpIconButton topic={HELP_TOPICS.orderDetails} color="$white" />
           </HStack>
-        </Box>
-      </SafeAreaView>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={{ 
@@ -1353,6 +1290,131 @@ export default function OrderDetailsScreen() {
         }
       >
         <VStack space="md" px="$0">
+          {/* What this sale still has on it, in the two accounts it settles
+              in, from utils/dues.ts like every other balance in the app.
+              Receive opens the same sheet as Add receipt below: a receipt is
+              recorded against a sale, here. */}
+          {order.type === 'advance' && (() => {
+            const due = orderOutstanding(order as any);
+            const gm = t('common.gramShort') || 'gm';
+            const open = order.status === 'pending';
+            return (
+              <Box bg={Brand.card} p="$4" rounded="$lg" borderWidth={1} borderColor={Brand.line}>
+                <Text fontSize={12} fontWeight="$bold" color={Brand.inkMuted} textTransform="uppercase" letterSpacing={0.8}>
+                  {open ? (t('sale.owedOnSale') || 'Owed on this sale') : (t('sale.settled') || 'This sale is settled')}
+                </Text>
+                {open && (
+                  <HStack mt="$3" alignItems="stretch">
+                    <VStack flex={1}>
+                      <Text fontSize={13} color={Brand.inkMuted}>{t('khata.fineGold') || 'Fine gold (99.50)'}</Text>
+                      <Text fontSize={24} fontWeight="$bold" color={due.gold > 0 ? Brand.gold : Brand.inkFaint} style={tabularNums}>
+                        {due.gold > 0 ? formatGrams(due.gold, gm) : '—'}
+                      </Text>
+                    </VStack>
+                    <Box w={1} bg={Brand.lineStrong} mx="$3" />
+                    <VStack flex={1}>
+                      <Text fontSize={13} color={Brand.inkMuted}>{t('khata.cash') || 'Cash'}</Text>
+                      <Text fontSize={24} fontWeight="$bold" color={due.cash > 0 ? Brand.ink : Brand.inkFaint} style={tabularNums}>
+                        {due.cash > 0 ? formatCurrencyValue(due.cash) : '—'}
+                      </Text>
+                    </VStack>
+                  </HStack>
+                )}
+                {open && (
+                  <Pressable
+                    mt="$4"
+                    h={46}
+                    rounded="$md"
+                    bg={Brand.primary}
+                    flexDirection="row"
+                    alignItems="center"
+                    justifyContent="center"
+                    onPress={() => {
+                      setIsEditingPayment(false);
+                      setPaymentDate(new Date());
+                      setPaymentAmount('');
+                      setPaymentNotes('');
+                      setShowPaymentModal(true);
+                    }}
+                  >
+                    <Plus size={18} color="#FFFFFF" />
+                    <Text ml="$2" color="$white" fontWeight="$bold" fontSize={15}>
+                      {t('newEntry.receive') || 'Receive gold or cash'}
+                    </Text>
+                  </Pressable>
+                )}
+              </Box>
+            );
+          })()}
+
+          {/* Right under what the sale owes, because it is a way to settle it:
+              the retailer's gold held and cash held. It used to sit far below
+              the bill, where nobody deciding how to settle would see it.
+
+              Credit sitting on this retailer's account, and a way to
+              spend it here. Shown only when there is credit AND this
+              order still owes something — a card offering to apply
+              nothing, or to apply it to a settled bill, is a control
+              that cannot do anything. */}
+          {canUseCredit && (
+            <Box
+              bg={Brand.receivedSoft}
+              rounded="$lg"
+              p="$4"
+              mb="$3"
+              borderWidth={1}
+              borderColor={Brand.line}
+            >
+              <Text fontSize={12} fontWeight="$bold" color={Brand.received} mb="$2" textTransform="uppercase" letterSpacing={0.6}>
+                {t('statement.heldTitle') || 'Held for this retailer'}
+              </Text>
+
+              {/* Gold held: one tap, capped at what this sale owes, so the
+                  figure on the button is exactly what will move. */}
+              {canUseGold && (
+                <HStack alignItems="center" justifyContent="space-between" mb={canFixRate ? '$3' : '$0'}>
+                  <VStack flex={1} mr="$3">
+                    <Text fontSize={15} fontWeight="$bold" color={Brand.ink} style={tabularNums}>
+                      {formatGrams(creditMeltAvailable, t('common.gramShort') || 'gm')}
+                    </Text>
+                    <Text fontSize={12} color={Brand.inkMuted}>
+                      {t('account.goldHeld') || 'Gold held · fine 99.50'}
+                    </Text>
+                  </VStack>
+                  <Pressable onPress={() => setUseGoldOpen(true)}>
+                    <Box bg={Brand.primary} rounded="$md" px="$3.5" py="$2">
+                      <Text color="$white" fontWeight="$bold" fontSize={13}>
+                        {t('account.useGold') || 'Use'}
+                      </Text>
+                    </Box>
+                  </Pressable>
+                </HStack>
+              )}
+
+              {/* Cash held, rate not fixed: converted only when the
+                  retailer names the rate. */}
+              {canFixRate && (
+                <HStack alignItems="center" justifyContent="space-between">
+                  <VStack flex={1} mr="$3">
+                    <Text fontSize={15} fontWeight="$bold" color={Brand.ink} style={tabularNums}>
+                      {formatCurrencyValue(creditCashAvailable)}
+                    </Text>
+                    <Text fontSize={12} color={Brand.inkMuted}>
+                      {t('account.cashHeldRateLater') || 'Cash held · rate not fixed'}
+                    </Text>
+                  </VStack>
+                  <Pressable onPress={() => setFixRateOpen(true)}>
+                    <Box borderWidth={1} borderColor={Brand.primary} rounded="$md" px="$3.5" py="$2">
+                      <Text color={Brand.primary} fontWeight="$bold" fontSize={13}>
+                        {t('account.fixRate') || 'Fix rate'}
+                      </Text>
+                    </Box>
+                  </Pressable>
+                </HStack>
+              )}
+            </Box>
+          )}
+
           {order.type === 'full' ? (
             <Box
               bg="$white"
@@ -1455,8 +1517,8 @@ export default function OrderDetailsScreen() {
                 <Svg height="100%" width="100%">
                   <Defs>
                     <LinearGradient id="orderProgressGrad" x1="0" y1="0" x2="1" y2="0">
-                      <Stop offset="0" stopColor="#8B5CF6" />
-                      <Stop offset="1" stopColor="#6D5EF7" />
+                      <Stop offset="0" stopColor="#145F4A" />
+                      <Stop offset="1" stopColor="#0E4D3C" />
                     </LinearGradient>
                   </Defs>
                   <Rect
@@ -1477,23 +1539,23 @@ export default function OrderDetailsScreen() {
               <HStack space="sm">
                 <Box
                   flex={1}
-                  bg="#F5F3FF"
+                  bg="#F3F8F5"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#DDD6FE"
+                  borderColor="#C3DDD2"
                   alignItems="center"
                 >
                   <Text
                     fontSize={10}
-                    color="#6D5EF7"
+                    color="#0E4D3C"
                     fontWeight="$bold"
                     textTransform="uppercase"
                     mb="$1"
                   >
                     {t('orders.details.weightPaid') || 'Weight Paid'}
                   </Text>
-                  <Text fontWeight="$black" color="#6D5EF7" fontSize="$sm">
+                  <Text fontWeight="$black" color="#0E4D3C" fontSize="$sm">
                     {isCompleted
                       ? (orderTotalWeight || 0).toFixed(3)
                       : (weightPaid || 0).toFixed(3)} gm
@@ -1502,11 +1564,11 @@ export default function OrderDetailsScreen() {
 
                 <Box
                   flex={1}
-                  bg="#F9FAFB"
+                  bg="#F2F4EF"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#F3F4F6"
+                  borderColor="#E8ECE5"
                   alignItems="center"
                 >
                   <Text
@@ -1525,11 +1587,11 @@ export default function OrderDetailsScreen() {
 
                 <Box
                   flex={1}
-                  bg="#F9FAFB"
+                  bg="#F2F4EF"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#F3F4F6"
+                  borderColor="#E8ECE5"
                   alignItems="center"
                 >
                   <Text
@@ -1553,15 +1615,15 @@ export default function OrderDetailsScreen() {
           {/* Outstanding Balance with Making Charges */}
           {order.type === 'advance' && !isCompleted && (
             <Box
-              bg="#FFFBEB"
+              bg="#FBF6EA"
               p="$5"
               rounded="$2xl"
               mb="$4"
               borderWidth={1}
-              borderColor="#FEF3C7"
+              borderColor="#F5ECD7"
               style={styles.card}
             >
-              <Text fontSize="$md" fontWeight="$black" color="#B45309" mb="$3">
+              <Text fontSize="$md" fontWeight="$black" color="#87661F" mb="$3">
                 {t('orders.details.outstandingBalance') ||
                   'Outstanding Balance (Estimated)'}
               </Text>
@@ -1625,7 +1687,7 @@ export default function OrderDetailsScreen() {
                     </Text>
                   </HStack>
                 )}
-                <Divider bg="#FDE68A" my="$2" />
+                <Divider bg="#EBD9AE" my="$2" />
                 <HStack justifyContent="space-between">
                   <Text color="$coolGray600" fontSize="$sm">
                     {t('orders.details.remainingWeight') || 'Remaining Weight'}
@@ -1688,13 +1750,13 @@ export default function OrderDetailsScreen() {
                     </Text>
                   </HStack>
                 )}
-                <Divider bg="#FDE68A" my="$2" />
+                <Divider bg="#EBD9AE" my="$2" />
                 <HStack justifyContent="space-between" alignItems="center">
-                  <Text fontWeight="$bold" color="#92400E" fontSize="$sm">
+                  <Text fontWeight="$bold" color="#6F5318" fontSize="$sm">
                     {t('orders.details.estimatedTotalBalance') ||
                       'Estimated Total Balance'}
                   </Text>
-                  <Text fontWeight="$black" color="#92400E" fontSize="$lg">
+                  <Text fontWeight="$black" color="#6F5318" fontSize="$lg">
                     ₹{Math.round(estimatedTotalBalance).toLocaleString()}
                   </Text>
                 </HStack>
@@ -1743,12 +1805,12 @@ export default function OrderDetailsScreen() {
                       flexDirection="row"
                       alignItems="center"
                     >
-                      <Plus size={16} color="#374151" />
+                      <Plus size={16} color="#3A372F" />
                       <Text
                         ml="$2"
                         fontSize="$sm"
                         fontWeight="$medium"
-                        color="#374151"
+                        color="#3A372F"
                       >
                         {t('orders.details.addPayment') || 'Add Payment'}
                       </Text>
@@ -1756,89 +1818,28 @@ export default function OrderDetailsScreen() {
                   )}
                 </HStack>
 
-                {/* Credit sitting on this retailer's account, and a way to
-                    spend it here. Shown only when there is credit AND this
-                    order still owes something — a card offering to apply
-                    nothing, or to apply it to a settled bill, is a control
-                    that cannot do anything. */}
-                {canUseCredit && (
-                  <Box
-                    bg="#F0FDF4"
-                    rounded="$xl"
-                    p="$4"
-                    mb="$3"
-                    borderWidth={1}
-                    borderColor="#BBF7D0"
-                  >
-                    <Text fontSize={13} fontWeight="$bold" color="#166534" mb="$1">
-                      {t('credit.available') || 'Credit available'}
-                    </Text>
-                    <Text fontSize={12} color="$coolGray600" mb="$3">
-                      {[
-                        creditMeltAvailable > WEIGHT_SETTLED_EPSILON_GM
-                          ? `${formatGrams(creditMeltAvailable, t('common.gramShort') || 'gm')} ${t('statement.meltCredit') || 'Melt credit'}`
-                          : '',
-                        creditCashAvailable > CASH_SETTLED_EPSILON
-                          ? `${formatCurrencyValue(creditCashAvailable)} ${t('statement.credit') || 'Credit with us'}`
-                          : '',
-                      ].filter(Boolean).join('  ·  ')}
-                    </Text>
-
-                    {/* What pressing it will actually do, spelled out. The
-                        amounts are capped at what this order owes, so they are
-                        usually smaller than the balances above and the
-                        difference has to be visible before the tap, not after. */}
-                    <Text fontSize={12} color="#166534" mb="$3">
-                      {t('credit.willApply') || 'Apply to this order'}:{' '}
-                      {[
-                        meltToApply > WEIGHT_SETTLED_EPSILON_GM
-                          ? formatGrams(meltToApply, t('common.gramShort') || 'gm')
-                          : '',
-                        cashToApply > CASH_SETTLED_EPSILON
-                          ? formatCurrencyValue(cashToApply)
-                          : '',
-                      ].filter(Boolean).join(' + ')}
-                    </Text>
-
-                    <Pressable onPress={onUseCredit} disabled={applyingCredit}>
-                      <Box
-                        bg={applyingCredit ? '#A7F3D0' : '#15803D'}
-                        rounded="$lg"
-                        py="$2.5"
-                        alignItems="center"
-                      >
-                        <Text color="$white" fontWeight="$bold" fontSize={14}>
-                          {applyingCredit
-                            ? (t('common.saving') || 'Saving…')
-                            : (t('credit.use') || 'Use credit')}
-                        </Text>
-                      </Box>
-                    </Pressable>
-                  </Box>
-                )}
-
                 {/* Old gold settles weight like a payment does, but is NOT one —
                     no money changed hands, so it sits outside the payment list
                     and outside totalPaid. Shown here because this is where a
                     shopkeeper looks to understand how the order got settled. */}
                 {hasExchange && (order?.exchangeWeightCovered ?? 0) > 0 && (
                   <HStack
-                    bg="#EEF2FF"
+                    bg="#E7F0EC"
                     p="$3"
                     rounded="$xl"
                     mb="$3"
                     alignItems="center"
                     justifyContent="space-between"
                     borderWidth={1}
-                    borderColor="#C7D2FE"
+                    borderColor="#C3DDD2"
                   >
                     <HStack alignItems="center" space="sm" flex={1}>
-                      <Icon as={Scale} size="sm" color="#4F46E5" />
+                      <Icon as={Scale} size="sm" color="#0A3A2D" />
                       <VStack flex={1}>
-                        <Text fontWeight="$bold" fontSize="$sm" color="#3730A3">
+                        <Text fontWeight="$bold" fontSize="$sm" color="#0A3A2D">
                           {t('orders.details.oldOrnamentSettled') || 'Old ornament'}
                         </Text>
-                        <Text fontSize="$xs" color="#4F46E5">
+                        <Text fontSize="$xs" color="#0A3A2D">
                           {Number(order?.exchangeWeightCovered || 0).toFixed(3)} gm
                           {' · '}
                           ₹{exchangeValue.toLocaleString('en-IN')}
@@ -1852,19 +1853,19 @@ export default function OrderDetailsScreen() {
                     difference back rather than it silently disappearing. */}
                 {(order?.exchangeExcess ?? 0) > 0 && (
                   <HStack
-                    bg="#FEF3C7"
+                    bg="#F5ECD7"
                     p="$3"
                     rounded="$xl"
                     mb="$3"
                     alignItems="center"
                     justifyContent="space-between"
                     borderWidth={1}
-                    borderColor="#FDE68A"
+                    borderColor="#EBD9AE"
                   >
-                    <Text fontWeight="$bold" fontSize="$sm" color="#92400E" flex={1}>
+                    <Text fontWeight="$bold" fontSize="$sm" color="#6F5318" flex={1}>
                       {t('orders.details.payableToCustomer') || 'Payable to retailer'}
                     </Text>
-                    <Text fontWeight="$black" fontSize="$md" color="#92400E">
+                    <Text fontWeight="$black" fontSize="$md" color="#6F5318">
                       ₹{Number(order?.exchangeExcess || 0).toLocaleString('en-IN')}
                     </Text>
                   </HStack>
@@ -1889,7 +1890,7 @@ export default function OrderDetailsScreen() {
                             >
                               <HStack
                                 space="md"
-                                bg="#F9FAFB"
+                                bg="#F2F4EF"
                                 p="$4"
                                 rounded="$xl"
                                 alignItems="center"
@@ -1897,15 +1898,15 @@ export default function OrderDetailsScreen() {
                                 <Box
                                   width={32}
                                   height={32}
-                                  bg="#F5F3FF"
+                                  bg="#F3F8F5"
                                   rounded="$full"
                                   alignItems="center"
                                   justifyContent="center"
                                   borderWidth={1}
-                                  borderColor="#DDD6FE"
+                                  borderColor="#C3DDD2"
                                 >
                                   <Text
-                                    color="#6D5EF7"
+                                    color="#0E4D3C"
                                     fontWeight="$bold"
                                     fontSize="$xs"
                                   >
@@ -2051,7 +2052,7 @@ export default function OrderDetailsScreen() {
               <Box bg="$white" p="$4" rounded="$2xl" mb="$4" style={styles.card} borderWidth={1} borderColor="$coolGray100">
                 <HStack justifyContent="space-between" alignItems="center">
                   <HStack space="md" alignItems="center">
-                    <Box bg="rgba(109, 94, 247, 0.1)" p="$2.5" rounded="$xl">
+                    <Box bg="rgba(14, 77, 60, 0.1)" p="$2.5" rounded="$xl">
                       <History size={20} color={PURPLE} />
                     </Box>
                     <VStack>
@@ -2069,32 +2070,34 @@ export default function OrderDetailsScreen() {
             </Pressable>
           )}
 
-          {/* Action Button: Mark as Completed */}
-          {order.type === 'advance' && order.status === 'pending' && (
-            <VStack space="xs" mb="$10" alignItems="center">
-              <Pressable onPress={handleCompleteOrder} w="100%">
-                <Box
-                  bg={PURPLE}
-                  p="$4"
-                  rounded="$xl"
-                  flexDirection="row"
-                  justifyContent="center"
-                  alignItems="center"
-                >
-                  <CheckCircle size={20} color="white" style={{ marginRight: 8 }} />
-                  <Text fontWeight="$black" color="white" fontSize={16}>
-                    {t('completeAdvance.completeAndGenerate')}
-                  </Text>
-                </Box>
-              </Pressable>
-              <Text fontSize={11} color="$coolGray400" textAlign="center" mt="$2">
-                {t('orders.details.completeOrderNote') || 'Complete when ready to generate final bill with all charges'}
-              </Text>
-            </VStack>
-          )}
-
         </VStack>
       </ScrollView>
+
+      <UseGoldSheet
+        visible={useGoldOpen}
+        onClose={() => setUseGoldOpen(false)}
+        heldGold={creditMeltAvailable}
+        goldDue={remainingWeight}
+        subtitle={(t('account.useGoldSubtitleSale') || '{held} held · {due} still due on this sale')
+          .replace('{held}', formatGrams(creditMeltAvailable, t('common.gramShort') || 'gm'))
+          .replace('{due}', formatGrams(remainingWeight, t('common.gramShort') || 'gm'))}
+        onConfirm={onUseGoldHeld}
+        t={t}
+      />
+
+      <FixRateSheet
+        visible={fixRateOpen}
+        onClose={() => setFixRateOpen(false)}
+        heldCash={creditCashAvailable}
+        goldDue={remainingWeight}
+        defaultRate={defaultCurrentRatePerGram || 0}
+        subtitle={(t('account.fixRateSubtitleSale') || '{cash} held · {gold} still due on this sale')
+          .replace('{cash}', formatCurrencyValue(creditCashAvailable))
+          .replace('{gold}', formatGrams(remainingWeight, t('common.gramShort') || 'gm'))}
+        hint={t('account.fixRateHintSale') || 'Their gold due on this sale comes down by the grams this buys.'}
+        onConfirm={onFixRateHere}
+        t={t}
+      />
 
       {/* Add Payment Modal */}
       <RNModal visible={showPaymentModal} transparent animationType="slide">
@@ -2713,15 +2716,10 @@ export default function OrderDetailsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // Flat, as everywhere in the Ledger design: a hairline, not a drop shadow.
   card: {
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 3,
+    borderWidth: 1,
+    borderColor: Brand.line,
   },
   shopLogo: {
     width: 64,

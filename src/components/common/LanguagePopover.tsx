@@ -6,7 +6,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { PRINT_LANGUAGES } from './LanguagePicker';
 import type { Language } from '../../localization';
 
-const PURPLE = '#6D5EF7';
+const PURPLE = '#0E4D3C';
 
 /** Fixed rather than intrinsic, so the card can be right-aligned to its anchor. */
 const CARD_WIDTH = 190;
@@ -77,7 +77,7 @@ const LanguagePopover: React.FC<LanguagePopoverProps> = ({ isOpen, onClose, anch
                                 py="$3"
                                 borderTopWidth={idx === 0 ? 0 : 1}
                                 borderColor="$coolGray100"
-                                bg={selected ? '#EEF2FF' : 'transparent'}
+                                bg={selected ? '#E7F0EC' : 'transparent'}
                             >
                                 <HStack alignItems="center" justifyContent="space-between" space="md">
                                     <Text

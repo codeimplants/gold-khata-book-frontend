@@ -3,19 +3,19 @@ export default {
     add: {
       headerTitle: 'Add Shop Details',
       headerTitleEdit: 'Edit Shop Details',
-      headerSubtitle: 'This info will appear on your invoices',
+      headerSubtitle: 'This appears on your sale slips and statements',
 
       infoTitle: 'Shop Information',
       infoSubtitle: 'Enter your shop details',
 
-      shopName: 'Shop Name *',
+      shopName: 'Shop Name',
       shopDesc: 'Shop Description',
-      addr1: 'Address Line 1 *',
+      addr1: 'Address Line 1',
       addr2: 'Address Line 2',
-      city: 'City *',
-      state: 'State *',
+      city: 'City',
+      state: 'State',
       zipcode: 'Zipcode',
-      phone: 'Phone Number *',
+      phone: 'Phone Number',
       email: 'Email (Optional)',
       website: 'Website (Optional)',
       gst: 'GST Number (Optional)',
@@ -76,8 +76,8 @@ export default {
   },
 
   items: {
-    title: 'Inventory / Products',
-    titleShort: 'Inventory',
+    title: 'Item catalogue',
+    titleShort: 'Catalogue',
     count: 'items',
 
     selectSaved: 'Select Saved Items',
@@ -87,7 +87,7 @@ export default {
     searchPlaceholder: 'Search items...',
 
     emptyTitle: 'No items yet',
-    emptySubtitle: 'Add items to quickly select them when creating invoices',
+    emptySubtitle: 'Add the ornaments you sell often to fill a sale line in one tap',
     noItemsYetTitle: 'No items added yet',
     noItemsYetSubtitle: 'Click "Add Item" to add items',
     unnamedItem: 'Unnamed Item',
@@ -145,44 +145,6 @@ export default {
     },
   },
 
-  gst: {
-    headerTitle: 'GST Settings',
-    headerSubtitle: 'Configure tax rates',
-
-    label: 'GST Rate (%)',
-
-    alerts: {
-      errorTitle: 'Error',
-      successTitle: 'Success',
-      shopNotFound: 'Shop details not found. Please add shop details first.',
-      updateSuccess: 'GST settings updated successfully.',
-      updateFailed: 'Failed to update GST settings.',
-    },
-
-    noteTitle: 'Note',
-    noteDescription:
-      'These GST rates will be applied when calculating invoice totals. Make sure to keep these rates updated according to current government regulations.',
-
-    saveBtn: 'Save Settings',
-  },
-
-  metalRates: {
-    title: 'Metal Rates',
-    subtitle: "Today's prices",
-    pricePerGram: 'Price per gram',
-    gold: {
-      title: 'Gold Rates',
-      guaranteedWeight: 'Guaranteed Weight',
-      ornament: 'Ornament Gold',
-      jewelry: 'Jewelry Gold',
-      lowPurity: 'Low Purity Gold',
-    },
-    silver: {
-      title: 'Silver Rate',
-    },
-    liveRatesNote: 'Live rates · updated just now',
-  },
-
   language: {
     title: 'Language',
     subtitle: 'Choose your preferred language',
@@ -199,7 +161,7 @@ export default {
     appName: 'Gold Khata Book',
     version: 'Version',
     aboutTitle: 'About Gold Khata Book',
-    aboutDescription: 'Gold Khata Book is a specialized jewellery billing and management solution designed to simplify your business operations.',
+    aboutDescription: 'Gold Khata Book is a ledger for gold wholesalers. It keeps every retailer\'s account in fine gold and cash, with sales, receipts, melt lots and statements in one place.',
     featuresTitle: 'Key Features',
     features: [
       'Easy Invoice Generation',
@@ -250,11 +212,11 @@ export default {
       },
       {
         title: '8. Deleting Your Account and Your Data',
-        content: 'You can permanently delete your account and all data associated with it from inside the App, at any time, without contacting us. Open the App and sign in with your registered mobile number and the OTP sent to it. Go to the Settings tab in the bottom navigation bar, scroll to the very bottom of the screen, and tap the red "Delete Account" button. A confirmation dialog will appear — tap "Delete Permanently" to confirm. Deletion is immediate and cannot be undone.',
+        content: 'You can permanently delete your account and all data associated with it from inside the App, at any time, without contacting us. Open the App and sign in with your registered mobile number and the OTP sent to it. Go to the More tab in the bottom navigation bar, scroll to the very bottom of the screen, and tap the red "Delete Account" button. A confirmation dialog will appear — tap "Delete Permanently" to confirm. Deletion is immediate and cannot be undone.',
       },
       {
         title: '9. What Deletion Removes',
-        content: 'Deleting your account permanently removes your account and mobile number, your shop details, GST settings and shop logo and signature, all invoices and bills you have created, all advance orders and their payment history, your retailer list, your inventory and product records, and any images you have uploaded. Nothing is retained in a recoverable form, so please export or print anything you need — such as invoices required for tax records — before you delete. We may retain minimal anonymised records where the law requires it, and de-identified analytics that cannot be linked back to you or your shop. If you cannot sign in to complete the deletion yourself, email us from your registered mobile number\'s associated address at codeimplants@gmail.com and we will action the request.',
+        content: 'Deleting your account permanently removes your account and mobile number, your shop details, GST settings and shop logo and signature, all sales you have recorded and the receipts against them, your retailer list, your inventory and product records, and any images you have uploaded. Nothing is retained in a recoverable form, so please export or print anything you need — such as sale slips or statements required for tax records — before you delete. We may retain minimal anonymised records where the law requires it, and de-identified analytics that cannot be linked back to you or your shop. If you cannot sign in to complete the deletion yourself, email us from your registered mobile number\'s associated address at codeimplants@gmail.com and we will action the request.',
       },
     ]
   },
@@ -272,12 +234,12 @@ export default {
         content: 'Open the Gold Khata Book app on your phone, or go to https://goldkhatabook.codeimplants.com in a browser. Enter the mobile number your account is registered with, tap Send OTP, and enter the 6-digit code you receive by SMS. If you are browsing as a guest you have no account to delete — guest use does not create one.',
       },
       {
-        title: 'Step 2 — Open Settings',
-        content: 'Tap the Settings tab, the last icon in the navigation bar at the bottom of the screen.',
+        title: 'Step 2 — Open More',
+        content: 'Tap More, the last icon in the navigation bar at the bottom of the screen.',
       },
       {
         title: 'Step 3 — Tap Delete Account',
-        content: 'Scroll to the very bottom of the Settings screen. Below the grey Logout button you will find a red "Delete Account" button. Tap it.',
+        content: 'Scroll to the very bottom of the More screen. Below the Logout button you will find a red "Delete Account" button. Tap it.',
       },
       {
         title: 'Step 4 — Confirm',
@@ -285,7 +247,7 @@ export default {
       },
       {
         title: 'What gets deleted',
-        content: 'Your account and registered mobile number; your shop details, GST settings, shop logo and signature; every invoice and bill you have created; every advance order and its payment history; your full retailer list; your inventory and product records; and all images you have uploaded. Export or print anything you still need — invoices for your tax records, for example — before you delete, because none of it can be recovered afterwards.',
+        content: 'Your account and registered mobile number; your shop details, GST settings, shop logo and signature; every sale you have recorded and the receipts against it; your full retailer list; your inventory and product records; and all images you have uploaded. Export or print anything you still need — sale slips and statements for your tax records, for example — before you delete, because none of it can be recovered afterwards.',
       },
       {
         title: 'What we may keep',
@@ -319,11 +281,11 @@ export default {
     sections: [
       {
         title: '1. Acceptance of Terms',
-        content: 'By using this Jewellery Billing Application ("App"), you agree to comply with and be bound by these Terms & Conditions. If you do not agree, please discontinue use of the App.',
+        content: 'By using Gold Khata Book ("App"), you agree to comply with and be bound by these Terms & Conditions. If you do not agree, please discontinue use of the App.',
       },
       {
         title: '2. Free Usage Policy',
-        content: 'This App is currently provided free of cost to support jewellery businesses with billing and operational management. However, free usage is subject to our infrastructure, server, and database capacity limits. As the number of users and stored data increases, we reserve the right to introduce paid subscription plans, charge a minimal maintenance fee, restrict certain features for free users, or request users to export and delete their data if they choose not to continue under updated pricing plans. We will make reasonable efforts to inform users in advance before any pricing changes take effect.',
+        content: 'This App is currently provided free of cost to support gold wholesalers in keeping their accounts with retailers. However, free usage is subject to our infrastructure, server, and database capacity limits. As the number of users and stored data increases, we reserve the right to introduce paid subscription plans, charge a minimal maintenance fee, restrict certain features for free users, or request users to export and delete their data if they choose not to continue under updated pricing plans. We will make reasonable efforts to inform users in advance before any pricing changes take effect.',
       },
       {
         title: '3. Data Ownership',
@@ -365,7 +327,7 @@ export default {
     headerSubtitle: 'Configure print page size',
 
     configTitle: 'Print Configuration',
-    configSubtitle: 'Customize invoice print size',
+    configSubtitle: 'Paper size for sale slips and statements',
 
     useCustomTitle: 'Use Custom Print Size',
     customEnabled: 'Custom page dimensions enabled',
@@ -408,7 +370,7 @@ export default {
     errReserve: 'Header space must be less than the page height',
 
     printerTypeTitle: 'Printer Type',
-    printerTypeSubtitle: 'Choose how your bills are printed',
+    printerTypeSubtitle: 'Choose how sale slips are printed',
     standardOption: 'Standard (A4)',
     thermalOption: 'Thermal (58mm)',
     thermalWebUnavailable:
@@ -422,55 +384,6 @@ export default {
      shop uploaded. The style names stay in English as labels; everything that
      explains a choice is translated, because choosing wrong means every printed
      bill is wrong. */
-  invoiceTemplates: {
-    groupStandardTitle: 'Print everything on blank paper',
-    groupStandardDesc:
-      'We print your shop name, address and GST number at the top, then the bill below it. Use plain blank paper. Your details come from Shop Details.',
-
-    groupPrePrintedTitle: 'Print on your own letterhead',
-    groupPrePrintedDesc:
-      'For paper that already has your shop details printed on it. We leave the top of every page blank for your printed header and print only the bill below it.',
-    prePrintedLabel: 'Pre-Printed Bill (Shop Header)',
-    prePrintedDesc: 'Your paper already has your header',
-    prePrintedLocked: 'Set Header Space in Print Settings first',
-    prePrintedHint:
-      'Set Header Space in Print Settings to tell us where your printed header ends. Set the page size there too if your paper is not A4.',
-
-    groupBannerTitle: 'Print your header image on blank paper',
-    groupBannerDesc:
-      'Choose this if you have a digital copy of your header. We print your header image at the top of blank paper, then the bill below it.',
-    bannerDescHas: 'Your uploaded banner replaces the invoice header',
-    bannerDescMissing: 'Upload a shop header in Shop Details first',
-
-    loginRequired: 'Log in to use this template',
-    screenTitle: 'Invoice / Bill Settings',
-    screenSubtitle: 'Template and shop header banner',
-    bannerLabel: 'Shop Header Banner',
-    saveBtn: 'Save Invoice / Bill Settings',
-    saving: 'Saving…',
-    previewFrameTitle: 'Invoice Preview',
-    discardTitle: 'Discard changes?',
-    discardBody: 'Your invoice template change has not been saved yet.',
-    discardConfirm: 'Discard',
-    discardCancel: 'Keep editing',
-    discardSave: 'Save and leave',
-    useThisTemplate: 'Use This Template',
-    close: 'Close',
-    openShopDetails: 'Open Shop Details →',
-    openPrintSettings: 'Open Print Settings →',
-    descTaxColor: 'Formal GST layout, colour header',
-    descTaxBold: 'Formal GST layout, black & bold',
-    prePrintedTaxLabel: 'Pre-Printed Bill (Professional)',
-    prePrintedTaxDesc: 'Formal GST layout on your paper',
-    descMinimal: 'Clean black & white',
-    descTraditional: 'Classic saffron style',
-    descModern: 'Gold accent, clean layout',
-    descClassic: 'Navy professional',
-
-    preview: 'Preview',
-    notAvailable: 'Not available',
-  },
-
   /* Formal GST tax-invoice templates. The amount in words is intentionally NOT
      translated — Indian tax invoices state it in English rupees regardless of
      the language the rest of the bill is printed in. */
@@ -505,7 +418,7 @@ export default {
     sendTestPrint: 'Send test print',
 
     connectedTitle: 'Printer connected',
-    connectedBody: 'This printer will now be used for your bills.',
+    connectedBody: 'This printer will now be used for your sale slips.',
     connectFailedTitle: "Couldn't connect",
     connectFailedBody:
       'Make sure the printer is switched on and nearby, then try again.',
@@ -532,11 +445,11 @@ export default {
   },
 
   printerChoice: {
-    title: 'How do you print bills?',
+    title: 'How do you print sale slips?',
     changeTitle: 'Change printer',
     subtitle: 'You can change this later in Print Settings.',
     standardTitle: 'Regular printer (A4)',
-    standardSubtitle: 'Standard printer, or save the bill as a PDF',
+    standardSubtitle: 'Standard printer, or save the slip as a PDF',
     thermalTitle: 'Thermal receipt printer',
     thermalSubtitle: 'Small 58mm till-roll printer (Bluetooth or WiFi)',
     changeLaterHint: 'You can change your printer any time from Settings.',
@@ -591,7 +504,7 @@ export default {
       itemsSub: 'Manage products & stock',
 
       melt: 'Old Gold / Melt',
-      meltSub: "Take old ornaments in and set them against a retailer's bills",
+      meltSub: 'Take old ornaments in and credit them to a retailer\'s account',
       meltFailed: 'Could not save the setting',
 
       history: 'Bill History',
@@ -657,7 +570,7 @@ export default {
       'You are in guest mode. Logging out will PERMANENTLY DELETE all your shop, retailer, and order data from this device. Are you sure?',
 
     deleteAccount: 'Delete Account',
-    deleteAccountConfirm: 'This permanently deletes your account along with your shop details, invoices, retailers and uploaded images. This cannot be undone.',
+    deleteAccountConfirm: 'This permanently deletes your account along with your shop details, sales, retailers and uploaded images. This cannot be undone.',
     deleteAccountConfirmLabel: 'Delete Permanently',
     deleteAccountError: 'Failed to delete account. Please try again.',
   },
@@ -666,7 +579,7 @@ export default {
     title: 'Retailers',
     count: 'retailers',
     empty: 'No retailers yet',
-    emptySubHead: 'Add retailers manually or they\'re created when making invoices',
+    emptySubHead: 'Add the jewellery shops you supply',
 
     photo: {
       title: 'Retailer Photo',
@@ -677,7 +590,7 @@ export default {
       failed: 'Could not add the photo',
     },
     stats: {
-      orders: 'Orders',
+      orders: 'Sales',
       pending: 'Pending',
       completed: 'Complete',
       soldToUs: 'Sold to us',
@@ -689,27 +602,27 @@ export default {
       completed: 'Complete',
       sellers: 'Sold to us',
       owing: 'Owing',
-      noOrders: 'No orders',
+      noOrders: 'No sales',
     },
     sort: {
       title: 'Sort By',
       nameAsc: 'Name: A to Z',
       nameDesc: 'Name: Z to A',
-      saleHigh: 'Purchase: High to Low',
-      saleLow: 'Purchase: Low to High',
-      ordersHigh: 'Most Orders',
-      recent: 'Recent Purchase',
+      saleHigh: 'Sales value: high to low',
+      saleLow: 'Sales value: low to high',
+      ordersHigh: 'Most sales',
+      recent: 'Most recent sale',
     },
     delete: {
       title: 'Delete this retailer?',
       confirm: 'Delete',
-      plain: 'This retailer has no bills, orders or declarations. Deleting them cannot be undone.',
+      plain: 'This retailer has no sales. Deleting them cannot be undone.',
       hasRecords: 'Deleting this retailer will also permanently delete:',
       recordsNote:
         'These bills, orders and declarations will be removed from your books, and any GST already reported on them will change. This cannot be undone.',
       records: {
-        orders: 'bill(s) / order(s)',
-        pending: 'pending order(s)',
+        orders: 'sale(s)',
+        pending: 'sale(s) with a balance',
         sold: 'old-gold declaration(s)',
       },
     },
@@ -727,7 +640,7 @@ export default {
     add: 'Add',
     addNew: 'Add New Retailer',
     addCustomer: 'Add Retailer',
-    addAndCreateOrder: 'Add Retailer & Create Order',
+    addAndCreateOrder: 'Add retailer & record a sale',
     cancel: 'Cancel',
     deleteTitle: 'Delete Retailer',
     deleteConfirm: 'Are you sure you want to delete this retailer? This action cannot be undone.',
@@ -795,7 +708,7 @@ export default {
         exchange: 'Exchange',
         cashPurchase: 'Cash',
       },
-      searchInvoicePlaceholder: 'Search invoice number...',
+      searchInvoicePlaceholder: 'Search sale number...',
       searchOrderPlaceholder: 'Search order number...',
       noMatchingResults: 'No matching results found',
       noInvoicesFound: 'No invoices found',
@@ -829,10 +742,10 @@ export default {
   },
 
   orders: {
-    title: 'Orders',
-    total: 'total orders',
-    newOrder: 'New Order',
-    search: 'Search orders...',
+    title: 'Sales',
+    total: 'sales',
+    newOrder: 'New sale',
+    search: 'Search sales...',
     invoice: 'Invoice',
     items: 'item(s)',
     pieces: 'piece',
@@ -852,9 +765,9 @@ export default {
       amountHigh: 'Amount: High to Low',
     },
 
-    noOrdersHead: 'No orders found',
-    noOrdersSubHead: 'Create your order to get started',
-    noItems: 'No items found for this order',
+    noOrdersHead: 'No sales yet',
+    noOrdersSubHead: 'Record a sale to get started',
+    noItems: 'No items on this sale',
     selectCustomer: 'Select retailer',
 
     historyTitle: 'Bill History',
@@ -862,8 +775,8 @@ export default {
     pendingTitle: 'Pending Orders',
     pendingSubtitle: 'orders pending',
 
-    detailsTitle: 'Order Details',
-    notFound: 'Order not found',
+    detailsTitle: 'Sale',
+    notFound: 'Sale not found',
     amount: 'Amount',
     type: 'Type',
     viewCustomer: 'View Retailer',
@@ -896,10 +809,10 @@ export default {
      * `orders.fullPayment` from it — that key is the chooser's {title, desc}
      * object, and rendering an object as a React child crashes the screen.
      */
-    orderDate: 'Order Date',
+    orderDate: 'Sale date',
     itemsCount: 'items',
     addItem: 'Add Item',
-    addAnotherHint: 'Add another item to this order.',
+    addAnotherHint: 'Add another item to this sale.',
     finishItemHint: 'Finish this item to add another.',
     noItemsYet: 'No items added yet',
     noItemsHint: 'Tap "Add Item" to start',
@@ -926,8 +839,8 @@ export default {
     paidInFull: 'Full payment',
     totalFine: 'TOTAL FINE 99.50',
     value: 'VALUE',
-    createOrder: 'Create Order',
-    created: 'Order created',
+    createOrder: 'Save sale',
+    created: 'Sale saved',
     selectRetailerFirst: 'Choose a retailer first',
     addOneItem: 'Add at least one item with a weight and purity',
 
@@ -940,11 +853,11 @@ export default {
     // The order saved but a payment leg did not go on it. Deliberately not a
     // success message: the bill exists and is short a payment, and the only
     // way to fix it is to know that.
-    savedPaymentFailed: 'Order saved, but a payment did not go on it',
+    savedPaymentFailed: 'Sale saved, but a receipt did not go on it',
 
     share: {
-      invoiceFromPrefix: 'Invoice from',
-      invoiceNumberLabel: 'Invoice No',
+      invoiceFromPrefix: 'Sale slip from',
+      invoiceNumberLabel: 'Sale No',
       dateLabel: 'Date',
       customerLabel: 'Retailer',
       customerFallback: 'Retailer',
@@ -957,7 +870,7 @@ export default {
 
     details: {
       billTo: 'Bill To',
-      walkInCustomer: 'Walk-in Retailer',
+      walkInCustomer: 'Retailer',
       dateLabel: 'Date',
       itemDetails: 'Item Details',
       weightLabel: 'Weight (gm)',
@@ -980,32 +893,32 @@ export default {
       grandTotal: 'Grand Total',
       advanceSummary: 'Advance Summary',
       finalAmount: 'Final Amount',
-      paymentProgress: 'Payment Progress',
+      paymentProgress: 'Settlement',
       weightPaid: 'Weight Paid',
       weightRemainingShort: 'Weight Rem.',
       totalAmountPaid: 'Total Paid',
-      outstandingBalance: 'Outstanding Balance (Estimated)',
+      outstandingBalance: 'To close today (estimate)',
       remainingWeight: 'Remaining Weight',
       goldCost: 'Gold Cost',
-      totalOrderCost: 'Total Order Cost',
-      advancePaid: 'Advance Paid',
-      advanceOrder: 'Advance Order',
+      totalOrderCost: 'Sale value',
+      advancePaid: 'Received so far',
+      advanceOrder: 'Sale on account',
       sendOnWhatsApp: 'Send on WhatsApp',
       billAttached: 'Full bill attached.',
       oldOrnamentsAdjusted: 'Old Ornaments Adjusted',
       estimatedTotalBalance: 'Estimated Balance (at current rate)',
       gstFinalSettlementNote: '* GST will be applied at final settlement',
-      paymentHistory: 'Payment History',
+      paymentHistory: 'Receipts',
       oldOrnamentSettled: 'Old ornament',
       payableToCustomer: 'Payable to retailer',
-      addPayment: 'Add Payment',
+      addPayment: 'Add receipt',
       paymentDetails: 'Payment Details',
       rateAt: '@',
-      noPaymentHistory: 'No payment history yet',
+      noPaymentHistory: 'Nothing received against this sale yet',
       markAsCompleted: 'Mark as Completed',
       fullTimeline: 'Full Timeline',
-      viewFullTimeline: 'View Retailer History',
-      timelineSubtitle: 'See all orders and payments for this retailer',
+      viewFullTimeline: 'Retailer statement',
+      timelineSubtitle: 'Every sale and receipt for this retailer',
       historySuffix: "'s History",
       useBookingRate: 'Apply Booking Rate',
       addInstallment: 'Add Installment',
@@ -1032,10 +945,10 @@ export default {
       errorTitle: 'Error',
       pdfGenerateFailed: 'Failed to generate PDF',
       pdfGenerateError: 'An error occurred while generating the PDF',
-      downloadInvoice: 'Download Invoice',
-      orderDetailsTitle: 'Order Details',
+      downloadInvoice: 'Download slip',
+      orderDetailsTitle: 'Sale',
       download: 'Download',
-      shareTitle: 'Share Order Details',
+      shareTitle: 'Share sale',
       combinePaymentsTitle: 'Combine payments as single (gift bill)',
       combinePaymentsDesc: 'Hides individual installments on this copy only — your records stay itemized',
       deleteInvoice: 'Delete Invoice',
@@ -1043,55 +956,15 @@ export default {
       customerLabel: 'Retailer',
       itemLabel: 'Item',
       purityLabel: 'Purity',
-      orderDateLabel: 'Order Date',
+      orderDateLabel: 'Sale date',
       totalWeightLabel: 'Total Weight',
     },
-  },
-
-  completeAdvance: {
-    title: 'Complete Order',
-    completionDate: 'Completion Date:',
-    goldRate: 'Gold Rate',
-    customRate: 'Custom rate',
-    perGram: 'per gram',
-    finalPayment: 'Final Payment Amount (₹)',
-    amountLessThanBalance: 'Amount is less than balance due',
-    processing: 'Processing...',
-    completeAndGenerate: 'Complete Order & Generate Bill',
-
-    summary: {
-      title: 'Order Summary',
-      item: 'Item',
-      itemFallback: 'Jewelry Item',
-      purity: 'Purity',
-      totalWeight: 'Total Weight',
-      customer: 'Retailer',
-    },
-
-    payments: {
-      receivedTitle: 'Advance Payments Received',
-      totalPayments: 'Total Payments',
-      weightCovered: 'Weight Covered',
-    },
-
-    finalBill: {
-      title: 'Final Bill Calculation',
-      goldValue: 'Gold Value',
-      makingCharges: 'Making Charges',
-      subtotal: 'Subtotal',
-      gst: 'GST',
-      grandTotal: 'Grand Total',
-      advancePaid: 'Advance Paid',
-      balanceDue: 'Balance Due',
-    },
-
-    alerts: {
-      validationTitle: 'Validation Error',
-      balanceAtLeast: 'Balance payment must be at least',
-      errorTitle: 'Error',
-      createInvoiceFailed: 'Failed to create invoice.',
-      completeFailed: 'Failed to complete order',
-    },
+    goldHeld: 'From gold held',
+    goldHeldOverdrawn: 'That is more gold than is held for this retailer',
+    cashHeld: 'From cash held',
+    cashHeldOverdrawn: 'That is more cash than is held for this retailer',
+    cashHeldHint: '{amount} held · converts at {rate}/gm',
+    itemsHeading: 'Items',
   },
 
   advanceOrder: {
@@ -1301,126 +1174,196 @@ export default {
     },
   },
 
-  gstReport: {
-    title: 'GST Report',
-    headerSubtitle: 'CA-ready summary for filing',
-    periodTitle: 'Filing Period',
-    selectPeriod: 'Select period',
-    presets: {
-      thisMonth: 'This Month',
-      lastMonth: 'Last Month',
-      thisQuarter: 'This Quarter',
-      lastQuarter: 'Last Quarter',
-      thisFY: 'This FY (Apr–Mar)',
-      lastFY: 'Last FY',
-      custom: 'Custom Range',
-    },
-    from: 'From',
-    to: 'To',
-    invalidRange: '"From" date must be before "To" date',
-    netPayable: 'Net GST Payable',
-    netFormula: 'Output {output} − ITC {itc}',
-    shareCsv: 'Share CSV',
-    sharePdf: 'Share PDF',
-    exportErrorTitle: 'Export failed',
-    outwardTitle: 'Part A — Sales (Outward)',
-    outwardMeta: '{bills} bills • {b2b} B2B • {b2c} B2C',
-    taxableValue: 'Taxable Value',
-    totalTax: 'Total Tax',
-    invoiceTotal: 'Invoice Total',
-    noSales: 'No GST bills in this period',
-    inwardTitle: 'Part B — Purchases (ITC)',
-    inwardMeta: '{count} purchases • {reg} registered • {unreg} unregistered',
-    purchaseTaxable: 'Purchase Value',
-    eligibleItc: 'Eligible ITC',
-    noPurchases: 'No purchases recorded in this period',
-    recordPurchases: 'Record purchases →',
-    legacyNote: '* GST split derived from invoice total (created before the CGST/SGST breakdown).',
-    unregisteredNote: 'Unregistered purchases: ITC eligibility to be confirmed by your CA.',
-  },
-
-  purchases: {
-    title: 'Purchases (GST)',
-    count: 'purchases',
-    addShort: 'Add',
-    addTitle: 'Add Purchase',
-    editTitle: 'Edit Purchase',
-    addBtn: 'Add Purchase',
-    saveBtn: 'Save Changes',
-    searchPlaceholder: 'Search supplier or bill no.',
-    emptyTitle: 'No purchases yet',
-    emptySubtitle: 'Record stock purchases with GST paid to claim Input Tax Credit in your GST report.',
-    registered: 'GST',
-    unregistered: 'Unregistered',
-    gstinHint: 'Needed to claim Input Tax Credit (registered supplier)',
-    fields: {
-      supplierName: 'Supplier Name *',
-      supplierGstin: 'Supplier GSTIN (optional)',
-      billNo: 'Purchase Invoice No *',
-      date: 'Purchase Date *',
-      taxableValue: 'Taxable Value (₹) *',
-      gstRate: 'GST Rate %',
-      gstAmount: 'GST Paid (₹)',
-      category: 'Category (optional)',
-      description: 'Description (optional)',
-    },
-    placeholders: {
-      supplierName: 'e.g., Ratanlal Bullion',
-      supplierGstin: 'e.g., 27AAAAA0000A1Z5',
-      billNo: 'Supplier bill no.',
-      description: 'e.g., 24K bullion 100g',
-    },
-    alerts: {
-      supplierRequired: 'Supplier name is required',
-      billNoRequired: 'Purchase invoice number is required',
-      taxableRequired: 'Taxable value must be greater than 0',
-      gstinInvalid: 'Enter a valid 15-character GSTIN or leave it blank',
-      deleteTitle: 'Delete Purchase',
-      deleteMessage: 'Delete purchase "{name}"? This cannot be undone.',
-    },
-  },
-
-  salesReport: {
-    title: 'Sales Report',
-    headerSubtitle: 'Track your business performance',
-    analyticsTitle: 'Analytics',
-    analyticsSubtitle: 'Overview & insights',
-    range: {
-      today: 'Today',
-      week: '7 Days',
-      month: '30 Days',
-      year: '1 Year',
-      lifetime: 'Lifetime',
-      selectPeriod: 'Select Period',
-    },
-    summary: {
-      totalSalesVolume: 'Total Sales Volume',
-      generatedAcross: 'Generated across {count} specific invoices.',
-    },
-    stats: {
-      itemsSold: 'Items Sold',
-      itemsSoldSub: '{gold} Gold, {silver} Silver',
-      customers: 'Retailers',
-      customersSub: 'Unique buyers tracked',
-      avgOrderValue: 'Avg Order Value',
-      avgOrderValueSub: 'Median checkout per cart',
-      period: 'Period',
-      periodSub: 'Current timeframe',
-      periodValueWeek: 'Last 7 Days',
-      periodValueMonth: 'Last 30 Days',
-      periodValueYear: 'Last Year',
-    },
-    empty: {
-      title: 'No orders discovered',
-      subtitle: 'Your selected range \"{range}\" does not\\ncontain any processed sales data.',
-    },
-  },
-
   tabs: {
-    dashboard: 'Dashboard',
-    orders: 'Orders',
+    dashboard: 'Khata',
+    orders: 'Day Book',
     customers: 'Retailers',
-    settings: 'Settings',
+    settings: 'More',
+    newEntry: 'New Entry',
+  },
+
+  newEntry: {
+    title: 'New entry',
+    subtitle: 'What do you want to record?',
+    sale: 'New sale',
+    saleHint: 'Ornaments given to a retailer on account',
+    receive: 'Receive gold or cash',
+    receiveHint: 'Record what a retailer paid against a sale',
+    melt: 'Take old gold to melt',
+    meltHint: 'Weigh it now, credit it after testing',
+    retailer: 'Add retailer',
+    retailerHint: 'A jewellery shop you supply',
+  },
+  itemPicker: {
+    title: 'Item name',
+    fieldHint: 'Search or type',
+    search: 'Search your catalogue or the ornament list',
+    all: 'All',
+    catalogue: 'Your catalogue',
+    inCatalogue: 'Catalogue',
+    yours: 'Yours',
+    useTyped: 'Use “{name}”',
+    useTypedSub: 'This sale only',
+    saveOwn: '+ Add “{name}” to the list',
+    saveOwnSub: 'Not in the list. It is saved as your own ornament.',
+    whichCategory: 'Which group is “{name}” in?',
+    newCategory: '+ A new group of your own',
+    newCategorySub: 'For ornaments that fit none of these',
+    newCategoryPlaceholder: 'Group name, e.g. Antique',
+    createCategory: 'Create “{name}” and add this ornament to it',
+    back: 'Back',
+    close: 'Close',
+    clear: 'Clear',
+  },
+  account: {
+    receive: 'Receive',
+    receiveTitle: 'Receive on account',
+    receiveSubtitle: 'Not against a sale. Held for {name} until it is used.',
+    tabCash: 'Cash · fix rate later',
+    tabGold: 'Gold advance',
+    amount: 'Amount',
+    weight: 'Weight',
+    purity: 'Purity',
+    note: 'Note (optional)',
+    notePlaceholderCash: 'e.g. Will fix at 14,500',
+    notePlaceholderGold: 'e.g. Bar, for Diwali orders',
+    noteRateLater: 'Rate to be fixed later',
+    noteAdvance: 'Advance',
+    noteGoldAdvance: 'Gold advance',
+    cashHintDue: 'Their gold due stays as it is until the rate is fixed. Fix it from their account when they ask, at the rate they choose.',
+    cashHintAdvance: 'An advance. When they buy, fix the rate on the sale and it comes off what they owe.',
+    goldHint: 'Used on their sales gram for gram, oldest due first, or on the next sale they make.',
+    creditPreview: 'Credited as {grams} of 99.50',
+    holdAmount: 'Hold {amount}',
+    holdCash: 'Hold cash',
+    keepGold: 'Keep gold on account',
+    saveFailed: 'Could not record it',
+    cashHeldFor: 'Cash held for {name}',
+    goldHeldFor: 'Gold held for {name}',
+    cashHeldRateLater: 'Cash held · rate not fixed',
+    cashAdvance: 'Cash advance · for their next sale',
+    goldHeld: 'Gold held · fine 99.50',
+    goldAdvanceHint: 'Gold advance · for their next sale',
+    fixRate: 'Fix rate',
+    useGold: 'Use',
+    useGrams: 'Use {grams}',
+    fixRateTitle: 'Fix rate',
+    fixRateSubtitle: '{cash} held for {name} · {gold} gold due',
+    fixRateSubtitleSale: '{cash} held · {gold} still due on this sale',
+    rateLabel: 'Rate, per gm of 99.50',
+    convertLabel: 'Cash to convert',
+    onlyHeld: 'Only {amount} is held.',
+    buysGrams: 'Buys {grams} at this rate, against {due} due.',
+    staysHeld: '{amount} stays held.',
+    fixRateHint: 'Oldest sale first. Their gold due comes down by the grams this buys.',
+    fixRateHintSale: 'Their gold due on this sale comes down by the grams this buys.',
+    fixRateConfirm: 'Fix rate and apply',
+    nothingToFix: 'No sale owes gold to put this against.',
+    fixRateFailed: 'Could not fix the rate',
+    rateFixedToast: 'Rate fixed. {grams} off their gold due.',
+    useGoldTitle: 'Use gold held?',
+    useGoldConfirm: 'Use gold held',
+    useGoldBody: '{gold} held for {name} goes against their oldest gold dues, gram for gram.',
+    useGoldFailed: 'Could not use the gold held',
+    goldUsedToast: 'Gold held put against their dues',
+    full: 'Full',
+    half: 'Half',
+    goldToUse: 'Gold to use, fine 99.50',
+    onlyGoldHeld: 'Only {grams} is held.',
+    moreThanDue: 'That is more than the {due} owed.',
+    clearsDue: 'Clears the gold due.',
+    leavesDue: '{grams} of gold stays owed.',
+    goldStaysHeld: '{grams} stays held.',
+    useGoldSubtitle: '{held} held for {name} · {due} gold due',
+    useGoldSubtitleSale: '{held} held · {due} still due on this sale',
+    useGoldHint: 'Gram for gram, oldest sale first.',
+  },
+
+  sale: {
+    owedOnSale: 'Owed on this sale',
+    settled: 'This sale is settled',
+  },
+
+  retailer: {
+    receiveHint: 'Tap a sale to record what was received against it.',
+    entries: 'Entries',
+    noSales: 'No sales to this retailer yet.',
+    settled: 'Settled',
+    remind: 'Remind',
+  },
+
+  welcome: {
+    tagline: 'Wholesale gold khata',
+    point1: 'Fine gold and cash dues for every retailer',
+    point2: 'A day book of sales and receipts',
+    point3: 'Statements and reminders on WhatsApp',
+    signIn: 'Sign in with your mobile number',
+    signInHint: 'We will text you a 6-digit code',
+    getOtp: 'Get OTP',
+    agree: 'By continuing you agree to our',
+    enterCode: 'Enter the code',
+    change: 'Change',
+    verify: 'Verify & continue',
+  },
+
+  dayBook: {
+    entries: 'entries',
+    sales: 'Sales',
+    receipts: 'Receipts',
+    salesList: 'Sales',
+    salesTitle: 'Sales',
+    today: 'Today',
+    yesterday: 'Yesterday',
+    goldOut: 'Gold out',
+    goldIn: 'Gold in',
+    cashIn: 'Cash in',
+    empty: 'Nothing in the book yet. Tap + to record your first sale.',
+  },
+
+  more: {
+    sectionKhata: 'KHATA',
+    sectionShop: 'SHOP',
+    sectionHelp: 'HELP & ABOUT',
+    meltLots: 'Melt lots',
+    meltLotsSub: 'Old gold in the pot, and lots already credited',
+    shopSub: 'Name, address and GSTIN on your statements',
+    print: 'Printing',
+    printSub: 'Statement paper size and thermal printer',
+    helpSub: 'Call or WhatsApp us',
+    catalog: 'Item catalogue',
+    catalogSub: 'Ornaments you sell often, to fill a sale quickly',
+  },
+
+  khata: {
+    owedToYou: 'Owed to you',
+    fineGold: 'Fine gold (99.50)',
+    cash: 'Cash',
+    retailersOwing: 'retailers with a balance',
+    balances: 'Retailer balances',
+    colRetailer: 'Retailer',
+    colGold: 'Gold',
+    colCash: 'Cash',
+    recent: 'Recent entries',
+    openDayBook: 'Open day book',
+    sale: 'Sale',
+    receipt: 'Received',
+    noEntries: 'No entries yet. Tap + to record a sale.',
+    allSettled: 'Every retailer is settled.',
+    rateLabel: 'Today\'s rate · 99.50',
+    rateLive: 'Live',
+    rateYours: 'Your rate',
+    cashHeld: 'Cash held · rate not fixed',
+    goldAdvance: 'Gold advance',
+    meltCredit: 'Melt credit',
+    rateFixedAt: 'Rate fixed at {rate}',
+    rateFixed: 'Rate fixed',
+    goldUsed: 'Gold held used',
+    overpaid: 'Overpaid, kept as cash held',
+    cashBack: 'Cash returned',
+    goldBack: 'Gold returned',
+    heldForRetailers: 'Held for retailers',
+    holds: 'Holds',
+    cashHeldShort: 'Cash held',
   },
 
   invoice: {
@@ -1611,6 +1554,7 @@ export default {
       confirm: 'Discard',
       cancel: 'Keep editing',
     },
+    close: 'Close',
   },
 
   validationModal: {
@@ -1622,13 +1566,6 @@ export default {
   // Shown after "Select Saved Item" replaces something the shopkeeper typed.
   // Only fields that held a hand-entered value are listed; filling an empty row
   // from the catalogue is the normal case and stays silent.
-  catalogOverwrite: {
-    title: 'Some values were replaced',
-    subtitle: 'You chose a saved item, so these fields now use the saved item’s values instead of what you had entered:',
-    hint: 'You can edit any of them again before saving the bill.',
-    okBtn: 'OK',
-  },
-
   // Login required modal (guest tries to upload logo/header/signature)
   loginRequiredTitle: 'Login Required',
   loginRequiredDescription:
@@ -1669,7 +1606,7 @@ export default {
     date: 'Date',
     phone: 'Phone',
 
-    billTo: 'Bill To',
+    billTo: 'Sold to',
     itemsTotal: 'Items Total',
 
     table: {
@@ -1681,7 +1618,7 @@ export default {
 
     subtotal: 'Subtotal',
     gst: 'GST',
-    grandTotal: 'Grand Total',
+    grandTotal: 'Total value',
     totalAmount: 'Total Amount',
     makingCharges: 'Making Charges',
     otherCharges: 'Other Charges',
@@ -1699,38 +1636,8 @@ export default {
     },
   },
 
-  invoiceSuccess: {
-    title: 'Invoice Saved!',
-    print: 'Print Invoice',
-    download: 'Download Invoice',
-    share: 'Share via WhatsApp',
-  },
-
-  advanceOrderSuccess: {
-    title: 'Order Created!',
-    subtitle: 'Your advance order has been successfully processed',
-    receiptNo: 'Order Number',
-    item: 'Item',
-    totalWeight: 'Total Weight',
-    advancePaid: 'Advance Paid',
-    weightCovered: 'Weight Covered',
-    remainingWeight: 'Remaining Weight',
-    totalOrderCost: 'Total Order Cost',
-    goldBalance: 'Gold Balance',
-    makingCharges: 'Making Charges',
-    estTotalBalance: 'Est. Total Balance',
-    settlementNote: '* GST will be applied at final settlement',
-    shareWhatsApp: 'Share on WhatsApp',
-    otherShare: 'Other Share',
-    print: 'Print',
-    backToOrders: 'Back to Orders',
-    backToPendingOrders: 'View Pending Orders',
-    noOrderData: 'No order data found',
-    backToDashboard: 'Back to Dashboard',
-  },
-
   auth: {
-    tagline: 'Jewellery Billing Made Simple',
+    tagline: 'Wholesale gold khata',
     enterPhone: 'Enter Phone Number',
     otpInfo: 'We will send you an OTP',
     phonePlaceholder: 'Enter phone number',
@@ -1766,7 +1673,7 @@ export default {
       // now is still the encouraged path.
       skip: 'Skip for now, I\'ll do this later',
       skipTitle: 'Set this up later?',
-      skipDescription: 'You can start using the app right away. Your bills will show "Gold Khata Book" instead of your shop name until you add these details — you can fill them in any time from Settings.',
+      skipDescription: 'You can start using the app right away. Your sale slips and statements will show "Gold Khata Book" instead of your shop name until you add these details — you can fill them in any time from More.',
       skipStay: 'Fill it in now',
       skipConfirm: 'Skip for now',
       placeholders: {
@@ -1780,6 +1687,7 @@ export default {
         addressRequired: 'Shop address is required',
       },
     },
+    enterOtp: 'Enter 6-digit OTP',
   },
 
   bill: {
@@ -1840,7 +1748,7 @@ export default {
     forThisScreen: 'Help for this screen',
     inEnglish: 'In English',
     onlyInEnglish: 'This video is only available in English for now.',
-    emptyTitle: 'Tutorials coming soon',
+    emptyTitle: 'No help videos here',
     emptyTopicTitle: 'No tutorial for this screen yet',
     emptyHint: 'We are recording these now. Contact support any time for help.',
     seeAll: 'See all tutorials',
@@ -1850,28 +1758,6 @@ export default {
     watch: 'Watch a tutorial',
     watchSub: 'Short how-to videos',
     newHere: 'New here? Watch a short video',
-  },
-
-  forms: {
-    title: 'Download Forms',
-    subtitle: 'Blank forms to print or share',
-    /* One entry per form in print/forms/catalog.ts. The form's name is not
-       here — it is read from the form's own section, so the list and the
-       printed sheet can never drift apart. */
-    items: {
-      declaration: {
-        desc: 'Blank form for old gold bought or exchanged',
-      },
-    },
-    notFound: 'This form is no longer available',
-    language: 'Language',
-    languageHint: 'Starts at your app language. Change it if this form is for someone else.',
-    includeShop: 'Include my shop details',
-    includeShopHint:
-      'Turn off to print a blank header — use this when the form is for another shop.',
-    print: 'Print Form',
-    share: 'Download / Share Form',
-    failed: 'Could not generate the form',
   },
 
   // Optional photos of the item SOLD — distinct from declaration.photos, which
@@ -1900,7 +1786,7 @@ export default {
   statement: {
     title: 'Account Statement',
     asOn: 'Balance as on',
-    orderCol: 'Bill',
+    orderCol: 'Sale',
     dateCol: 'Date',
     dueCol: 'Outstanding',
     settled: 'settled',
@@ -1912,8 +1798,8 @@ export default {
     nothingDue: 'Nothing due',
     // Listed separately from what is owed, never netted off it.
     heldTitle: 'Held for this retailer',
-    credit: 'Credit with us',
-    meltCredit: 'Melt credit',
+    credit: 'Cash held (rate not fixed)',
+    meltCredit: 'Gold held',
     // Short form, for the button that sits on a list row.
     remind: 'Remind',
     sendWhatsApp: 'Remind on WhatsApp',
@@ -1923,9 +1809,9 @@ export default {
   /* Retailer credit applied to a bill that already exists. */
   credit: {
     available: 'Credit available',
-    willApply: 'Apply to this order',
+    willApply: 'Apply to this sale',
     use: 'Use credit',
-    applied: 'Credit applied to this order',
+    applied: 'Credit applied to this sale',
   },
   /* The rate the shop is dealing at today. Set from the once-a-day prompt,
      the dashboard card or Settings; a day with none uses the live feed and
@@ -1937,7 +1823,7 @@ export default {
     perGram: '₹/gram',
     unitNote: 'Per gram of 99.50 fine gold',
     fineness: '99.50',
-    hint: 'Used for every order raised today',
+    hint: 'Used for every sale raised today',
     save: 'Set today’s rate',
     useLive: 'Use the live rate',
     saved: 'Today’s rate saved',

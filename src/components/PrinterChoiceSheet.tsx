@@ -6,8 +6,8 @@ import { useTranslation } from "../hooks/useTranslation";
 import { LAYOUT } from "../constants/layout";
 import { useSheetBottomInset } from "../hooks/useSheetBottomInset";
 
-const PURPLE = "#6D5EF7";
-const ROW_BORDER = "#E5E7EB";
+const PURPLE = "#0E4D3C";
+const ROW_BORDER = "#DCE2D8";
 
 type Props = {
   visible: boolean;
@@ -55,7 +55,7 @@ const PrinterChoiceSheet = ({
       style={{ padding: 16, marginTop: 12 }}
     >
       <HStack alignItems="center" space="md">
-        <Center rounded="$full" bg="#F1E9FF" style={{ width: 48, height: 48 }}>
+        <Center rounded="$full" bg="#E7F0EC" style={{ width: 48, height: 48 }}>
           <Icon as={icon} size="xl" color={PURPLE} />
         </Center>
         <VStack flex={1} style={{ gap: 2 }}>

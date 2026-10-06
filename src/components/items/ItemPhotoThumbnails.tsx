@@ -79,8 +79,8 @@ const styles = StyleSheet.create({
   thumb: {
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    backgroundColor: '#F3F4F6',
+    borderColor: '#DCE2D8',
+    backgroundColor: '#E8ECE5',
   },
   overflow: {
     alignItems: 'center',

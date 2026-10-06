@@ -50,7 +50,7 @@ const button = (label, variant) => {
     fontFamily: 'inherit',
   };
   const tones = {
-    primary: { background: '#6D5EF7', color: '#fff' },
+    primary: { background: '#0E4D3C', color: '#fff' },
     ghost: { background: 'rgba(255,255,255,0.15)', color: '#fff' },
   };
   return el('button', { ...base, ...(tones[variant] || tones.ghost) }, label);

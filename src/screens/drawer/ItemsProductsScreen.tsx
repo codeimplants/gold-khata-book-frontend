@@ -43,7 +43,6 @@ import {
   ChevronDown,
 } from "lucide-react-native";
 import { useTranslation } from "../../hooks/useTranslation";
-import { useRetail } from "../../hooks/useRetail";
 import { capitalizeWords } from "../../utils/textUtils";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
@@ -61,12 +60,13 @@ import { LAYOUT } from "../../constants/layout";
 import { GOLD_PURITY_OPTIONS, SILVER_PURITY_OPTIONS } from "../../constants/bill";
 import { INPUT_LIMITS, validateText } from "../../constants/inputLimits";
 import CharCounter from "../../components/common/CharCounter";
+import ItemPicker from "../../components/catalog/ItemPicker";
 
-const PURPLE = "#6D5EF7";
-const PINK = "#D946EF";
-const BORDER = "#E5E7EB";
-const BG = "#F9FAFB";
-const ICON_TINT = "#F1E9FF";
+const PURPLE = "#0E4D3C";
+const PINK = "#0A3A2D";
+const BORDER = "#DCE2D8";
+const BG = "#F2F4EF";
+const ICON_TINT = "#E7F0EC";
 
 type ItemCategory = "Gold" | "Silver" | "Others";
 type MakingChargeType = "Per Gram" | "%" | "Fix";
@@ -171,16 +171,16 @@ const GradientFullButton = ({
 
 /* ─── Stock badge (products with no numeric stockQty are "Not tracked") ─── */
 const getStockBadge = (qty?: number): { label: string; bg: string; color: string } => {
-  if (typeof qty !== "number") return { label: "Not tracked", bg: "#F3F4F6", color: "#6B7280" };
+  if (typeof qty !== "number") return { label: "Not tracked", bg: "#E8ECE5", color: "#6B665B" };
   if (qty <= 0) return { label: "Out of stock", bg: "#FEE2E2", color: "#DC2626" };
-  if (qty <= 3) return { label: `Low: ${qty}`, bg: "#FEF3C7", color: "#B45309" };
+  if (qty <= 3) return { label: `Low: ${qty}`, bg: "#F5ECD7", color: "#87661F" };
   return { label: `In stock: ${qty}`, bg: "#D1FAE5", color: "#047857" };
 };
 
 /* ─── Labeled field wrapper ─── */
 const FieldLabel = ({ children }: { children: string }) => (
   <Text
-    style={{ fontSize: 13, marginBottom: 6, color: "#374151", fontWeight: "600" }}
+    style={{ fontSize: 13, marginBottom: 6, color: "#3A372F", fontWeight: "600" }}
   >
     {children}
   </Text>
@@ -195,6 +195,8 @@ const StyledInput = ({
   autoFocus,
   maxLength,
   showCounter,
+  onSearch,
+  searchLabel,
 }: {
   value: string;
   onChangeText: (v: string) => void;
@@ -204,6 +206,9 @@ const StyledInput = ({
   maxLength?: number;
   /** Only worth showing on the free-text fields; numbers hit their cap rarely. */
   showCounter?: boolean;
+  /** Puts a search button in the box that opens a list to pick from. */
+  onSearch?: () => void;
+  searchLabel?: string;
 }) => (
   <>
     <Box
@@ -211,6 +216,8 @@ const StyledInput = ({
       borderWidth={1}
       borderColor={BORDER}
       bg="$white"
+      flexDirection="row"
+      alignItems="center"
       style={{ height: 50, paddingHorizontal: 14 }}
     >
       <Input bg="transparent" borderWidth={0} flex={1} p={0}>
@@ -222,9 +229,14 @@ const StyledInput = ({
           autoFocus={autoFocus}
           maxLength={maxLength}
           style={{ fontSize: 15 }}
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#A39E92"
         />
       </Input>
+      {onSearch ? (
+        <Pressable onPress={onSearch} hitSlop={10} accessibilityLabel={searchLabel} pl="$2">
+          <Icon as={Search} size="md" color="#145F4A" />
+        </Pressable>
+      ) : null}
     </Box>
     {showCounter && maxLength ? <CharCounter value={value} limit={maxLength} /> : null}
   </>
@@ -252,9 +264,9 @@ const StyledSelect = ({
   <Box h={50} w="$full" rounded="$2xl" borderWidth={1} borderColor={BORDER} bg="$white">
     <Select key={value} selectedValue={value} selectedLabel={selectedLabel} onValueChange={onValueChange}>
       <SelectTrigger variant="outline" style={{ height: 44, borderWidth: 0, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <SelectInput style={{ flex: 1, fontSize: 15, color: "#111827" }} placeholder={placeholder} pointerEvents="none" />
+        <SelectInput style={{ flex: 1, fontSize: 15, color: "#1D1B16" }} placeholder={placeholder} pointerEvents="none" />
         <SelectIcon pointerEvents="none">
-          <Icon as={ChevronDown} size="sm" color="#6B7280" />
+          <Icon as={ChevronDown} size="sm" color="#6B665B" />
         </SelectIcon>
       </SelectTrigger>
       <SelectPortal>
@@ -279,7 +291,6 @@ const StyledSelect = ({
 const ItemsProductsScreen = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
-  const retailEnabled = useRetail();
   const dispatch = useAppDispatch();
   const { catalogProducts: items } = useAppSelector((s) => s.data);
   const { impersonateUserId, impersonatePhone } = useAppSelector(s => s.auth);
@@ -296,6 +307,8 @@ const ItemsProductsScreen = () => {
 
   // Sub-page state
   const [open, setOpen] = useState(false);
+  /** The ornament list, opened from the name field's search button. */
+  const [namePickerOpen, setNamePickerOpen] = useState(false);
   const [draft, setDraft] = useState<DraftItem>(DEFAULT_DRAFT);
   const [editId, setEditId] = useState<string | null>(null);
 
@@ -365,22 +378,6 @@ const ItemsProductsScreen = () => {
     () => SILVER_PURITY_OPTIONS.map((p) => ({ label: getPurityLabel(p), value: p })),
     [t]
   );
-  const makingChargeOptions = useMemo(
-    () => [
-      { label: t("invoice.dropdown.perGram"), value: "Per Gram" },
-      { label: t("invoice.dropdown.percentage"), value: "%" },
-      { label: t("invoice.dropdown.fixed"), value: "Fix" },
-    ],
-    [t]
-  );
-  const discountOptions = useMemo(
-    () => [
-      { label: t("invoice.dropdown.fixed"), value: "Fixed" },
-      { label: t("invoice.dropdown.percentage"), value: "%" },
-    ],
-    [t]
-  );
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return items;
@@ -521,7 +518,7 @@ const ItemsProductsScreen = () => {
               style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
             >
               <Pressable onPress={closeForm} p="$2" rounded="$lg">
-                <ArrowLeft color="#111827" />
+                <ArrowLeft color="#1D1B16" />
               </Pressable>
               <Text fontWeight="$bold" color="$coolGray900" style={{ fontSize: 20, marginLeft: 10 }}>
                 {isEditing ? t("items.modal.editTitle") : t("items.modal.addTitle")}
@@ -552,6 +549,16 @@ const ItemsProductsScreen = () => {
                   placeholder={t("items.form.placeholders.itemName")}
                   maxLength={INPUT_LIMITS.itemName}
                   showCounter
+                  // The same list as the New sale field: the ornaments in the
+                  // shared catalogue, in the shop's language, or one of its own.
+                  onSearch={() => setNamePickerOpen(true)}
+                  searchLabel={t("itemPicker.search") || "Search the ornament list"}
+                />
+                <ItemPicker
+                  visible={namePickerOpen}
+                  onClose={() => setNamePickerOpen(false)}
+                  initialQuery={draft.name}
+                  onPick={(pick) => updateDraft("name", pick.name)}
                 />
               </Box>
 
@@ -590,59 +597,13 @@ const ItemsProductsScreen = () => {
                 )}
               </HStack>
 
-              {/* Retail-only, hidden unless this shop bills walk-in customers.
-                  Making charges and discount are how a RETAIL bill reaches its
-                  total; a wholesale line is priced in grams of fine gold and
-                  never reads them. Hidden rather than deleted — see the `retail`
-                  flag in featureFlags/registry.ts for why. */}
-              {retailEnabled && (
-                <HStack space="md">
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.makingChargeType")}</FieldLabel>
-                    <StyledSelect
-                      value={draft.makingChargeType}
-                      onValueChange={(v) => updateDraft("makingChargeType", v)}
-                      items={makingChargeOptions}
-                      placeholder={selectPlaceholder}
-                    />
-                  </Box>
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.makingCharges")}</FieldLabel>
-                    <StyledInput
-                      value={draft.makingCharges}
-                      onChangeText={(v) => updateDraft("makingCharges", v)}
-                      keyboardType="numeric"
-                      maxLength={INPUT_LIMITS.amount}
-                      placeholder={t("items.form.placeholders.makingCharges")}
-                    />
-                  </Box>
-                </HStack>
-              )}
-
-              {retailEnabled && (
-                <HStack space="md">
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.discountType")}</FieldLabel>
-                    <StyledSelect
-                      value={draft.discountType}
-                      onValueChange={(v) => updateDraft("discountType", v)}
-                      items={discountOptions}
-                      placeholder={selectPlaceholder}
-                    />
-                  </Box>
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.discount")}</FieldLabel>
-                    <StyledInput
-                      value={draft.discount}
-                      onChangeText={(v) => updateDraft("discount", v)}
-                      keyboardType="numeric"
-                      maxLength={INPUT_LIMITS.amount}
-                      placeholder={t("items.form.placeholders.discount")}
-                    />
-                  </Box>
-                </HStack>
-              )}
-
+              {/* No making charges, discount, HUID, pieces or stock quantity:
+                  retail billing fields from SoneBill. A wholesale line is
+                  priced by weight, purity and wastage. They were hidden behind
+                  the `retail` flag, then removed on 2026-10-06 when the owner
+                  dropped retail billing (APP_STORE_4.3_REWORK.md, question 4).
+                  The draft still carries them with empty defaults, so older
+                  catalogue rows that have values keep them on save. */}
               <HStack space="md">
                 <Box flex={1}>
                   <FieldLabel>{t("items.form.fields.grossWeight")}</FieldLabel>
@@ -665,50 +626,6 @@ const ItemsProductsScreen = () => {
                   />
                 </Box>
               </HStack>
-
-              {/* HUID is a BIS hallmarking id carried on a retail sale to a
-                  consumer; pieces and stock quantity are shop-floor inventory.
-                  None of the three describe a wholesale lot, which is priced by
-                  weight and purity. */}
-              {retailEnabled && (
-                <HStack space="md">
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.huid")}</FieldLabel>
-                    <StyledInput
-                      value={draft.huid}
-                      onChangeText={(v) => updateDraft("huid", v)}
-                      placeholder={t("items.form.placeholders.huid")}
-                      maxLength={INPUT_LIMITS.hsnCode}
-                    />
-                  </Box>
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.pieces")}</FieldLabel>
-                    <StyledInput
-                      value={draft.pcs}
-                      onChangeText={(v) => updateDraft("pcs", v.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                      maxLength={INPUT_LIMITS.quantity}
-                      placeholder={t("items.form.placeholders.pieces")}
-                    />
-                  </Box>
-                </HStack>
-              )}
-
-              {retailEnabled && (
-                <HStack space="md">
-                  <Box flex={1}>
-                    <FieldLabel>{t("items.form.fields.stockQty") || "Stock Qty (pieces)"}</FieldLabel>
-                    <StyledInput
-                      value={draft.stockQty}
-                      onChangeText={(v) => updateDraft("stockQty", v.replace(/[^0-9]/g, ""))}
-                      keyboardType="number-pad"
-                      maxLength={INPUT_LIMITS.quantity}
-                      placeholder={t("items.form.placeholders.stockQty") || "Blank = not tracked"}
-                    />
-                  </Box>
-                  <Box flex={1} />
-                </HStack>
-              )}
 
               <HStack space="md">
                 <Box flex={1}>
@@ -804,14 +721,14 @@ const ItemsProductsScreen = () => {
           style={{ height: 52, paddingHorizontal: 14 }}
         >
           <HStack alignItems="center" space="sm" flex={1}>
-            <Icon as={Search} size="lg" color="#6B7280" />
+            <Icon as={Search} size="lg" color="#6B665B" />
             <Input flex={1} bg="transparent" borderWidth={0} p={0}>
               <InputField
                 placeholder={t("items.searchPlaceholder")}
                 value={query}
                 onChangeText={setQuery}
                 style={{ fontSize: 16 }}
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#A39E92"
               />
             </Input>
           </HStack>
@@ -839,10 +756,10 @@ const ItemsProductsScreen = () => {
                 width: 78,
                 height: 78,
                 borderRadius: 39,
-                backgroundColor: "#E5E7EB",
+                backgroundColor: "#DCE2D8",
               }}
             >
-              <Icon as={Package} size="xl" color="#6B7280" />
+              <Icon as={Package} size="xl" color="#6B665B" />
             </Center>
 
             <Text
@@ -920,7 +837,7 @@ const ItemsProductsScreen = () => {
 
                   <HStack alignItems="center" space="md">
                     <Pressable onPress={() => openEdit(it)} p="$2">
-                      <Icon as={Pencil} size="lg" color="#6B7280" />
+                      <Icon as={Pencil} size="lg" color="#6B665B" />
                     </Pressable>
                     <Pressable
                       onPress={() => confirmDelete(it.id, it.name)}

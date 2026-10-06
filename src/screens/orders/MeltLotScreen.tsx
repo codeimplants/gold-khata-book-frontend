@@ -144,7 +144,7 @@ const MeltLotScreen = () => {
           </Text>
         )}
       </VStack>
-      <Text fontSize={14} fontWeight="$bold" color={value != null ? '#111827' : '$coolGray300'}>
+      <Text fontSize={14} fontWeight="$bold" color={value != null ? '#1D1B16' : '$coolGray300'}>
         {value != null ? formatGrams(value, gramShort) : '—'}
       </Text>
     </HStack>
@@ -152,10 +152,10 @@ const MeltLotScreen = () => {
 
   if (!lot) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F4EF' }} edges={['top']}>
         <HStack alignItems="center" px="$4" py="$3" bg="$white">
           <Pressable onPress={() => navigation.goBack()} p="$2" mr="$1">
-            <Icon as={ArrowLeft} size="lg" color="#111827" />
+            <Icon as={ArrowLeft} size="lg" color="#1D1B16" />
           </Pressable>
           <Text fontWeight="$bold" fontSize={18}>{t('melt.lotTitle') || 'Melt lot'}</Text>
         </HStack>
@@ -167,19 +167,19 @@ const MeltLotScreen = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F4EF' }} edges={['top']}>
       <ToastViewport />
 
       <HStack
         alignItems="center" px="$4" py="$3" bg="$white"
-        borderBottomWidth={1} borderColor="#F3F4F6"
+        borderBottomWidth={1} borderColor="#E8ECE5"
         style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
       >
         <Pressable onPress={() => navigation.goBack()} p="$2" mr="$1">
-          <Icon as={ArrowLeft} size="lg" color="#111827" />
+          <Icon as={ArrowLeft} size="lg" color="#1D1B16" />
         </Pressable>
         <VStack flex={1}>
-          <Text fontWeight="$bold" fontSize={20} color="#111827">
+          <Text fontWeight="$bold" fontSize={20} color="#1D1B16">
             {lot.lotNumber}
           </Text>
           <Text fontSize={12} color="$coolGray500" numberOfLines={1}>{retailerName}</Text>
@@ -207,20 +207,20 @@ const MeltLotScreen = () => {
           {/* The readings so far. Kept visible while the next one is typed —
               the melted weight is exactly what the tested weight gets sanity
               checked against at the bench. */}
-          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
             <Text fontWeight="$bold" mb="$2">{t('melt.stages') || 'Weighings'}</Text>
             <StageRow
               label={t('melt.potWeight') || 'Into the pot'}
               value={lot.potWeight}
               when={lot.receivedAt}
             />
-            <Box h={1} bg="#F3F4F6" />
+            <Box h={1} bg="#E8ECE5" />
             <StageRow
               label={t('melt.afterMelt') || 'After melting'}
               value={lot.afterMelt}
               when={lot.meltedAt}
             />
-            <Box h={1} bg="#F3F4F6" />
+            <Box h={1} bg="#E8ECE5" />
             <StageRow
               label={t('melt.afterTesting') || 'After testing'}
               value={lot.afterTesting}
@@ -228,12 +228,12 @@ const MeltLotScreen = () => {
             />
 
             {lot.status === 'tested' && (
-              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#F3F4F6">
+              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#E8ECE5">
                 <HStack justifyContent="space-between">
                   <Text fontSize={13} color="$coolGray600">
                     {`${t('melt.fineAt999') || 'Fine 99.9'} (${lot.purity}%)`}
                   </Text>
-                  <Text fontSize={13} fontWeight="$bold" color="#111827">
+                  <Text fontSize={13} fontWeight="$bold" color="#1D1B16">
                     {formatGrams(lot.fine999 || 0, gramShort)}
                   </Text>
                 </HStack>
@@ -257,7 +257,7 @@ const MeltLotScreen = () => {
 
           {/* Stage 2 */}
           {lot.status === 'received' && (
-            <Box bg="$white" p="$4" rounded="$2xl" mt="$4" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+            <Box bg="$white" p="$4" rounded="$2xl" mt="$4" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
               <Text fontWeight="$bold" mb="$1">{t('melt.recordMelt') || 'Record the melted weight'}</Text>
               <Text fontSize={12} color="$coolGray500" mb="$3">
                 {t('melt.afterMeltHint') || 'The lagdi, once impurities have burnt off'}
@@ -278,8 +278,8 @@ const MeltLotScreen = () => {
               <Pressable onPress={onRecordMelt} disabled={!canSaveMelt} style={{ marginTop: 16 }}>
                 <Box height={50} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
                   {canSaveMelt
-                    ? <GradientSurface colors={['#6366F1', '#D946EF']} borderRadius={12} />
-                    : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#E5E7EB" />}
+                    ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={12} />
+                    : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
                   <Text color={canSaveMelt ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={15}>
                     {saving ? (t('common.saving') || 'Saving…') : (t('melt.saveMelt') || 'Save melted weight')}
                   </Text>
@@ -291,7 +291,7 @@ const MeltLotScreen = () => {
           {/* Stage 3 — the one that closes the lot and moves metal onto an
               account, so what it will credit is spelled out before the tap. */}
           {lot.status === 'melted' && (
-            <Box bg="$white" p="$4" rounded="$2xl" mt="$4" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+            <Box bg="$white" p="$4" rounded="$2xl" mt="$4" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
               <Text fontWeight="$bold" mb="$1">{t('melt.recordTest') || 'Record the test'}</Text>
               <Text fontSize={12} color="$coolGray500" mb="$3">
                 {t('melt.afterTestingHint') || 'Skin test and rubbing take a little more off'}
@@ -319,7 +319,7 @@ const MeltLotScreen = () => {
               )}
 
               {num(afterTesting) > 0 && num(purity) > 0 && !stageError && (
-                <Box mt="$4" pt="$3" borderTopWidth={1} borderColor="#F3F4F6">
+                <Box mt="$4" pt="$3" borderTopWidth={1} borderColor="#E8ECE5">
                   <HStack justifyContent="space-between">
                     <Text fontSize={12} color="$coolGray500">{t('melt.meltLoss') || 'Lost in the pot'}</Text>
                     <Text fontSize={12} color="$coolGray600">−{formatGrams(preview.meltLoss, gramShort)}</Text>
@@ -332,7 +332,7 @@ const MeltLotScreen = () => {
                     <Text fontSize={13} color="$coolGray600">
                       {`${t('melt.fineAt999') || 'Fine 99.9'}  (${num(afterTesting)} × ${num(purity)}%)`}
                     </Text>
-                    <Text fontSize={13} fontWeight="$bold" color="#111827">
+                    <Text fontSize={13} fontWeight="$bold" color="#1D1B16">
                       {formatGrams(preview.fine999, gramShort)}
                     </Text>
                   </HStack>
@@ -355,7 +355,7 @@ const MeltLotScreen = () => {
                 <Box height={50} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
                   {canSaveTest
                     ? <GradientSurface colors={['#15803D', '#22C55E']} borderRadius={12} />
-                    : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#E5E7EB" />}
+                    : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
                   <HStack alignItems="center" space="sm">
                     {canSaveTest && <Icon as={Check} size="xs" color="$white" />}
                     <Text color={canSaveTest ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={15}>

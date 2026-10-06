@@ -1,28 +1,25 @@
 import React, { useState } from 'react';
 import { useSheetBottomInset } from '../../hooks/useSheetBottomInset';
 import {
-  Keyboard,
-  Platform,
-  KeyboardAvoidingView,
-  Image,
   Modal,
   Pressable as RNPressable,
   ScrollView,
   StyleSheet,
+  Text,
+  TextInput,
   View,
 } from 'react-native';
-import { Box, HStack, Input, InputField, Pressable, Text, VStack } from '@gluestack-ui/themed';
 import type { Language } from '../../localization';
-import { Globe, Check, Smartphone } from 'lucide-react-native';
+import { Globe, Check } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { clearError, loginAsGuest, requestOtp, setPhone } from '../../store/auth/authSlice';
-import SoftGradientBackground from '../../components/SoftGradientBackground';
+import { clearError, requestOtp, setPhone } from '../../store/auth/authSlice';
 import GradientButton from '../../components/GradientButton';
 import { useTranslation } from '../../hooks/useTranslation';
-import GuestModeModal from '../../components/GuestModeModal';
-import { LAYOUT, useLoginContainerStyle } from '../../constants/layout';
+import { LAYOUT } from '../../constants/layout';
+import AuthLayout from '../../components/ledger/AuthLayout';
+import { Brand } from '../../theme/brand';
 import { useLegalDocument } from '../legal/documents';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
@@ -34,18 +31,14 @@ const LANGUAGES: { code: Language; label: string; native: string }[] = [
   { code: 'gu', label: 'Gujarati', native: 'ગુજરાતી' },
 ];
 
-const TRIGGER_TOP = LAYOUT.isWeb ? 16 : 52;
 const DROPDOWN_TOP = LAYOUT.isWeb ? 60 : 104;
 
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const dispatch = useAppDispatch();
-  // Caps the login card on iPad instead of stretching it across the screen.
-  const loginContainerStyle = useLoginContainerStyle();
   const { loading, error, phone } = useAppSelector(s => s.auth);
   const legalSheetInset = useSheetBottomInset(32);
   const [localPhone, setLocalPhone] = useState(phone || '');
   const [localError, setLocalError] = useState<string | undefined>();
-  const [showGuestModal, setShowGuestModal] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState<null | 'terms' | 'privacy'>(null);
   // Same source as the standalone Terms/Privacy screens, so the login modal
@@ -56,8 +49,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const legalDoc = showLegalModal === 'terms' ? termsDoc : privacyDoc;
 
   const { t, language, setLanguage } = useTranslation();
-  const dismissKeyboardOnPress =
-    Platform.OS === 'web' ? undefined : Keyboard.dismiss;
 
   const activeLang = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
@@ -80,24 +71,28 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const languageTrigger = (
+    <RNPressable
+      onPress={() => setShowLangModal(true)}
+      accessibilityLabel="Select language"
+      style={({ pressed }) => [styles.langTrigger, pressed && styles.langTriggerPressed]}
+    >
+      <Globe size={15} color="#FFFFFF" />
+      <Text style={styles.langTriggerText}>{activeLang.native}</Text>
+    </RNPressable>
+  );
+
   return (
-    <Box flex={1}>
-      <SoftGradientBackground />
-
-      {/* Language trigger — top right, above all content */}
-      <View style={[styles.langTriggerWrap, { top: TRIGGER_TOP }]}>
-        <RNPressable
-          onPress={() => setShowLangModal(true)}
-          style={({ pressed }) => [
-            styles.langTrigger,
-            pressed && styles.langTriggerPressed,
-          ]}
-        >
-          <Globe size={16} color="#14B8A6" />
-          <Text style={styles.langTriggerText}>{activeLang.native}</Text>
-        </RNPressable>
-      </View>
-
+    <AuthLayout
+      appName={t('appName') || 'Gold Khata Book'}
+      tagline={t('welcome.tagline') || 'Wholesale gold khata'}
+      points={[
+        t('welcome.point1') || 'Fine gold and cash dues for every retailer',
+        t('welcome.point2') || 'A day book of sales and receipts',
+        t('welcome.point3') || 'Statements and reminders on WhatsApp',
+      ]}
+      topRight={languageTrigger}
+    >
       {/* Language dropdown modal */}
       <Modal
         visible={showLangModal}
@@ -136,119 +131,55 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.langEnglish}>{lang.label}</Text>
                   )}
                 </View>
-                {selected && <Check size={16} color="#14B8A6" />}
+                {selected && <Check size={16} color="#145F4A" />}
               </RNPressable>
             );
           })}
         </View>
       </Modal>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <Pressable
-          flex={1}
-          px="$5"
-          justifyContent="center"
-          alignItems="center"
-          onPress={dismissKeyboardOnPress}
-          style={loginContainerStyle}
-        >
-          {/* Logo */}
-          <Image
-            source={require('../../../assets/logo.png')}
-            style={{ width: 80, height: 80, borderRadius: 16 }}
-            resizeMode="contain"
-          />
+          <Text style={styles.formTitle}>{t('welcome.signIn') || 'Sign in with your mobile number'}</Text>
+          <Text style={styles.formHint}>{t('welcome.signInHint') || 'We will text you a 6-digit code'}</Text>
 
-          <Text mt="$4" fontSize="$3xl" fontWeight="$bold" fontFamily="$heading">
-            {t('appName')}
-          </Text>
+          <View style={styles.phoneRow}>
+            <View style={styles.prefix}>
+              <Text style={styles.prefixText}>+91</Text>
+            </View>
+            <TextInput
+              style={styles.input}
+              placeholder={t('auth.phonePlaceholder') || 'Mobile number'}
+              placeholderTextColor={Brand.inkFaint}
+              keyboardType="phone-pad"
+              value={localPhone}
+              maxLength={10}
+              onChangeText={setLocalPhone}
+              returnKeyType="done"
+              onSubmitEditing={onSendOtp}
+              accessibilityLabel={t('auth.enterPhone') || 'Enter Phone Number'}
+            />
+          </View>
 
-          <Text color="$coolGray500" mt="$2">
-            {t('auth.tagline')}
-          </Text>
+          {!!(localError || error) && (
+            <Text style={styles.error}>{localError || error}</Text>
+          )}
 
-          {/* Card */}
-          <Box
-            mt="$6"
-            w="100%"
-            bg="$white"
-            rounded="$2xl"
-            p="$6"
-            borderWidth={1}
-            borderColor="$coolGray200"
-            hardShadow={LAYOUT.isWeb ? undefined : '2'}
-          >
-            <HStack alignItems="center" space="sm" style={{ marginBottom: 24 }}>
-              <Box
-                w={40}
-                h={40}
-                rounded="$xl"
-                alignItems="center"
-                justifyContent="center"
-                bg="$teal500"
-              >
-                <Smartphone size={20} color="white" />
-              </Box>
-              <VStack>
-                <Text fontWeight="$semibold">{t('auth.enterPhone')}</Text>
-                <Text color="$coolGray500" fontSize="$sm">
-                  {t('auth.otpInfo')}
-                </Text>
-              </VStack>
-            </HStack>
+          <View style={{ marginTop: 16 }}>
+            <GradientButton
+              label={loading ? (t('auth.sending') || 'Sending...') : (t('welcome.getOtp') || 'Get OTP')}
+              onPress={onSendOtp}
+              disabled={loading}
+              showArrow
+            />
+          </View>
 
-            <VStack style={{ gap: 16 }}>
-              <HStack space="sm" alignItems="center">
-                <Box bg="$coolGray100" rounded="$xl" px="$3" py="$2">
-                  <Text color="$coolGray700" fontSize="$sm" fontWeight="$medium">
-                    +91
-                  </Text>
-                </Box>
-
-                <Input flex={1} bg="$white" rounded="$xl" borderColor="$coolGray300">
-                  <InputField
-                    placeholder={t('auth.phonePlaceholder')}
-                    keyboardType="phone-pad"
-                    value={localPhone}
-                    maxLength={10}
-                    onChangeText={setLocalPhone}
-                    returnKeyType="done"
-                    onSubmitEditing={onSendOtp}
-                  />
-                </Input>
-              </HStack>
-
-              {!!(localError || error) && (
-                <Text color="$red600" fontSize="$sm">
-                  {localError || error}
-                </Text>
-              )}
-
-              <GradientButton
-                label={loading ? t('auth.sending') : t('auth.sendOtp')}
-                onPress={onSendOtp}
-                disabled={loading}
-                showArrow
-              />
-            </VStack>
-          </Box>
-
-          {/* Offered unconditionally, including on a device where a real
-              registration has already completed and then logged out. Gating it
-              on `hasRegisteredDevice` left that device with the OTP flow as its
-              only way in — and needing to bill a walk-in customer without
-              waiting on an SMS is exactly what guest mode is for. */}
-          <Pressable mt="$6" onPress={() => setShowGuestModal(true)}>
-            <Text color="$coolGray500" textDecorationLine="underline">
-              {t('auth.skip')}
-            </Text>
-          </Pressable>
-
+          {/* No "Skip login & continue as guest". Guest mode came from
+              SoneBill, where a shop could bill a walk-in customer without an
+              account. A wholesale khata is only useful with the account that
+              holds it, and App Review signs in with the demo account. Removed
+              by the owner's decision of 2026-10-06 (APP_STORE_4.3_REWORK.md,
+              section 9, question 3). */}
           <View style={styles.termsRow}>
-            <Text style={styles.termsText}>By continuing, you agree to our </Text>
+            <Text style={styles.termsText}>{t('welcome.agree') || 'By continuing you agree to our'} </Text>
             <RNPressable onPress={() => setShowLegalModal('terms')}>
               <Text style={styles.termsLink}>{t('settings.menu.terms') || 'Terms & Conditions'}</Text>
             </RNPressable>
@@ -257,15 +188,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               <Text style={styles.termsLink}>{t('settings.menu.privacy') || 'Privacy Policy'}</Text>
             </RNPressable>
           </View>
-
-          <GuestModeModal
-            visible={showGuestModal}
-            onCancel={() => setShowGuestModal(false)}
-            onConfirm={() => {
-              setShowGuestModal(false);
-              dispatch(loginAsGuest());
-            }}
-          />
 
           {/* Terms & Privacy Policy modal */}
           <Modal
@@ -302,36 +224,73 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
               </View>
             </View>
           </Modal>
-        </Pressable>
-      </KeyboardAvoidingView>
-    </Box>
+    </AuthLayout>
   );
 };
 
 const styles = StyleSheet.create({
-  langTriggerWrap: {
-    position: 'absolute',
-    right: 16,
-    zIndex: 20,
-  },
   langTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.85)',
+    height: 34,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: 'rgba(255,255,255,0.55)',
   },
   langTriggerPressed: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   langTriggerText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  formTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  formHint: {
+    fontSize: 14,
+    color: Brand.inkMuted,
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  phoneRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    height: 50,
+    borderWidth: 1,
+    borderColor: Brand.lineStrong,
+    borderRadius: 8,
+    backgroundColor: Brand.card,
+    overflow: 'hidden',
+  },
+  prefix: {
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    backgroundColor: Brand.sunken,
+    borderRightWidth: 1,
+    borderRightColor: Brand.lineStrong,
+  },
+  prefixText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Brand.inkSoft,
+  },
+  input: {
+    flex: 1,
+    paddingHorizontal: 14,
+    fontSize: 17,
+    color: Brand.ink,
+    letterSpacing: 0.5,
+  },
+  error: {
+    color: Brand.due,
+    fontSize: 13,
+    marginTop: 8,
   },
   dropdown: {
     position: 'absolute',
@@ -340,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DCE2D8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -350,14 +309,14 @@ const styles = StyleSheet.create({
   },
   dropdownLabel: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#A39E92',
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 6,
   },
   dropdownDivider: {
     height: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#E8ECE5',
   },
   langItem: {
     flexDirection: 'row',
@@ -369,19 +328,19 @@ const styles = StyleSheet.create({
   },
   langItemBorder: {
     borderTopWidth: 1,
-    borderTopColor: '#F9FAFB',
+    borderTopColor: '#F2F4EF',
   },
   langItemPressed: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F2F4EF',
   },
   langNative: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#111827',
+    color: '#1D1B16',
   },
   langEnglish: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#A39E92',
     marginTop: 1,
   },
   termsRow: {
@@ -389,15 +348,15 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 32,
+    marginTop: 20,
   },
   termsText: {
     fontSize: 11,
-    color: '#9CA3AF',
+    color: '#A39E92',
   },
   termsLink: {
     fontSize: 11,
-    color: '#14B8A6',
+    color: '#145F4A',
     textDecorationLine: 'underline',
   },
   legalModalOverlay: {
@@ -422,7 +381,7 @@ const styles = StyleSheet.create({
   legalModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1D1B16',
     flex: 1,
   },
   legalModalClose: {
@@ -430,7 +389,7 @@ const styles = StyleSheet.create({
   },
   legalModalCloseText: {
     fontSize: 18,
-    color: '#6B7280',
+    color: '#6B665B',
   },
   legalModalScroll: {
     flexGrow: 0,
@@ -441,17 +400,17 @@ const styles = StyleSheet.create({
   legalSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111827',
+    color: '#1D1B16',
     marginBottom: 6,
   },
   legalSectionContent: {
     fontSize: 13,
-    color: '#4B5563',
+    color: '#545047',
     lineHeight: 20,
   },
   legalLastUpdated: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#A39E92',
     textAlign: 'center',
     marginTop: 8,
   },

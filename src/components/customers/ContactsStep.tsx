@@ -16,7 +16,7 @@ interface ContactsStepProps {
 
 /** Fixed so the list can skip measuring — the whole point of getItemLayout. */
 const ROW_HEIGHT = 62;
-const ACCENT = '#6D5EF7';
+const ACCENT = '#0E4D3C';
 
 /**
  * Avatar colours. A phone book is a wall of near-identical rows, and a colour
@@ -25,8 +25,8 @@ const ACCENT = '#6D5EF7';
  * id so a given person keeps their colour between openings and between sessions.
  */
 const AVATAR_COLORS = [
-  '#6D5EF7', '#0EA5E9', '#10B981', '#F59E0B',
-  '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E',
+  '#0E4D3C', '#0EA5E9', '#10B981', '#B08A3A',
+  '#145F4A', '#145F4A', '#145F4A', '#F43F5E',
 ];
 
 const avatarColor = (key: string): string => {
@@ -70,7 +70,7 @@ const ContactRowItem = memo(({ item, taken, onPress, takenLabel }: RowProps) => 
       <Center
         style={[
           styles.avatar,
-          { backgroundColor: taken ? '#D1D5DB' : avatarColor(item.id) },
+          { backgroundColor: taken ? '#C9D2C5' : avatarColor(item.id) },
         ]}
       >
         {initialOf(item) ? (
@@ -240,11 +240,11 @@ const ContactsStep = ({ onPickContact, onAddManually }: ContactsStepProps) => {
           {limited && (
             <Pressable onPress={expandAccess} mb="$1">
               <HStack style={styles.limitedBanner} space="sm" alignItems="center">
-                <Text flex={1} fontSize={12} color="#92400E">
+                <Text flex={1} fontSize={12} color="#6F5318">
                   {t('customers.limitedContacts') ||
                     'You shared only some contacts with Gold Khata Book.'}
                 </Text>
-                <Text fontSize={12} fontWeight="$bold" color="#92400E">
+                <Text fontSize={12} fontWeight="$bold" color="#6F5318">
                   {t('customers.shareMore') || 'Share more'}
                 </Text>
               </HStack>
@@ -296,9 +296,9 @@ const ContactsStep = ({ onPickContact, onAddManually }: ContactsStepProps) => {
 };
 
 const styles = StyleSheet.create({
-  divider: { height: 1, backgroundColor: '#F3F4F6' },
+  divider: { height: 1, backgroundColor: '#E8ECE5' },
   limitedBanner: {
-    backgroundColor: '#FEF3C7',
+    backgroundColor: '#F5ECD7',
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -312,9 +312,9 @@ const styles = StyleSheet.create({
   /* Tinted rather than grey so the field reads as part of the app's accent
      rather than a disabled input. */
   searchBar: {
-    backgroundColor: 'rgba(109, 94, 247, 0.08)',
+    backgroundColor: 'rgba(14, 77, 60, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(109, 94, 247, 0.18)',
+    borderColor: 'rgba(14, 77, 60, 0.18)',
   },
   addAvatar: {
     width: 38,
@@ -322,13 +322,13 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#C4B5FD',
+    borderColor: '#93C4B1',
   },
   primerIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(109, 94, 247, 0.12)',
+    backgroundColor: 'rgba(14, 77, 60, 0.12)',
   },
   deniedIcon: {
     width: 64,

@@ -14,7 +14,7 @@ import { INPUT_LIMITS } from '../../constants/inputLimits';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AdminHome'>;
 
-const AVATAR_COLORS = ['#7C3AED', '#4F46E5', '#0D9488', '#D97706', '#E11D48', '#0284C7'];
+const AVATAR_COLORS = ['#145F4A', '#0A3A2D', '#0E4D3C', '#9A7425', '#E11D48', '#0284C7'];
 const avatarColor = (name: string) => AVATAR_COLORS[(name || 'S').charCodeAt(0) % AVATAR_COLORS.length];
 
 /**
@@ -71,13 +71,13 @@ const AdminHomeScreen: React.FC<Props> = () => {
   };
 
   return (
-    <Box flex={1} style={{ backgroundColor: '#F8F9FF', paddingTop: insets.top }}>
+    <Box flex={1} style={{ backgroundColor: '#F7FAF8', paddingTop: insets.top }}>
       <Box style={{ paddingHorizontal: 24, paddingTop: 24, paddingBottom: 8 }}>
         <HStack alignItems="flex-start" justifyContent="space-between" mb="$4">
           <HStack space="md" alignItems="center" flex={1}>
             <Box
               w={44} h={44} rounded="$2xl" alignItems="center" justifyContent="center"
-              style={{ backgroundColor: '#7C5CFF' }}
+              style={{ backgroundColor: '#0E4D3C' }}
             >
               <Shield size={22} color="#FFFFFF" />
             </Box>
@@ -92,7 +92,7 @@ const AdminHomeScreen: React.FC<Props> = () => {
             onPress={() => dispatch(logout())}
             style={{
               backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1,
-              borderColor: '#F5A5BA', paddingVertical: 8, paddingHorizontal: 16,
+              borderColor: '#93C4B1', paddingVertical: 8, paddingHorizontal: 16,
               flexDirection: 'row', alignItems: 'center',
             }}
           >
@@ -105,9 +105,9 @@ const AdminHomeScreen: React.FC<Props> = () => {
             a broken build rather than a deliberate move. */}
         <Box
           rounded="$2xl" p="$3" mb="$3" borderWidth={1}
-          style={{ backgroundColor: 'rgba(124, 92, 255, 0.06)', borderColor: 'rgba(124, 92, 255, 0.2)' }}
+          style={{ backgroundColor: 'rgba(14, 77, 60, 0.06)', borderColor: 'rgba(14, 77, 60, 0.2)' }}
         >
-          <Text color="#5B21B6" fontSize="$xs" fontWeight="$medium">
+          <Text color="#0A3A2D" fontSize="$xs" fontWeight="$medium">
             Shop stats, pending signups, deletions and feature flags are in Nexus now.
             This screen opens a shop so you can see the app exactly as they do.
           </Text>
@@ -117,18 +117,18 @@ const AdminHomeScreen: React.FC<Props> = () => {
           alignItems="center" bg="$white" rounded="$xl" borderWidth={1}
           borderColor="$coolGray200" px="$3" h={44} space="sm" mb="$2"
         >
-          <Search size={16} color="#9CA3AF" />
+          <Search size={16} color="#A39E92" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search by phone or shop name…"
-            placeholderTextColor="#9CA3AF"
+            placeholderTextColor="#A39E92"
             maxLength={INPUT_LIMITS.searchQuery}
-            style={{ flex: 1, fontSize: 14, color: '#111827', padding: 0 }}
+            style={{ flex: 1, fontSize: 14, color: '#1D1B16', padding: 0 }}
           />
           {search.length > 0 && (
             <Pressable onPress={() => setSearch('')} p="$1">
-              <X size={14} color="#9CA3AF" />
+              <X size={14} color="#A39E92" />
             </Pressable>
           )}
         </HStack>
@@ -141,13 +141,13 @@ const AdminHomeScreen: React.FC<Props> = () => {
         contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 24, gap: 8 }}
         ListEmptyComponent={() => (
           <VStack alignItems="center" py="$12" space="sm">
-            <Users size={36} color="#D1D5DB" />
+            <Users size={36} color="#C9D2C5" />
             <Text color="$coolGray500" fontSize="$sm">
               {loading ? 'Loading…' : failed ? 'Could not load shops' : 'No shops found'}
             </Text>
             {failed && (
               <Pressable onPress={load} mt="$2">
-                <Text color="#7C5CFF" fontWeight="$semibold" fontSize="$sm">Try again</Text>
+                <Text color="#0E4D3C" fontWeight="$semibold" fontSize="$sm">Try again</Text>
               </Pressable>
             )}
           </VStack>
@@ -170,12 +170,12 @@ const AdminHomeScreen: React.FC<Props> = () => {
                     <Text fontWeight="$semibold" fontSize="$sm" numberOfLines={1}>{name}</Text>
                     <Text color="$coolGray500" fontSize="$xs" numberOfLines={1}>
                       +91 {item.phone} ·{' '}
-                      <Text color="#0D9488" fontWeight="$semibold" fontSize="$xs">
+                      <Text color="#0E4D3C" fontWeight="$semibold" fontSize="$xs">
                         {item.totalInvoices} bills
                       </Text>
                     </Text>
                   </VStack>
-                  <ArrowRight size={16} color="#D1D5DB" />
+                  <ArrowRight size={16} color="#C9D2C5" />
                 </HStack>
               </Box>
             </Pressable>

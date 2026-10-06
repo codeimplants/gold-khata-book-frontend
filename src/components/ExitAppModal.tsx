@@ -47,7 +47,7 @@ const ExitAppModal: React.FC<ExitAppModalProps> = ({
                 >
                     <VStack space="xl" alignItems="center">
                         <Box style={styles.iconCircle}>
-                            <GradientSurface colors={['#FB923C', '#EF4444']} borderRadius={35} />
+                            <GradientSurface colors={['#C6A25A', '#EF4444']} borderRadius={35} />
                             <Icon
                                 as={DoorOpen}
                                 size={32}

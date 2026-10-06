@@ -23,7 +23,7 @@ import {
   type Tutorial,
 } from '../../tutorials/catalog';
 
-const PURPLE = '#6D5EF7';
+const PURPLE = '#0E4D3C';
 
 /**
  * The video tutorial library.
@@ -167,7 +167,7 @@ const TutorialsScreen = () => {
               <Text fontWeight="$bold" fontSize={15} color="$coolGray800">
                 {topic
                   ? t('tutorials.emptyTopicTitle') || 'No tutorial for this screen yet'
-                  : t('tutorials.emptyTitle') || 'Tutorials coming soon'}
+                  : t('tutorials.emptyTitle') || 'No help videos here'}
               </Text>
               <Text fontSize={12} color="$coolGray500">
                 {t('tutorials.emptyHint') ||
@@ -211,21 +211,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E8ECE5',
     padding: 16,
   },
   iconBox: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#F3F8F5',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#9CA3AF',
+    color: '#A39E92',
     letterSpacing: 0.6,
     marginTop: 4,
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DCE2D8',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',

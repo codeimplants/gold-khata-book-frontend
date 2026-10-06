@@ -1,34 +1,36 @@
 import React from 'react';
-import { StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, ScrollView, KeyboardAvoidingView, Platform, View } from 'react-native';
 import {
   Box, HStack, VStack, Text, Pressable, Icon,
 } from '@gluestack-ui/themed';
-import { ArrowLeft, Plus, Trash2, Check, Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { Plus, Trash2, Check, Calendar, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import LedgerHeader from '../../components/ledger/LedgerHeader';
+import { Brand } from '../../theme/brand';
 
 import { LAYOUT } from '../../constants/layout';
 import CustomerInfoCard from '../../components/common/CustomerInfoCard';
 import GradientSurface from '../../components/common/GradientSurface';
-import SelectField from '../../components/common/SelectField';
 import DatePickerModal from '../../components/common/DatePickerModal';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   createWholesaleOrder, fetchCustomers, fetchMetalRates, fetchCatalogProducts,
-  fetchRetailerAccount, applyMeltCredit, addMetalPaymentToOrder,
+  fetchRetailerAccount, applyMeltCredit, addMetalPaymentToOrder, allocateCash,
 } from '../../store/data/dataSlice';
-import { useOldGoldMelt } from '../../hooks/useOldGoldMelt';
 import { useShopRate } from '../../hooks/useShopRate';
 import FloatingLabelInput from '../../components/common/FloatingLabelInput';
+import ItemPicker, { type ItemPick } from '../../components/catalog/ItemPicker';
+import ItemNameField from '../../components/catalog/ItemNameField';
 import { formatPurityBreakdown } from '../../utils/purityBreakdown';
 import { toast, ToastViewport } from '../../components/common/Toast';
 import { priceLine, totalFine995, cashValueOfFine995, isLinePriceable } from '../../utils/goldPricing';
 import { formatCurrencyValue } from '../../utils/formatter';
 import { formatGrams } from '../../utils/dues';
 
-const PURPLE = '#6366F1';
-const AMBER = '#B45309';
+const PURPLE = '#0E4D3C';
+const AMBER = '#87661F';
 
 /** A line as it is being typed — strings, because a half-typed "9." is not a number. */
 interface DraftItem {
@@ -76,7 +78,6 @@ const NewOrderScreen = () => {
   const catalogProducts = useAppSelector(s => s.data.catalogProducts);
   const gramShort = t('common.gramShort') || 'gm';
 
-  const meltEnabled = useOldGoldMelt();
 
   /**
    * The rate this order is priced at: the shop's own for today when they have
@@ -95,6 +96,9 @@ const NewOrderScreen = () => {
   const [payGold, setPayGold] = React.useState('');
   /** Grams of 99.50 drawn from melt credit this retailer already has here. */
   const [payMelt, setPayMelt] = React.useState('');
+  /** Rupees of cash held for the retailer (an advance, or cash whose rate was
+   *  not fixed) to put on this sale, converted at this sale's own rate. */
+  const [payHeld, setPayHeld] = React.useState('');
   const [includeGST, setIncludeGST] = React.useState(false);
   // YYYY-MM-DD, the shape DatePickerModal reads and writes.
   const [orderDate, setOrderDate] = React.useState(() => new Date().toISOString().split('T')[0]);
@@ -102,6 +106,8 @@ const NewOrderScreen = () => {
   /** Only one row is open at a time; a finished row collapses to its summary. */
   const [expandedKey, setExpandedKey] = React.useState<string | null>(null);
   const [saving, setSaving] = React.useState(false);
+  /** The line whose item name the picker is open for. */
+  const [namePickerFor, setNamePickerFor] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     dispatch(fetchCustomers());
@@ -161,28 +167,39 @@ const NewOrderScreen = () => {
   const retailer = customers.find((c: any) => c.id === customerId);
 
   /**
-   * Melt credit this retailer already has with the shop.
+   * What this retailer has left with the shop: gold held (advances and melt
+   * credit, in 99.50 grams) and cash held (an advance, or cash whose rate was
+   * not fixed).
    *
    * Fetched per retailer, and re-fetched whenever the chosen one changes,
-   * because the balance is what the Melt field is allowed to spend. It is
-   * deliberately only a display: the server checks the weight against the
-   * credit again on apply, so another device drawing the same credit down
-   * first is refused rather than double-spent.
+   * because the balances are what the two fields are allowed to spend. It is
+   * deliberately only a display: the server checks each draw against the
+   * account again, so another device drawing the same credit down first is
+   * refused rather than double-spent.
+   *
+   * Not behind the melt flag any more. Gold held is also a gold ADVANCE,
+   * which has nothing to do with melting, and a shop that never melts still
+   * takes advances.
    */
   const meltCredit = useAppSelector(
     s => (customerId ? s.data.retailerAccounts[customerId]?.meltCredit : 0) || 0,
   );
+  const heldCash = useAppSelector(
+    s => (customerId ? s.data.retailerAccounts[customerId]?.heldCash : 0) || 0,
+  );
 
   React.useEffect(() => {
-    if (!meltEnabled || !customerId) return;
+    if (!customerId) return;
     dispatch(fetchRetailerAccount({ customerId }));
-  }, [dispatch, meltEnabled, customerId]);
+  }, [dispatch, customerId]);
 
   // A retailer swap must not carry the previous one's credit draw across —
   // that weight belongs to an account this order is no longer against.
-  React.useEffect(() => { setPayMelt(''); }, [customerId]);
+  React.useEffect(() => { setPayMelt(''); setPayHeld(''); }, [customerId]);
 
-  const meltAvailable = meltEnabled ? meltCredit : 0;
+  const meltAvailable = meltCredit;
+  const heldApplied = Math.min(num(payHeld), heldCash);
+  const heldOverdrawn = num(payHeld) > heldCash + 0.5;
   /** Clamped for the maths, so an over-typed figure cannot show the order as
    *  settled by credit that is not there. The field itself keeps what was
    *  typed, and the hint below it says what the ceiling is. */
@@ -211,6 +228,21 @@ const NewOrderScreen = () => {
       })(),
       weight: saved.grossWt ? String(saved.grossWt) : i.weight,
     } : i));
+  };
+
+  /**
+   * A saved catalogue product fills the line as the old "Select Saved Items"
+   * dropdown did (name, purity, weight); an ornament from the list or a typed
+   * name fills the name only.
+   */
+  const handleNamePick = (pick: ItemPick) => {
+    const key = namePickerFor;
+    if (!key) return;
+    if (pick.kind === 'product') {
+      fillFromCatalog(key, pick.productId);
+      return;
+    }
+    setItems(prev => prev.map(i => (i.key === key ? { ...i, itemName: pick.name } : i)));
   };
 
   const patch = (key: string, field: keyof DraftItem, value: any) =>
@@ -265,9 +297,12 @@ const NewOrderScreen = () => {
 
   const settling = React.useMemo(() => {
     const cashBuys = num(payCash) > 0 && settlementRate > 0 ? num(payCash) / settlementRate : 0;
-    // Melt credit is already grams of 99.50 — it was converted when the lot was
-    // tested, so it lands beside the gold leg rather than being converted again.
-    const covered = cashBuys + num(payGold) + meltApplied;
+    // Held cash buys at the same rate as cash paid now: this sale's rate is
+    // the rate the retailer is fixing it at by using it here.
+    const heldBuys = heldApplied > 0 && settlementRate > 0 ? heldApplied / settlementRate : 0;
+    // Gold held is already grams of 99.50 — it was converted when it came in,
+    // so it lands beside the gold leg rather than being converted again.
+    const covered = cashBuys + heldBuys + num(payGold) + meltApplied;
 
     /**
      * SIGNED, unlike the clamped `remaining` below it.
@@ -289,14 +324,14 @@ const NewOrderScreen = () => {
       isOver: totals.fine > 0 && difference < -0.0005,
       isExact: totals.fine > 0 && settled,
     };
-  }, [payCash, payGold, meltApplied, settlementRate, totals.fine]);
+  }, [payCash, payGold, meltApplied, heldApplied, settlementRate, totals.fine]);
 
   /** Every row has to be priceable before another can be opened. */
   const canAddItem = items.length > 0 && items.every(i =>
     isLinePriceable({ weight: i.weight, purity: i.purity }) && i.itemName.trim().length > 0,
   );
 
-  const canSave = !!customerId && priced.some(p => p.priceable) && !saving && !meltOverdrawn;
+  const canSave = !!customerId && priced.some(p => p.priceable) && !saving && !meltOverdrawn && !heldOverdrawn;
 
   const onSave = async () => {
     if (!customerId) { toast.error(t('orders.selectRetailerFirst') || 'Choose a retailer first'); return; }
@@ -387,7 +422,25 @@ const NewOrderScreen = () => {
         date: orderDate,
       }) as any);
       if (!applyMeltCredit.fulfilled.match(meltLeg)) {
-        failures.push(String(meltLeg.payload || t('orders.meltCredit') || 'Melt credit'));
+        failures.push(String(meltLeg.payload || t('orders.goldHeld') || 'Gold held'));
+      }
+    }
+
+    // Held cash last, at the sale's own rate: using it on this sale is the
+    // retailer fixing its rate. The server converts it and re-checks the
+    // amount against what is held.
+    if (orderId && heldApplied >= 1 && settlementRate > 0) {
+      const heldLeg = await dispatch(allocateCash({
+        customerId,
+        orderId,
+        amount: Math.round(heldApplied * 100) / 100,
+        // To the paisa: the weighted rate is a float division, and an
+        // allocation stored at 14719.999999999998 reads as noise in the data.
+        goldRate: Math.round(settlementRate * 100) / 100,
+        date: orderDate,
+      }) as any);
+      if (!allocateCash.fulfilled.match(heldLeg)) {
+        failures.push(String(heldLeg.payload || t('orders.cashHeld') || 'Cash held'));
       }
     }
 
@@ -421,26 +474,16 @@ const NewOrderScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+    <View style={{ flex: 1, backgroundColor: Brand.paper }}>
       <ToastViewport />
 
-      <HStack
-        alignItems="center" px="$4" py="$3" bg="$white"
-        borderBottomWidth={1} borderColor="#F3F4F6"
-        style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
-      >
-        <Pressable onPress={() => navigation.goBack()} p="$2" mr="$1">
-          <Icon as={ArrowLeft} size="lg" color="#111827" />
-        </Pressable>
-        <VStack flex={1}>
-          <Text fontWeight="$bold" fontSize={20} color="#111827">
-            {t('orders.newOrder') || 'New Order'}
-          </Text>
-          <Text fontSize={12} color="$coolGray500">
-            {priced.filter(p => p.priceable).length} {t('orders.itemsCount') || 'items'}
-          </Text>
-        </VStack>
-      </HStack>
+      {/* The Ledger header every other screen has; it clears the status bar
+          itself, so this screen is a plain View, not a top-edged SafeAreaView. */}
+      <LedgerHeader
+        title={t('orders.newOrder') || 'New sale'}
+        subtitle={`${priced.filter(p => p.priceable).length} ${t('orders.itemsCount') || 'items'}`}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* `height` on Android, never undefined: gradle.properties sets
           edgeToEdgeEnabled=true, so Android stops honouring the manifest's
@@ -479,7 +522,7 @@ const NewOrderScreen = () => {
               </Text>
               <HStack alignItems="center" space="xs">
                 <Icon as={Calendar} size="xs" color="$coolGray600" />
-                <Text fontSize={14} fontWeight="$bold" color="#111827">
+                <Text fontSize={14} fontWeight="$bold" color="#1D1B16">
                   {orderDate === new Date().toISOString().split('T')[0]
                     ? (t('common.today') || 'Today')
                     : new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -490,10 +533,10 @@ const NewOrderScreen = () => {
 
           {/* Items live in one card with a count and their own Add action, so
               a long order reads as a list rather than a stack of loose cards. */}
-          <Box bg="$white" rounded="$2xl" p="$4" mb="$4" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+          <Box bg="$white" rounded="$2xl" p="$4" mb="$4" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
             <HStack alignItems="center" justifyContent="space-between" mb="$1">
               <Text fontWeight="$bold" fontSize={16}>
-                {t('orders.items') || 'Items'} ({items.length})
+                {t('orders.itemsHeading') || 'Items'} ({items.length})
               </Text>
               {/* Held shut until the open row is priceable. Letting a second
                   row open over an unfinished one is how you end up with a
@@ -502,13 +545,13 @@ const NewOrderScreen = () => {
                 <Box
                   px="$4" py="$2.5" rounded="$lg"
                   overflow="hidden"
-                  bg={canAddItem ? 'transparent' : '#E3D7F5'}
+                  bg={canAddItem ? 'transparent' : '#DCEBE4'}
                 >
                   {/* Live, it carries the app's violet-to-pink action gradient;
                       spent, a flat tint — a dimmed gradient still reads as
                       pressable, which is the thing the gate is trying to say. */}
                   {canAddItem && (
-                    <GradientSurface colors={['#A855F7', '#EC4899']} borderRadius={8} />
+                    <GradientSurface colors={['#145F4A', '#145F4A']} borderRadius={8} />
                   )}
                   <HStack alignItems="center" space="xs">
                     <Icon as={Plus} size="xs" color={canAddItem ? '$white' : '#FFFFFF'} />
@@ -527,7 +570,7 @@ const NewOrderScreen = () => {
             </Text>
 
             {items.length === 0 && (
-              <Box borderWidth={1} borderColor="#E5E7EB" borderStyle="dashed" rounded="$xl" py="$8" alignItems="center">
+              <Box borderWidth={1} borderColor="#DCE2D8" borderStyle="dashed" rounded="$xl" py="$8" alignItems="center">
                 <Text color="$coolGray500" fontWeight="$medium">
                   {t('orders.noItemsYet') || 'No items added yet'}
                 </Text>
@@ -545,12 +588,12 @@ const NewOrderScreen = () => {
             return (
               <Box
                 key={item.key}
-                bg="#FAFAFB"
+                bg="#F2F4EF"
                 p="$3.5"
                 rounded="$xl"
                 mb={index === items.length - 1 ? '$0' : '$3'}
                 borderWidth={1}
-                borderColor="#EEF0F3"
+                borderColor="#E8ECE5"
               >
                 {/* Header doubles as the collapse control. A finished row shows
                     its name and figures on one line, so a five-item order stays
@@ -558,7 +601,7 @@ const NewOrderScreen = () => {
                 <Pressable onPress={() => setExpandedKey(expanded ? null : item.key)}>
                   <HStack alignItems="center" justifyContent="space-between" mb={expanded ? '$3' : '$0'}>
                     <HStack alignItems="center" space="xs" flex={1}>
-                      <Text fontWeight="$bold" color={done && !expanded ? '#111827' : PURPLE}>
+                      <Text fontWeight="$bold" color={done && !expanded ? '#1D1B16' : PURPLE}>
                         {done && !expanded
                           ? item.itemName.trim()
                           : `${t('orders.item') || 'Item'} ${index + 1}`}
@@ -588,27 +631,16 @@ const NewOrderScreen = () => {
 
                 {expanded && (
                 <VStack space="md">
-                  {/* Saved items, so a line the shop bills often is one tap. */}
-                  {catalogProducts.length > 0 && (
-                    <Box>
-                      <Text fontSize={12} fontWeight="$bold" color={PURPLE} mb="$1.5">
-                        {t('items.selectSaved') || 'Select Saved Items'}
-                      </Text>
-                      <SelectField
-                        value=""
-                        onValueChange={(val: string) => fillFromCatalog(item.key, val)}
-                        items={catalogProducts.map((c: any) => ({ label: c.name, value: c.id }))}
-                        placeholder={t('orders.chooseFromCatalog') || 'Choose from catalog...'}
-                      />
-                    </Box>
-                  )}
-
-                  <FloatingLabelInput
+                  {/* One field for the name: it searches the shop's own catalogue
+                      and the list of ornaments, or takes a new name. It
+                      replaced a "Select Saved Items" dropdown above a plain
+                      text box. */}
+                  <ItemNameField
                     label={t('orders.itemName') || 'Item Name'}
                     required
                     value={item.itemName}
-                    onChangeText={v => patch(item.key, 'itemName', v)}
-                    maxLength={60}
+                    hint={t('itemPicker.fieldHint') || 'Search or type'}
+                    onPress={() => setNamePickerFor(item.key)}
                   />
 
                   <HStack space="md">
@@ -669,7 +701,7 @@ const NewOrderScreen = () => {
                           <HStack alignItems="center" space="sm">
                             <Box
                               w={18} h={18} rounded="$sm" borderWidth={1.5}
-                              borderColor={item.useLiveRate ? PURPLE : '#D1D5DB'}
+                              borderColor={item.useLiveRate ? PURPLE : '#C9D2C5'}
                               bg={item.useLiveRate ? PURPLE : 'transparent'}
                               alignItems="center" justifyContent="center"
                             >
@@ -690,7 +722,7 @@ const NewOrderScreen = () => {
                       Purity is shown as charged, not as entered, because the
                       uplift is the first thing a retailer queries. */}
                   {p?.priceable && (
-                    <Box bg="#FFFBEB" p="$3" rounded="$xl" borderWidth={1} borderColor="#FDE68A">
+                    <Box bg="#FBF6EA" p="$3" rounded="$xl" borderWidth={1} borderColor="#EBD9AE">
                       <HStack justifyContent="space-between">
                         <Text fontSize={12} color={AMBER}>
                           {p.chargedPurity} + {num(item.wastage)} = {p.effectivePercent}%
@@ -717,7 +749,7 @@ const NewOrderScreen = () => {
           </Box>
 
           {/* Payment — and the thing that decides the order type */}
-          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
             <Text fontWeight="$bold" mb="$3">{t('orders.paymentNow') || 'Paying now'}</Text>
             <HStack space="md">
               <FloatingLabelInput
@@ -734,29 +766,62 @@ const NewOrderScreen = () => {
               />
             </HStack>
 
-            {/* Melt credit — old ornaments this retailer already left here.
-                Shown only when the shop does melt AND this retailer actually
-                has credit: an empty "0.000 gm available" row on every other
-                order is a control that can never be used, and the shopkeeper
-                learns to look past exactly the row that matters when it is
-                finally not empty. */}
-            {meltEnabled && meltAvailable > 0 && (
+            {/* Gold held for this retailer: an advance in gold, or melt
+                credit from old ornaments. Shown only when there is some: an
+                empty "0.000 gm available" row on every other order is a
+                control that can never be used, and the shopkeeper learns to
+                look past exactly the row that matters when it is finally not
+                empty. */}
+            {meltAvailable > 0.0005 && (
               <Box mt="$3">
                 <FloatingLabelInput
-                  label={`${t('orders.meltCredit') || 'Melt credit'} (${gramShort})`}
+                  label={`${t('orders.goldHeld') || 'From gold held'} (${gramShort})`}
                   keyboardType="decimal-pad"
                   value={payMelt}
                   onChangeText={setPayMelt}
                 />
                 <HStack justifyContent="space-between" alignItems="center" mt="$1">
-                  <Text fontSize={11} color={meltOverdrawn ? '#B91C1C' : '$coolGray500'}>
+                  <Text fontSize={11} color={meltOverdrawn ? '#B42318' : '$coolGray500'}>
                     {meltOverdrawn
-                      ? (t('orders.meltOverdrawn') || 'That is more melt credit than this retailer has')
+                      ? (t('orders.goldHeldOverdrawn') || 'That is more gold than is held for this retailer')
                       : `${t('orders.meltAvailable') || 'Available'} ${formatGrams(meltAvailable, gramShort)}`}
                   </Text>
-                  {/* Spending the lot is the common case — the retailer brought
-                      the ornaments in so they would come off a bill. */}
-                  <Pressable onPress={() => setPayMelt(String(meltAvailable))}>
+                  {/* Spending the lot is the common case: the retailer left it
+                      so it would come off a bill. */}
+                  <Pressable onPress={() => setPayMelt(String(Math.min(meltAvailable, totals.fine || meltAvailable)))}>
+                    <Text fontSize={11} fontWeight="$bold" color={PURPLE}>
+                      {t('orders.meltUseAll') || 'Use all'}
+                    </Text>
+                  </Pressable>
+                </HStack>
+              </Box>
+            )}
+
+            {/* Cash held for this retailer: an advance, or cash paid earlier
+                with the rate left open. Using it here converts it at this
+                sale's rate, the rate shown beside it. */}
+            {heldCash >= 0.5 && (
+              <Box mt="$3">
+                <FloatingLabelInput
+                  label={`${t('orders.cashHeld') || 'From cash held'} (₹)`}
+                  keyboardType="decimal-pad"
+                  value={payHeld}
+                  onChangeText={setPayHeld}
+                />
+                <HStack justifyContent="space-between" alignItems="center" mt="$1">
+                  <Text fontSize={11} color={heldOverdrawn ? '#B42318' : '$coolGray500'} flex={1} mr="$2">
+                    {heldOverdrawn
+                      ? (t('orders.cashHeldOverdrawn') || 'That is more cash than is held for this retailer')
+                      : (t('orders.cashHeldHint') || '{amount} held · converts at {rate}/gm')
+                          .replace('{amount}', formatCurrencyValue(heldCash))
+                          .replace('{rate}', formatCurrencyValue(settlementRate || 0))}
+                  </Text>
+                  <Pressable
+                    onPress={() => setPayHeld(String(Math.min(
+                      heldCash,
+                      Math.round(Math.max(0, totals.fine - num(payGold) - meltApplied - (settlementRate > 0 ? num(payCash) / settlementRate : 0)) * settlementRate * 100) / 100 || heldCash,
+                    )))}
+                  >
                     <Text fontSize={11} fontWeight="$bold" color={PURPLE}>
                       {t('orders.meltUseAll') || 'Use all'}
                     </Text>
@@ -771,7 +836,7 @@ const NewOrderScreen = () => {
               <HStack alignItems="center" space="sm">
                 <Box
                   w={18} h={18} rounded="$sm" borderWidth={1.5}
-                  borderColor={includeGST ? PURPLE : '#D1D5DB'}
+                  borderColor={includeGST ? PURPLE : '#C9D2C5'}
                   bg={includeGST ? PURPLE : 'transparent'}
                   alignItems="center" justifyContent="center"
                 >
@@ -784,10 +849,10 @@ const NewOrderScreen = () => {
             </Pressable>
 
             {totals.fine > 0 && (
-              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#F3F4F6">
+              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#E8ECE5">
                 <HStack justifyContent="space-between">
                   <Text fontSize={13} color="$coolGray600">{t('orders.settles') || 'Settles'}</Text>
-                  <Text fontSize={13} fontWeight="$bold" color="#111827">
+                  <Text fontSize={13} fontWeight="$bold" color="#1D1B16">
                     {formatGrams(settling.covered, gramShort)} / {formatGrams(totals.fine, gramShort)}
                   </Text>
                 </HStack>
@@ -825,7 +890,7 @@ const NewOrderScreen = () => {
 
         {/* Total + save, pinned so the figure is visible while typing above it */}
         <Box
-          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#E5E7EB"
+          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#DCE2D8"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
           {/* One capped wrapper around BOTH the totals and the button. Capping
@@ -852,8 +917,8 @@ const NewOrderScreen = () => {
           <Pressable onPress={onSave} disabled={!canSave}>
             <Box height={54} rounded="$2xl" overflow="hidden" justifyContent="center" alignItems="center">
               {canSave
-                ? <GradientSurface colors={['#6366F1', '#D946EF']} borderRadius={16} />
-                : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#E5E7EB" />}
+                ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={16} />
+                : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
               <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
                 {saving
                   ? (t('common.saving') || 'Saving…')
@@ -865,13 +930,21 @@ const NewOrderScreen = () => {
         </Box>
       </KeyboardAvoidingView>
 
+      <ItemPicker
+        visible={!!namePickerFor}
+        onClose={() => setNamePickerFor(null)}
+        products={catalogProducts.map((c: any) => ({ id: c.id, name: c.name, purity: c.purity, category: c.category }))}
+        initialQuery={items.find(i => i.key === namePickerFor)?.itemName}
+        onPick={handleNamePick}
+      />
+
       <DatePickerModal
         isOpen={datePickerOpen}
         onClose={() => setDatePickerOpen(false)}
         date={orderDate}
         onSelect={(d: string) => { setOrderDate(d); setDatePickerOpen(false); }}
       />
-    </SafeAreaView>
+    </View>
   );
 };
 

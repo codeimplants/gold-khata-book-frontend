@@ -13,7 +13,7 @@ const BrandLoader = () => {
         </View>
         <Text style={styles.appName}>Gold Khata Book</Text>
       </View>
-      <ActivityIndicator size="large" color="#A855F7" style={styles.indicator} />
+      <ActivityIndicator size="large" color="#145F4A" style={styles.indicator} />
     </View>
   );
 };
@@ -23,7 +23,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB', // Light gray background
+    backgroundColor: '#F2F4EF', // Light gray background
   },
   logoContainer: {
     alignItems: 'center',
@@ -48,7 +48,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#1D1B16',
   },
   indicator: {
     marginTop: 20,

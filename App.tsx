@@ -56,7 +56,7 @@ import { getVersionName } from './src/utils/appVersion';
 import { LanguageProvider } from './src/context/LanguageProvider';
 import { setNexusFeatureFlags } from './src/store/config/configSlice';
 import { readNexusFeatureFlags } from './src/featureFlags/registry';
-import GlobalSupportButton from './src/components/common/GlobalSupportButton';
+import { BrandScale, GoldScale } from './src/theme/brand';
 
 const { Analytics } = AnalyticsSDK;
 const analyticsEnvironment =
@@ -103,15 +103,48 @@ AppReview.init({
 // notification tapped from a cold start is not dropped.
 initPush();
 
+// The platform's own font, not SoneBill's Outfit and Space Grotesk. Part of
+// giving this app its own identity after the 4.3(a) rejection (see
+// src/theme/brand.ts). It needs no bundled font: 'System' is SF Pro on iOS and
+// 'sans-serif' is Roboto on Android, so there is no font registration to get
+// wrong in a build that cannot be checked on iOS from Windows.
+const SYSTEM_FONT = Platform.select({
+  ios: 'System',
+  android: 'sans-serif',
+  default:
+    'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+});
+
 const customConfig = createConfig({
   ...defaultConfig,
   tokens: {
     ...defaultConfig.tokens,
+    colors: {
+      ...defaultConfig.tokens?.colors,
+      ...BrandScale,
+      ...GoldScale,
+      // gluestack's own components (Switch, Checkbox, Spinner, Button) default
+      // to the $primary scale. Pointing it at the ledger green keeps them
+      // from rendering in gluestack's stock blue. The main shade, 500, is the
+      // brand primary, not the scale's midpoint.
+      primary0: BrandScale.brand50,
+      primary50: BrandScale.brand100,
+      primary100: BrandScale.brand200,
+      primary200: BrandScale.brand400,
+      primary300: BrandScale.brand500,
+      primary400: BrandScale.brand600,
+      primary500: BrandScale.brand700,
+      primary600: BrandScale.brand800,
+      primary700: BrandScale.brand900,
+      primary800: BrandScale.brand950,
+      primary900: BrandScale.brand950,
+      primary950: BrandScale.brand950,
+    },
     fonts: {
       ...defaultConfig.tokens?.fonts,
-      heading: 'SpaceGrotesk',
-      body: 'Outfit',
-      mono: 'Outfit',
+      heading: SYSTEM_FONT,
+      body: SYSTEM_FONT,
+      mono: SYSTEM_FONT,
     },
   },
 });
@@ -199,8 +232,8 @@ import PublicDocumentPage, { getPublicRoute } from './src/web/publicRoutes';
 // Gold Khata Book's brand applied to the kit's default update card. The violet is the
 // dashboard header's own gradient, so the sheet reads as part of this app rather
 // than as generic chrome — which is what these props exist for.
-const UPDATE_ACCENT = '#6D5EF7';
-const UPDATE_HERO = ['#6D5EF7', '#A855F7'];
+const UPDATE_ACCENT = '#0E4D3C';
+const UPDATE_HERO = ['#0E4D3C', '#145F4A'];
 
 /**
  * The browser tab title on the web build.
@@ -258,7 +291,6 @@ function AppContent() {
   const [killSwitch, setKillSwitch] = useState<boolean>(false);
   const [maintenance, setMaintenance] = useState<boolean>(false);
   const [slowDismissed, setSlowDismissed] = useState<boolean>(false);
-  const [currentRouteName, setCurrentRouteName] = useState<string>();
 
   const isDarkMode = useColorScheme() === 'dark';
 
@@ -282,10 +314,10 @@ function AppContent() {
           input, select, textarea, button, [role="button"], [data-gluestack-component] {
             outline: none !important;
             box-shadow: none !important;
-            font-family: "Outfit", sans-serif !important;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
           }
           input::placeholder, textarea::placeholder {
-            font-family: "Outfit", sans-serif !important;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif !important;
           }
           /* Fix for Gluestack Select height on web */
           [data-gluestack-component="SelectInput"] {
@@ -743,29 +775,21 @@ function AppContent() {
             const route = navigationRef.current?.getCurrentRoute();
             if (route?.name) {
               Analytics.screen(route.name);
-              setCurrentRouteName(route.name);
             }
           }}
           onReady={() => {
             const route = navigationRef.current?.getCurrentRoute();
             if (route?.name) {
               Analytics.screen(route.name);
-              setCurrentRouteName(route.name);
             }
           }}>
           <RootNavigator />
         </NavigationContainer>
       )}
-      {isWeb || (!soft && !force && !maintenance) ? (
-        <GlobalSupportButton
-          currentRouteName={currentRouteName}
-          // The button lives outside NavigationContainer, so it cannot use
-          // useNavigation() — hand it the ref-backed navigate instead.
-          onNavigate={(screen, params) =>
-            navigationRef.current?.dispatch(CommonActions.navigate(screen, params))
-          }
-        />
-      ) : null}
+      {/* No floating support button. SoneBill's headphones button floated
+          bottom-left on every screen. It went with the 4.3(a) redesign
+          (APP_STORE_4.3_REWORK.md), and help is now More > Help & support,
+          plus the "?" in screen headers. */}
       {!isWeb && (
         <UpdateModal
           visible={soft}
@@ -867,7 +891,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     minHeight: '100%',
-    backgroundColor: '#F3F4F6', // Light gray background for the "outside" area
+    backgroundColor: '#E8ECE5', // Light gray background for the "outside" area
   },
   webFrame: {
     flex: 1,
@@ -876,5 +900,5 @@ const styles = StyleSheet.create({
   },
   // Plain app-background fill behind the blocking update card, so the modal has
   // something to sit on once the navigator is no longer rendered.
-  blockingBackdrop: { flex: 1, backgroundColor: '#F3F4F6' },
+  blockingBackdrop: { flex: 1, backgroundColor: '#E8ECE5' },
 });

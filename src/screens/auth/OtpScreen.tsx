@@ -1,36 +1,37 @@
 import React, { useEffect, useState } from 'react';
-import { Keyboard, Platform, KeyboardAvoidingView, Image } from 'react-native';
-import { Box, HStack, Input, InputField, Pressable, Text, VStack } from '@gluestack-ui/themed';
-import { Smartphone } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { clearError, requestOtp, verifyOtp, loginAsGuest, resetOtpState } from '../../store/auth/authSlice';
-import SoftGradientBackground from '../../components/SoftGradientBackground';
+import { clearError, requestOtp, verifyOtp, resetOtpState } from '../../store/auth/authSlice';
 import GradientButton from '../../components/GradientButton';
 import { useTranslation } from '../../hooks/useTranslation';
 import * as AnalyticsSDK from '@codeimplants/analytics';
-import GuestModeModal from '../../components/GuestModeModal';
-import { LAYOUT, useLoginContainerStyle } from '../../constants/layout';
+import AuthLayout from '../../components/ledger/AuthLayout';
+import { Brand } from '../../theme/brand';
 
 const { Analytics } = AnalyticsSDK;
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Otp'>;
 
+/**
+ * Second step of sign-in: the 6-digit code.
+ *
+ * Laid out on AuthLayout, the same green cover as the login screen. It
+ * replaced SoneBill's centred card (see AuthLayout for why). The behaviour is
+ * unchanged: a 30 second resend timer measured from when the code was
+ * requested, and Change number going back to Login. There is no guest mode;
+ * see LoginScreen for why it was removed.
+ */
 const OtpScreen: React.FC<Props> = ({ navigation, route }) => {
   const dispatch = useAppDispatch();
-  // Caps the OTP card on iPad instead of stretching it across the screen.
-  const loginContainerStyle = useLoginContainerStyle();
   const { loading, error, phone: reduxPhone, otpRequestedAt } = useAppSelector(s => s.auth);
 
   const phone = route.params?.phone || reduxPhone;
   const [otp, setOtp] = useState('');
   const [timer, setTimer] = useState(30);
-  const [showGuestModal, setShowGuestModal] = useState(false);
 
   const { t } = useTranslation();
-  const dismissKeyboardOnPress =
-    Platform.OS === 'web' ? undefined : Keyboard.dismiss;
 
   useEffect(() => {
     if (!otpRequestedAt) {
@@ -80,160 +81,116 @@ const OtpScreen: React.FC<Props> = ({ navigation, route }) => {
   };
 
   return (
-    <Box flex={1}>
-      <SoftGradientBackground />
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
+    <AuthLayout
+      appName={t('appName') || 'Gold Khata Book'}
+      tagline={t('welcome.tagline') || 'Wholesale gold khata'}
+    >
+      <Text style={styles.title}>{t('welcome.enterCode') || 'Enter the code'}</Text>
+      <View style={styles.sentRow}>
+        <Text style={styles.hint}>
+          {t('auth.sentTo') || 'Sent to'} +91 {phone}
+        </Text>
         <Pressable
-          flex={1}
-          px="$5"
-          justifyContent="center"
-          alignItems="center"
-          onPress={dismissKeyboardOnPress}
-          style={loginContainerStyle}
+          onPress={() => {
+            dispatch(resetOtpState());
+            navigation.navigate('Login');
+          }}
+          hitSlop={8}
         >
-          {/* Logo */}
-          <Image
-            source={require('../../../assets/logo.png')}
-            style={{ width: 80, height: 80, borderRadius: 16 }}
-            resizeMode="contain"
-          />
-
-          {/* text-3xl font-display font-bold */}
-          <Text mt="$4" fontSize="$3xl" fontWeight="$bold" fontFamily="$heading">
-            {t("appName")}
-          </Text>
-
-          {/* text-muted-foreground mt-2 */}
-          <Text color="$coolGray500" mt="$2">
-            {t("auth.tagline")}
-          </Text>
-
-          {/* Card: p-6, border */}
-          <Box
-            mt="$6"
-            w="100%"
-            bg="$white"
-            rounded="$2xl"
-            p="$6"
-            borderWidth={1}
-            borderColor="$coolGray200"
-            hardShadow={LAYOUT.isWeb ? undefined : "2"}
-          >
-            {/* Header: flex items-center gap-3 mb-6 */}
-            <HStack alignItems="center" space="sm" style={{ marginBottom: 24 }}>
-              <Box
-                w={40}
-                h={40}
-                rounded="$xl"
-                alignItems="center"
-                justifyContent="center"
-                bg="$teal500"
-              >
-                <Smartphone size={20} color="white" />
-              </Box>
-              <VStack>
-                {/* font-semibold text-foreground */}
-                <Text fontWeight="$semibold">
-                  {t("auth.verifyOtp")}
-                </Text>
-                {/* text-sm text-muted-foreground */}
-                <Text color="$coolGray500" fontSize="$sm">
-                  {t("auth.sentTo")} +91 {phone}
-                </Text>
-              </VStack>
-            </HStack>
-
-            {/* Content: space-y-4 = gap 16px */}
-            <VStack style={{ gap: 16 }}>
-              <Input bg="$white" rounded="$xl" borderColor="$coolGray300" borderWidth={1}>
-                <InputField
-                  placeholder="Enter 6-digit OTP"
-                  keyboardType="numeric"
-                  value={otp}
-                  maxLength={6}
-                  onChangeText={setOtp}
-                  returnKeyType="done"
-                  onSubmitEditing={onVerify}
-                  textAlign="center"
-                />
-              </Input>
-
-              {/* text-xs text-center text-muted-foreground */}
-              <Text color="$coolGray500" fontSize="$xs" textAlign="center">
-                Enter the 6-digit code sent to your phone
-              </Text>
-
-              {!!error && <Text color="$red600" fontSize="$sm">{error}</Text>}
-
-              <GradientButton
-                label={loading ? t("auth.verifying") : t("auth.verifyLogin")}
-                onPress={onVerify}
-                disabled={loading || otp.length !== 6}
-                showArrow
-              />
-
-              {/* ghost button: Change Phone Number */}
-              <Pressable
-                onPress={() => {
-                  dispatch(resetOtpState());
-                  navigation.navigate('Login');
-                }}
-              >
-                <Text color="$coolGray600" textAlign="center" fontSize="$sm">
-                  {t("auth.changePhone")}
-                </Text>
-              </Pressable>
-
-              {/* Resend OTP */}
-              <Pressable
-                onPress={onResend}
-                disabled={timer > 0 || loading}
-                alignItems="center"
-              >
-                <Text
-                  color={timer > 0 ? '$coolGray400' : '$purple700'}
-                  fontWeight="$semibold"
-                  fontSize="$sm"
-                  textAlign="center"
-                >
-                  {timer > 0
-                    ? `${t("auth.resendIn")} ${timer}s`
-                    : t("auth.resend")}
-                </Text>
-              </Pressable>
-            </VStack>
-          </Box>
-
-          {/* Ungated for the same reason as the login screen's: hiding it on a
-              previously registered device made guest mode unreachable halfway
-              through the flow, so the two steps now agree. */}
-          <Pressable mt="$6" onPress={() => setShowGuestModal(true)}>
-            <Text color="$coolGray500">
-              {t("auth.skip")}
-            </Text>
-          </Pressable>
-
-          <Text mt="$8" color="$coolGray400" fontSize="$xs" textAlign="center">
-            {t("auth.terms")}
-          </Text>
-
-          <GuestModeModal
-            visible={showGuestModal}
-            onCancel={() => setShowGuestModal(false)}
-            onConfirm={() => {
-              setShowGuestModal(false);
-              dispatch(loginAsGuest());
-            }}
-          />
-
+          <Text style={styles.change}>{t('welcome.change') || 'Change'}</Text>
         </Pressable>
-      </KeyboardAvoidingView>
-    </Box>
+      </View>
+
+      <TextInput
+        style={styles.code}
+        placeholder="••••••"
+        placeholderTextColor={Brand.lineStrong}
+        keyboardType="number-pad"
+        value={otp}
+        maxLength={6}
+        onChangeText={setOtp}
+        returnKeyType="done"
+        onSubmitEditing={onVerify}
+        autoComplete="sms-otp"
+        textContentType="oneTimeCode"
+        accessibilityLabel={t('auth.enterOtp') || 'Enter 6-digit OTP'}
+      />
+
+      {!!error && <Text style={styles.error}>{error}</Text>}
+
+      <View style={{ marginTop: 16 }}>
+        <GradientButton
+          label={loading ? (t('auth.verifying') || 'Verifying...') : (t('welcome.verify') || 'Verify & continue')}
+          onPress={onVerify}
+          disabled={loading || otp.length !== 6}
+          showArrow
+        />
+      </View>
+
+      <Pressable
+        onPress={onResend}
+        disabled={timer > 0 || loading}
+        style={styles.resend}
+      >
+        <Text style={[styles.resendText, { color: timer > 0 ? Brand.inkFaint : Brand.primary }]}>
+          {timer > 0
+            ? `${t('auth.resendIn') || 'Resend code in'} ${timer}s`
+            : (t('auth.resend') || 'Resend code')}
+        </Text>
+      </Pressable>
+    </AuthLayout>
   );
 };
+
+const styles = StyleSheet.create({
+  title: {
+    fontSize: 19,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  sentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  hint: {
+    fontSize: 14,
+    color: Brand.inkMuted,
+  },
+  change: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Brand.primary,
+  },
+  code: {
+    height: 56,
+    borderWidth: 1,
+    borderColor: Brand.lineStrong,
+    borderRadius: 8,
+    backgroundColor: Brand.card,
+    fontSize: 24,
+    fontWeight: '700',
+    letterSpacing: 12,
+    // In the style, not the textAlign prop: react-native-web ignores the prop.
+    textAlign: 'center',
+    color: Brand.ink,
+  },
+  error: {
+    color: Brand.due,
+    fontSize: 13,
+    marginTop: 8,
+  },
+  resend: {
+    alignSelf: 'center',
+    marginTop: 18,
+    padding: 6,
+  },
+  resendText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+});
 
 export default OtpScreen;

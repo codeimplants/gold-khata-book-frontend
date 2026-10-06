@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   tile: { width: 64, height: 64, borderRadius: 10 },
   tileCompact: { width: 52, height: 52, borderRadius: 8 },
   tileWrap: { overflow: 'visible' },
-  thumb: { borderWidth: 1, borderColor: '#E5E7EB', position: 'absolute' },
+  thumb: { borderWidth: 1, borderColor: '#DCE2D8', position: 'absolute' },
   /** Sized to its label rather than the row, so an ignorable offer stays small. */
   savedBadge: {
     position: 'absolute',

@@ -95,7 +95,7 @@ const SignatureCaptureModal: React.FC<SignatureCaptureModalProps> = ({
         py="$3"
       >
         <HStack space="xs" alignItems="center">
-          <Undo2 size={16} color="#6B7280" />
+          <Undo2 size={16} color="#6B665B" />
           <Text fontWeight="$medium" color="$coolGray700" fontSize={14}>
             {t('signature.undo') || 'Undo'}
           </Text>
@@ -110,7 +110,7 @@ const SignatureCaptureModal: React.FC<SignatureCaptureModalProps> = ({
         py="$3"
       >
         <HStack space="xs" alignItems="center">
-          <Trash2 size={16} color="#6B7280" />
+          <Trash2 size={16} color="#6B665B" />
           <Text fontWeight="$medium" color="$coolGray700" fontSize={14}>
             {t('signature.clear') || 'Clear'}
           </Text>
@@ -124,7 +124,7 @@ const SignatureCaptureModal: React.FC<SignatureCaptureModalProps> = ({
           rounded="$xl"
           px="$6"
           py="$3"
-          bg={hasInk ? '#6D5EF7' : '$coolGray200'}
+          bg={hasInk ? '#0E4D3C' : '$coolGray200'}
           flexDirection="row"
           alignItems="center"
         >
@@ -154,7 +154,7 @@ const SignatureCaptureModal: React.FC<SignatureCaptureModalProps> = ({
           py="$3"
         >
           <Pressable onPress={onClose} p="$2" m="-$2">
-            <X size={22} color="#6B7280" />
+            <X size={22} color="#6B665B" />
           </Pressable>
           <Text fontWeight="$bold" fontSize={16} color="$coolGray900">
             {heading}

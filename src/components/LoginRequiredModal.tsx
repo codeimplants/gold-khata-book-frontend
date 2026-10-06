@@ -51,11 +51,11 @@ const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
               w={48}
               h={48}
               rounded="$full"
-              bg="$purple100"
+              bg="$brand100"
               alignItems="center"
               justifyContent="center"
             >
-              <Icon as={LogIn} size="lg" color="$purple600" />
+              <Icon as={LogIn} size="lg" color="$brand600" />
             </Box>
             <Text fontSize={18} fontWeight="$bold" flex={1}>
               {title}
@@ -92,7 +92,7 @@ const LoginRequiredModal: React.FC<LoginRequiredModalProps> = ({
                 rounded="$xl"
                 py="$3"
                 alignItems="center"
-                bg="$purple600"
+                bg="$brand600"
               >
                 <Text fontWeight="$bold" color="$white">
                   {confirmLabel}

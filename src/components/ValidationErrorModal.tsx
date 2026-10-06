@@ -67,14 +67,14 @@ const ValidationErrorModal = ({ isOpen, errors, onClose }: ValidationErrorModalP
                 </Text>
               </HStack>
               <Pressable onPress={onClose} p="$1">
-                <Icon as={X} size="sm" color="#6B7280" />
+                <Icon as={X} size="sm" color="#6B665B" />
               </Pressable>
             </HStack>
           </Box>
 
           {/* Error list */}
           <VStack space="sm" px="$5" py="$4">
-            <Text fontSize={13} color="#6B7280" mb="$1">
+            <Text fontSize={13} color="#6B665B" mb="$1">
               {t('validationModal.subtitle') || 'Please correct the issues below before continuing:'}
             </Text>
             {errors.map((err, idx) => (
@@ -93,7 +93,7 @@ const ValidationErrorModal = ({ isOpen, errors, onClose }: ValidationErrorModalP
                     {idx + 1}
                   </Text>
                 </Box>
-                <Text fontSize={14} color="#374151" flex={1} lineHeight={20}>
+                <Text fontSize={14} color="#3A372F" flex={1} lineHeight={20}>
                   {err}
                 </Text>
               </HStack>

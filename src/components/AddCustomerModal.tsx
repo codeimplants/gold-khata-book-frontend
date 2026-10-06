@@ -12,7 +12,6 @@ import {
 } from "@gluestack-ui/themed";
 import { X, Contact, ChevronLeft } from "lucide-react-native";
 import { ToastViewport } from "./common/Toast";
-import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
@@ -369,7 +368,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
                       alignItems="center" justifyContent="center"
                       accessibilityLabel={t('customers.pickFromContacts') || 'Pick from contacts'}
                     >
-                      <Icon as={Contact} size="sm" color="#6366F1" />
+                      <Icon as={Contact} size="sm" color="#0E4D3C" />
                     </Pressable>
                   )}
                 </Input>
@@ -379,24 +378,13 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
 
             {/* Error banner for unexpected errors — removed, now handled by ValidationErrorModal */}
 
-            {/* Gradient Button */}
+            {/* Flat primary button, as everywhere in the Ledger design. It
+                was a gradient (SoneBill's style). */}
             <Pressable onPress={handleAddCustomer} style={{ marginTop: 24 }}>
-              <Box rounded="$xl" overflow="hidden">
-                <Svg height="50" width="100%">
-                  <Defs>
-                    <LinearGradient id="addCustGrad" x1="0" y1="0" x2="1" y2="0">
-                      <Stop offset="0%" stopColor="#6366F1" />
-                      <Stop offset="100%" stopColor="#D946EF" />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect width="100%" height="50" rx="16" fill="url(#addCustGrad)" />
-                </Svg>
-
-                <Box position="absolute" top={0} bottom={0} left={0} right={0} alignItems="center" justifyContent="center">
-                  <Text color="$white" fontWeight="$bold" fontSize={16}>
-                    {t("customers.addAndCreateOrder") || "Add Retailer & Create Order"}
-                  </Text>
-                </Box>
+              <Box h={50} rounded="$md" bg="#0E4D3C" alignItems="center" justifyContent="center">
+                <Text color="$white" fontWeight="$bold" fontSize={16}>
+                  {t("customers.addAndCreateOrder") || "Add retailer & record a sale"}
+                </Text>
               </Box>
             </Pressable>
 

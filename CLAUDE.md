@@ -1,5 +1,10 @@
 # Gold Khata Book Mobile — Claude Context
 
+> **Work in progress: read [APP_STORE_4.3_REWORK.md](APP_STORE_4.3_REWORK.md)
+> first**, and [AGENTS.md](AGENTS.md) after it. App Review rejected this app as a
+> clone of SoneBill (guideline 4.3(a)), and the developer account is on Extended
+> Review. That file has the plan, the rules and the progress log.
+
 ## What this app is
 Jewellery billing SaaS for Indian gold/silver shops. Handles invoices, advance orders (layaway), customer management, GST, metal rates, and print/share. React Native app for Android and iOS.
 
@@ -83,9 +88,11 @@ hard-crashes the app instantly**, with no JS error. Whenever a native capability
 in the same commit.
 - Currently declared: `NSFaceIDUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSContactsUsageDescription`,
   `NSCameraUsageDescription`, `NSBluetoothAlwaysUsageDescription`, `NSLocalNetworkUsageDescription`.
-- `NSCameraUsageDescription` was added for the old-gold declaration's optional ornament photos
-  (`components/oldGold/OrnamentPhotoPicker.tsx` — the only `launchCamera` caller). It must stay as long as
-  that call exists; removing it crashes the app on tap with no JS error.
+- `NSCameraUsageDescription` was added for SoneBill's old-gold declaration photos, which are gone. The
+  camera is still reachable: `src/utils/photoPicker.ts` (`pickPhotos`, mode `"camera"`) is called from
+  `AddShopDetailsScreen` for the shop logo and signature. The key must stay as long as any `launchCamera`
+  call exists; removing it crashes the app on tap with no JS error. Its wording was updated for the 4.3(a)
+  rework to describe that use.
 - On **Android** the CAMERA permission is deliberately NOT declared. `react-native-image-picker`'s
   `launchCamera` goes through an intent that needs no permission — but *declaring* it in the manifest makes
   a runtime request mandatory, and would also need a `store-guard.config.json` `allowedPermissions` update.

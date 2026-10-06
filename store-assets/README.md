@@ -3,6 +3,16 @@
 Screenshots and graphics submitted to the App Store and Google Play, kept in the
 repo so the listing can be traced back to the release it was taken from.
 
+> **Generated, not hand-captured.** Every image in `screenshots/` and the Play
+> feature graphic come from `scripts/store-screenshots/`. `store.js` captures
+> the running app, `frame.js` adds the captions and `feature.js` makes the
+> feature graphic, from the store book that `npm run seed:store` creates in the
+> backend. To refresh them after a UI change, re-run the pipeline in
+> `APP_STORE_4.3_REWORK.md`, section 7. Do not drop in captures from anywhere
+> else. This folder used to hold SoneBill's screenshots, with "Sone Bill" on
+> them, and that was part of the 4.3(a) rejection. The listing copy, review
+> notes and reply to App Review are in `listing/LISTING.md`.
+
 **Not the same as `screenshots/` at the repo root.** That one is gitignored and
 holds throwaway captures from `scripts/screenshot-device.ps1` for visual
 debugging. This folder is committed. `.gitignore` re-includes it explicitly,

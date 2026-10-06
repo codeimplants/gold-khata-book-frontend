@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   modalHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
+    borderBottomColor: "#E8ECE5",
   },
   closeBtn: {
     padding: 4,
@@ -89,17 +89,17 @@ const styles = StyleSheet.create({
   modalImage: {
     width: "100%",
     height: 280,
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F2F4EF",
   },
   modalPlaceholder: {
     height: 200,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F9FAFB",
+    backgroundColor: "#F2F4EF",
   },
   replaceBtn: {
     margin: 16,
-    backgroundColor: "#6D5EF7",
+    backgroundColor: "#0E4D3C",
     borderRadius: 12,
     paddingVertical: 14,
   },
@@ -127,7 +127,7 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 
 const Field = (props: React.ComponentProps<typeof InputField>) => (
   <Input bg="$coolGray100" borderWidth={0} rounded="$lg" h="$11">
-    <InputField {...props} placeholderTextColor="#9CA3AF" />
+    <InputField {...props} placeholderTextColor="#A39E92" />
   </Input>
 );
 
@@ -203,7 +203,7 @@ const ImagePickerRow = ({ label, icon, placeholder, value, onPick, onPreview, on
           flex={1}
           bg="$white"
           borderWidth={1}
-          borderColor={uri ? "$purple300" : "$coolGray200"}
+          borderColor={uri ? "$brand300" : "$coolGray200"}
           borderStyle={uri ? "solid" : "dashed"}
           rounded="$xl"
           style={{ height: 100, overflow: "hidden" }}
@@ -237,7 +237,7 @@ const ImagePickerRow = ({ label, icon, placeholder, value, onPick, onPreview, on
             <Pressable
               bg="$white"
               borderWidth={1}
-              borderColor="$purple600"
+              borderColor="$brand600"
               rounded="$xl"
               w="$12"
               h="$12"
@@ -245,7 +245,7 @@ const ImagePickerRow = ({ label, icon, placeholder, value, onPick, onPreview, on
               justifyContent="center"
               onPress={onPreview}
             >
-              <Icon as={Eye} size="md" color="$purple600" />
+              <Icon as={Eye} size="md" color="$brand600" />
             </Pressable>
             {onRemove && (
               <Pressable
@@ -560,7 +560,7 @@ const AddShopDetailsScreen = () => {
                   <Box
                     w="$12" h="$12"
                     rounded="$full"
-                    bg="$purple600"
+                    bg="$brand600"
                     alignItems="center"
                     justifyContent="center"
                   >
@@ -586,7 +586,7 @@ const AddShopDetailsScreen = () => {
                         onChangeText={(v) => { set("shopName", capitalizeWords(v)); setFieldErrors(e => ({ ...e, shopName: undefined })); }}
                         maxLength={INPUT_LIMITS.shopName}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.shopName} limit={INPUT_LIMITS.shopName} />
@@ -613,7 +613,7 @@ const AddShopDetailsScreen = () => {
                         onChangeText={(v) => { set("addr1", capitalizeWords(v)); setFieldErrors(e => ({ ...e, addr1: undefined })); }}
                         maxLength={INPUT_LIMITS.addressLine}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.addr1} limit={INPUT_LIMITS.addressLine} />
@@ -680,7 +680,7 @@ const AddShopDetailsScreen = () => {
                         keyboardType="phone-pad"
                         maxLength={INPUT_LIMITS.phone}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                   </VStack>
@@ -696,7 +696,7 @@ const AddShopDetailsScreen = () => {
                         autoCapitalize="none"
                         maxLength={INPUT_LIMITS.email}
                         returnKeyType="next"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                     <CharCounter value={form.email} limit={INPUT_LIMITS.email} />
@@ -726,7 +726,7 @@ const AddShopDetailsScreen = () => {
                         maxLength={INPUT_LIMITS.gstin}
                         returnKeyType="done"
                         onSubmitEditing={Keyboard.dismiss}
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#A39E92"
                       />
                     </Input>
                   </VStack>
@@ -769,7 +769,7 @@ const AddShopDetailsScreen = () => {
                             flex={1}
                             bg="$white"
                             borderWidth={1}
-                            borderColor="$purple300"
+                            borderColor="$brand300"
                             rounded="$xl"
                             style={{ height: 100, overflow: "hidden" }}
                             justifyContent="center"
@@ -815,7 +815,7 @@ const AddShopDetailsScreen = () => {
                             <Pressable
                               bg="$white"
                               borderWidth={1}
-                              borderColor="$purple600"
+                              borderColor="$brand600"
                               rounded="$xl"
                               w="$12"
                               h="$12"
@@ -823,7 +823,7 @@ const AddShopDetailsScreen = () => {
                               justifyContent="center"
                               onPress={() => setShowSignatureDrawModal(true)}
                             >
-                              <Icon as={Pencil} size="md" color="$purple600" />
+                              <Icon as={Pencil} size="md" color="$brand600" />
                             </Pressable>
                             <Pressable
                               bg="$white"
@@ -849,7 +849,7 @@ const AddShopDetailsScreen = () => {
                             <Box
                               bg="$white"
                               borderWidth={1}
-                              borderColor="$purple400"
+                              borderColor="$brand400"
                               borderStyle="dashed"
                               rounded="$xl"
                               style={{ height: 60 }}
@@ -857,8 +857,8 @@ const AddShopDetailsScreen = () => {
                               alignItems="center"
                               flexDirection="row"
                             >
-                              <Icon as={Pencil} size="sm" color="$purple500" style={{ marginRight: 6 }} />
-                              <Text color="$purple600" fontSize="$sm" fontWeight="$medium">
+                              <Icon as={Pencil} size="sm" color="$brand500" style={{ marginRight: 6 }} />
+                              <Text color="$brand600" fontSize="$sm" fontWeight="$medium">
                                 Draw Signature
                               </Text>
                             </Box>

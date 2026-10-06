@@ -6,6 +6,8 @@ REM
 REM    1) dev    https://dev.api.goldkhatabook.codeimplants.com   (default)
 REM    2) prod   https://api.goldkhatabook.codeimplants.com       READ-ONLY
 REM    3) local  http://localhost:<PORT from the backend's .env>
+REM    4) demo   the same as 3, but on the demo book (gold_khata_book_demo) that
+REM              the store screenshots and the App Review demo are taken from
 REM
 REM  Dev is the default because it is the shared, deployed backend: what you see
 REM  is what a test APK sees, and there is no local database to seed, migrate or
@@ -27,13 +29,13 @@ REM  location (%~dp0), so it works from any checkout path and needs no editing.
 REM  It used to sit one level up, outside both repos and outside git, where it
 REM  had no version history at all despite being the entry point for local dev.
 REM
-REM  Options 1 and 2 need nothing but this repo. Option 3 additionally needs the
+REM  Options 1 and 2 need nothing but this repo. Options 3 and 4 also need the
 REM  backend checkout and MongoDB as SIBLINGS of this repo:
 REM
 REM    <parent>\
 REM      gold-khata-book-frontend\   <- this repo, this script
-REM      gold-khata-book-backend\    <- only needed for option 3
-REM      .mongodb\                   <- only needed for option 3
+REM      gold-khata-book-backend\    <- only needed for options 3 and 4
+REM      .mongodb\                   <- only needed for options 3 and 4
 REM
 REM  A standalone clone of just the frontend therefore supports dev and prod but
 REM  not local, and says so rather than failing obscurely.
@@ -86,18 +88,21 @@ echo    1^) dev    - %DEV_API%
 echo    2^) prod   - %PROD_API%
 echo               ^*^*^* REAL SHOP DATA - opened READ-ONLY ^*^*^*
 echo    3^) local  - starts MongoDB and the backend next to this repo
+echo    4^) demo   - like 3, but on the demo book used for the store screenshots
 echo.
 set "CHOICE="
-set /p "CHOICE=  Enter 1-3 [1]: "
+set /p "CHOICE=  Enter 1-4 [1]: "
 if not defined CHOICE set "CHOICE=1"
 
 set "REMOTE="
 set "READONLY="
+set "DEMO_DB="
 if "%CHOICE%"=="1" goto :mode_dev
 if "%CHOICE%"=="2" goto :mode_prod
 if "%CHOICE%"=="3" goto :mode_local
+if "%CHOICE%"=="4" goto :mode_demo
 echo.
-echo  [X] "%CHOICE%" is not one of 1, 2 or 3.
+echo  [X] "%CHOICE%" is not one of 1, 2, 3 or 4.
 goto :fail
 
 :mode_dev
@@ -115,6 +120,16 @@ goto :mode_done
 
 :mode_local
 set "MODE=local"
+goto :mode_done
+
+REM  The demo book: its own database, gold_khata_book_demo, so it never touches
+REM  the owner's test data in gold_khata_book_dev. DEV_DB_URL set in the
+REM  backend window wins over .env, because dotenv never overwrites a variable
+REM  that is already set. Fill or refresh it with `npm run seed:store` (see
+REM  APP_STORE_4.3_REWORK.md, section 7).
+:mode_demo
+set "MODE=local (demo book)"
+set "DEMO_DB=mongodb://localhost:27017/gold_khata_book_demo"
 goto :mode_done
 
 :mode_done
@@ -248,7 +263,11 @@ echo  [ok] MongoDB is up on 27017
 
 echo.
 echo  Starting backend  -^> http://localhost:%LOCAL_PORT%
-start "GKB Backend" cmd /k "cd /d "%BACKEND%" && npm run dev"
+if defined DEMO_DB (
+    start "GKB Backend [DEMO BOOK]" cmd /k "cd /d "%BACKEND%" && set "DEV_DB_URL=%DEMO_DB%" && npm run dev"
+) else (
+    start "GKB Backend" cmd /k "cd /d "%BACKEND%" && npm run dev"
+)
 
 REM --- Launch the web app ----------------------------------------------------
 :launch
@@ -267,6 +286,14 @@ if defined READONLY (
     echo  *** READ-ONLY. This is PRODUCTION - real shops' real ledgers. ***
     echo      Saving anything will fail on purpose; that is the safeguard
     echo      working, not a bug. Re-run and choose 1 to make changes.
+)
+if defined DEMO_DB (
+    echo.
+    echo  Demo book: database gold_khata_book_demo, the one the store screenshots use.
+    echo      Empty, or want a fresh copy? In gold-khata-book-backend run:
+    echo        set DEV_DB_URL=%DEMO_DB%
+    echo        set NODE_ENV=dev
+    echo        npm run seed:store
 )
 echo.
 echo  Test login without spending real SMS: phone 1234567890, OTP 123456.

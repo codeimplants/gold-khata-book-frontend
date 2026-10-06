@@ -42,13 +42,11 @@
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>
 		<key>NSPhotoLibraryUsageDescription</key>
-		<string>Gold Khata Book uses your photo library so you can choose a shop logo or signature image to
-			appear on your invoices in Shop Details.</string>
+		<string>Gold Khata Book uses your photo library so you can choose your shop logo or signature for your sale slips and statements.</string>
 		<key>NSCameraUsageDescription</key>
-		<string>Gold Khata Book uses the camera so you can photograph old ornaments a customer is selling
-			or exchanging, kept as a record with the declaration.</string>
+		<string>Gold Khata Book uses the camera so you can photograph your shop logo or signature for your sale slips and statements.</string>
 		<key>NSContactsUsageDescription</key>
-		<string>Gold Khata Book uses your contacts to quickly fill in a customer's name and phone number.</string>
+		<string>Gold Khata Book uses your contacts to quickly fill in a retailer's name and phone number.</string>
 		<key>NSBluetoothAlwaysUsageDescription</key>
 		<string>Gold Khata Book uses Bluetooth to connect to your thermal receipt printer.</string>
 		<!-- iOS returns false from canOpenURL for any scheme not listed here,
@@ -62,7 +60,7 @@
 			<string>whatsapp</string>
 		</array>
 		<key>NSLocalNetworkUsageDescription</key>
-		<string>Gold Khata Book connects to thermal receipt printers on your WiFi network to print bills.</string>
+		<string>Gold Khata Book connects to thermal printers on your Wi-Fi network to print sale slips.</string>
 		<key>UIRequiredDeviceCapabilities</key>
 		<array>
 			<string>arm64</string>
@@ -85,18 +83,5 @@
 		</array>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false />
-		<key>UIAppFonts</key>
-		<array>
-			<string>Outfit-Bold.ttf</string>
-			<string>Outfit-Light.ttf</string>
-			<string>Outfit-Medium.ttf</string>
-			<string>Outfit-Regular.ttf</string>
-			<string>Outfit-SemiBold.ttf</string>
-			<string>SpaceGrotesk-Bold.ttf</string>
-			<string>SpaceGrotesk-Light.ttf</string>
-			<string>SpaceGrotesk-Medium.ttf</string>
-			<string>SpaceGrotesk-Regular.ttf</string>
-			<string>SpaceGrotesk-SemiBold.ttf</string>
-		</array>
 	</dict>
 </plist>

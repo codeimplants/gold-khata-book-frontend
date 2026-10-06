@@ -39,32 +39,32 @@ export const buildTraditionalHTML = (
     const disc = formatDiscountDetail(item);
     return `
       <tr>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;vertical-align:middle;">
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;vertical-align:middle;">
           <div style="font-size:12px;font-weight:600;color:#1a0a00;margin-bottom:2px;">${item.itemName}</div>
-          <span style="display:inline-block;background:#fff3e0;border:1px solid #f5a623;border-radius:3px;padding:1px 5px;font-size:10.5px;color:#c85a00;">
+          <span style="display:inline-block;background:#FBF6EA;border:1px solid #B08A3A;border-radius:3px;padding:1px 5px;font-size:10.5px;color:#87661F;">
             ${item.metalType} · ${item.purity}
           </span>
           ${itemPhotoStrip(item as any, values.includeItemPhotosOnBill, ctx.paper)}
         </td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:center;font-size:12px;">${item.pcs}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:center;font-size:12px;">${fw(item.netWt)}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:right;font-size:12px;">${making > 0 ? fc(making) : '—'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:right;font-size:12px;">${disc || '—'}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:right;font-size:12px;">${fc(item.ratePerGm)}</td>
-        <td style="padding:10px 8px;border-bottom:1px solid #fde8c8;text-align:right;font-size:13px;font-weight:700;color:#1a0a00;">${fc(item.itemTotal)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:center;font-size:12px;">${item.pcs}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:center;font-size:12px;">${fw(item.netWt)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:right;font-size:12px;">${making > 0 ? fc(making) : '—'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:right;font-size:12px;">${disc || '—'}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:right;font-size:12px;">${fc(item.ratePerGm)}</td>
+        <td style="padding:10px 8px;border-bottom:1px solid #F5ECD7;text-align:right;font-size:13px;font-weight:700;color:#1a0a00;">${fc(item.itemTotal)}</td>
       </tr>`;
   }).join('');
 
   const totals = buildTotalsBlock(
     values, itemsTotal, lang,
     'display:flex;justify-content:space-between;font-size:11px;color:#4a3423;margin-bottom:6px;gap:20px;',
-    'display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(90deg,#c85a00,#f5a623);padding:9px 12px;border-radius:4px;margin-top:8px;gap:20px;',
+    'display:flex;justify-content:space-between;font-size:14px;font-weight:700;color:#fff;background:linear-gradient(90deg,#87661F,#B08A3A);padding:9px 12px;border-radius:4px;margin-top:8px;gap:20px;',
     ctx.combinePayments,
   );
 
   const gstCard = (hasGstNo)
-    ? `<div style="flex:1;min-width:100px;border:1px solid #f5a623;border-radius:6px;padding:8px 10px;background:#fffbf5;">
-        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#c85a00;font-weight:700;margin-bottom:3px;">${tl(lang, 'gstDetails')}</div>
+    ? `<div style="flex:1;min-width:100px;border:1px solid #B08A3A;border-radius:6px;padding:8px 10px;background:#fffbf5;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#87661F;font-weight:700;margin-bottom:3px;">${tl(lang, 'gstDetails')}</div>
         <div style="font-size:10px;font-weight:600;color:#1a0a00;">${shop?.gstNo || shop?.gstNumber || ''}</div>
       </div>` : '';
 
@@ -83,7 +83,7 @@ table { width: 100%; border-collapse: collapse; }
 <body>
 
 <!-- HEADER -->
-<div style="background:linear-gradient(135deg,#c85a00 0%,#f5a623 45%,#f5c842 70%,#e06a00 100%);">
+<div style="background:linear-gradient(135deg,#87661F 0%,#B08A3A 45%,#f5c842 70%,#9A7425 100%);">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 18px 5px;border-bottom:1px solid rgba(255,255,255,0.25);">
     <div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.9);letter-spacing:1px;text-transform:uppercase;">${tl(lang, 'cashMemo')}</div>
     ${shop?.shopDesc ? `<div style="font-size:10px;color:rgba(255,255,255,0.9);text-align:center;letter-spacing:1px;">${shop.shopDesc}</div>` : '<div></div>'}
@@ -112,13 +112,13 @@ table { width: 100%; border-collapse: collapse; }
 
 <!-- META CARDS -->
 <div style="display:flex;gap:8px;margin:10px 18px;flex-wrap:wrap;">
-  <div style="flex:1;min-width:100px;border:1px solid #f5a623;border-radius:6px;padding:8px 10px;background:#fffbf5;">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#c85a00;font-weight:700;margin-bottom:3px;">${tl(lang, 'invoice')}</div>
+  <div style="flex:1;min-width:100px;border:1px solid #B08A3A;border-radius:6px;padding:8px 10px;background:#fffbf5;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#87661F;font-weight:700;margin-bottom:3px;">${tl(lang, 'invoice')}</div>
     <div style="font-size:11px;font-weight:700;color:#1a0a00;">${ctx.billNo}</div>
     <div style="font-size:10.5px;color:#4a3423;margin-top:1px;">${ctx.billDate}</div>
   </div>
-  <div style="flex:1;min-width:100px;border:1px solid #f5a623;border-radius:6px;padding:8px 10px;background:#fffbf5;">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#c85a00;font-weight:700;margin-bottom:3px;">${tl(lang, 'billTo')}</div>
+  <div style="flex:1;min-width:100px;border:1px solid #B08A3A;border-radius:6px;padding:8px 10px;background:#fffbf5;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#87661F;font-weight:700;margin-bottom:3px;">${tl(lang, 'billTo')}</div>
     <div style="font-size:11px;font-weight:700;color:#1a0a00;">${values.customerName}</div>
     ${hasPhone ? `<div style="font-size:10.5px;color:#4a3423;">${values.phone}</div>` : ''}
     ${hasAddress ? `<div style="font-size:10.5px;color:#4a3423;">${values.address}</div>` : ''}
@@ -129,20 +129,20 @@ table { width: 100%; border-collapse: collapse; }
 <!-- ITEMS -->
 <div style="padding:0 18px;">
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-    <div style="flex:1;height:1px;background:#f5a623;"></div>
-    <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:2px;color:#c85a00;font-weight:700;">${tl(lang, 'items')}</div>
-    <div style="flex:1;height:1px;background:#f5a623;"></div>
+    <div style="flex:1;height:1px;background:#B08A3A;"></div>
+    <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:2px;color:#87661F;font-weight:700;">${tl(lang, 'items')}</div>
+    <div style="flex:1;height:1px;background:#B08A3A;"></div>
   </div>
   <table>
     <thead>
-      <tr style="background:#fff7ee;border-top:1.5px solid #f5a623;border-bottom:1.5px solid #f5a623;">
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px 8px;text-align:left;">${tl(lang, 'items')}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px;text-align:center;">${tl(lang, 'pcs')}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px;text-align:center;">${tl(lang, 'netWt')}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px;text-align:right;">${makingHeader}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px;text-align:right;">${tl(lang, 'discount')}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px;text-align:right;">${tl(lang, 'ratePerGm')}</th>
-        <th style="font-size:10px;text-transform:uppercase;color:#c85a00;font-weight:700;padding:7px 8px;text-align:right;">${tl(lang, 'amount')}</th>
+      <tr style="background:#fff7ee;border-top:1.5px solid #B08A3A;border-bottom:1.5px solid #B08A3A;">
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px 8px;text-align:left;">${tl(lang, 'items')}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px;text-align:center;">${tl(lang, 'pcs')}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px;text-align:center;">${tl(lang, 'netWt')}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px;text-align:right;">${makingHeader}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px;text-align:right;">${tl(lang, 'discount')}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px;text-align:right;">${tl(lang, 'ratePerGm')}</th>
+        <th style="font-size:10px;text-transform:uppercase;color:#87661F;font-weight:700;padding:7px 8px;text-align:right;">${tl(lang, 'amount')}</th>
       </tr>
     </thead>
     <tbody>${itemRows}</tbody>
@@ -166,7 +166,7 @@ ${closingSection({
   // Empty string on a sheet with no room for it. See closingTier.
   band: footerBand(lang, {
     paper: ctx.paper,
-    bandStyle: 'background:linear-gradient(90deg,#c85a00,#f5a623);padding:8px 18px;',
+    bandStyle: 'background:linear-gradient(90deg,#87661F,#B08A3A);padding:8px 18px;',
     thankYouStyle: 'font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;color:#fff;',
   }),
 })}

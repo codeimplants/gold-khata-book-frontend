@@ -155,6 +155,14 @@ export const adminService = {
   },
 };
 
+type VerifyOtpResponse = {
+  success: boolean;
+  token?: string;
+  message?: string;
+  userType?: string;
+  needsRegistration?: boolean;
+};
+
 export const authService = {
   async validateSession(token: string): Promise<{ success: boolean; userType?: 'admin' | 'dukandar'; needsRegistration?: boolean }> {
     try {
@@ -193,12 +201,34 @@ export const authService = {
     }
 
     const res = await withCoreRetry(
-      async () =>
-        apiClient.post<{ success: boolean; token?: string; message?: string; userType?: string; needsRegistration?: boolean }>(
-          '/api/login/verify-otp',
-          { phone, otp, fullhash, sessionId, deviceInfo },
-          { headers: { 'Content-Type': 'application/json' } }
-        ),
+      async () => {
+        try {
+          return await apiClient.post<VerifyOtpResponse>(
+            '/api/login/verify-otp',
+            { phone, otp, fullhash, sessionId, deviceInfo },
+            { headers: { 'Content-Type': 'application/json' } }
+          );
+        } catch (err: any) {
+          // A wrong or expired code is the person's own typo, not an outage.
+          // Thrown, it reached withCoreRetry, which put the full-screen
+          // "NETWORK ERROR / Something Went Wrong / Bad Request" overlay over
+          // the OTP screen (seen on 2026-10-06; an App Reviewer who mistypes
+          // the code would get the same). Resolve it instead, so the OTP
+          // screen shows the server's own words inline. The server sends
+          // `msg`, which app-core's normalizer does not read; that is why
+          // the overlay said "Bad Request". 504 is the backend's own
+          // "code expired" answer when it carries its success:false body.
+          const status = err?.statusCode ?? err?.response?.status;
+          const body = err?.details ?? err?.response?.data;
+          const ownAnswer = (status >= 400 && status < 500) || (status === 504 && body?.success === false);
+          if (!ownAnswer) throw err;
+          const answer: VerifyOtpResponse = {
+            success: false,
+            message: body?.msg || body?.message || 'Invalid OTP. Please try again.',
+          };
+          return { data: answer };
+        }
+      },
       { action: 'verify_otp', component: 'authService', metadata: { phone } }
     );
     return res.data;

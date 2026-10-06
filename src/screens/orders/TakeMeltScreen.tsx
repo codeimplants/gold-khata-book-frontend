@@ -18,7 +18,7 @@ import { createMeltLot, fetchCustomers, fetchRetailerAccount } from '../../store
 import { toast, ToastViewport } from '../../components/common/Toast';
 import { formatGrams } from '../../utils/dues';
 
-const PURPLE = '#6366F1';
+const PURPLE = '#0E4D3C';
 
 const num = (v: string) => Number(String(v ?? '').trim()) || 0;
 
@@ -121,19 +121,19 @@ const TakeMeltScreen = () => {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F4EF' }} edges={['top']}>
       <ToastViewport />
 
       <HStack
         alignItems="center" px="$4" py="$3" bg="$white"
-        borderBottomWidth={1} borderColor="#F3F4F6"
+        borderBottomWidth={1} borderColor="#E8ECE5"
         style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
       >
         <Pressable onPress={() => navigation.goBack()} p="$2" mr="$1">
-          <Icon as={ArrowLeft} size="lg" color="#111827" />
+          <Icon as={ArrowLeft} size="lg" color="#1D1B16" />
         </Pressable>
         <VStack flex={1}>
-          <Text fontWeight="$bold" fontSize={20} color="#111827">
+          <Text fontWeight="$bold" fontSize={20} color="#1D1B16">
             {t('melt.newLot') || 'New Melt Lot'}
           </Text>
           <Text fontSize={12} color="$coolGray500">
@@ -171,7 +171,7 @@ const TakeMeltScreen = () => {
               </Text>
               <HStack alignItems="center" space="xs">
                 <Icon as={Calendar} size="xs" color="$coolGray600" />
-                <Text fontSize={14} fontWeight="$bold" color="#111827">
+                <Text fontSize={14} fontWeight="$bold" color="#1D1B16">
                   {date === new Date().toISOString().split('T')[0]
                     ? (t('common.today') || 'Today')
                     : new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -180,7 +180,7 @@ const TakeMeltScreen = () => {
             </HStack>
           </Pressable>
 
-          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#E5E7EB" style={styles.card}>
+          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
             <Text fontWeight="$bold" mb="$1">{t('melt.lotTitle') || 'Melt lot'}</Text>
             <Text fontSize={12} color="$coolGray500" mb="$3">
               {t('melt.stage1Hint') || 'The melted and tested weights are recorded later, from the Old Gold list'}
@@ -222,7 +222,7 @@ const TakeMeltScreen = () => {
         </ScrollView>
 
         <Box
-          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#E5E7EB"
+          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#DCE2D8"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
           <Box style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}>
@@ -240,8 +240,8 @@ const TakeMeltScreen = () => {
             <Pressable onPress={onSave} disabled={!canSave}>
               <Box height={54} rounded="$2xl" overflow="hidden" justifyContent="center" alignItems="center">
                 {canSave
-                  ? <GradientSurface colors={['#6366F1', '#D946EF']} borderRadius={16} />
-                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#E5E7EB" />}
+                  ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={16} />
+                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
                 <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
                   {saving
                     ? (t('common.saving') || 'Saving…')

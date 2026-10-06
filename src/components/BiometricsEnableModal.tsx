@@ -56,11 +56,11 @@ const BiometricsEnableModal: React.FC<BiometricsEnableModalProps> = ({
               w={48}
               h={48}
               rounded="$full"
-              bg="$purple100"
+              bg="$brand100"
               alignItems="center"
               justifyContent="center"
             >
-              <Icon as={Fingerprint} size="lg" color="$purple600" />
+              <Icon as={Fingerprint} size="lg" color="$brand600" />
             </Box>
             <Text fontSize={18} fontWeight="$bold" flex={1}>
               {title}
@@ -102,7 +102,7 @@ const BiometricsEnableModal: React.FC<BiometricsEnableModalProps> = ({
                 rounded="$xl"
                 py="$3"
                 alignItems="center"
-                bg="$purple600"
+                bg="$brand600"
                 opacity={loading ? 0.6 : 1}
               >
                 <Text fontWeight="$bold" color="$white">

@@ -47,7 +47,7 @@ const LogoutModal: React.FC<LogoutModalProps> = ({
                 >
                     <VStack space="xl" alignItems="center">
                         <Box style={styles.iconCircle}>
-                            <GradientSurface colors={['#F472B6', '#DC2626']} borderRadius={35} />
+                            <GradientSurface colors={['#5FA88E', '#DC2626']} borderRadius={35} />
                             <Icon
                                 as={LogOut}
                                 size={32}

@@ -41,10 +41,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
     const IconComponent = icon === 'trash' ? Trash2 : icon === 'clock' ? Clock : AlertTriangle;
     const isDestructive = tone === 'destructive';
 
-    const iconBg = isDestructive ? '#FEF2F2' : '#FFFBEB';
-    const iconColor = isDestructive ? '#DC2626' : '#D97706';
-    const glowBg = isDestructive ? '#FEF2F2' : '#FFFBEB';
-    const btnBg = isDestructive ? '#DC2626' : '#F59E0B';
+    const iconBg = isDestructive ? '#FEF2F2' : '#FBF6EA';
+    const iconColor = isDestructive ? '#DC2626' : '#9A7425';
+    const glowBg = isDestructive ? '#FEF2F2' : '#FBF6EA';
+    const btnBg = isDestructive ? '#DC2626' : '#B08A3A';
 
     return (
         <Modal
@@ -69,7 +69,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                                 w={64}
                                 h={64}
                                 rounded="$full"
-                                style={{ backgroundColor: iconBg, borderWidth: 8, borderColor: isDestructive ? '#FEE2E2' : '#FEF3C7' }}
+                                style={{ backgroundColor: iconBg, borderWidth: 8, borderColor: isDestructive ? '#FEE2E2' : '#F5ECD7' }}
                                 alignItems="center"
                                 justifyContent="center"
                             >
@@ -130,15 +130,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                                 <HStack
                                     space="xs"
                                     alignItems="center"
-                                    bg="#EEF2FF"
+                                    bg="#E7F0EC"
                                     borderWidth={1}
-                                    borderColor="#C7D2FE"
+                                    borderColor="#C3DDD2"
                                     rounded="$full"
                                     px="$4"
                                     py="$2"
                                 >
-                                    <Icon as={Pencil} size="xs" color="#4F46E5" />
-                                    <Text fontWeight="$bold" color="#4F46E5" fontSize="$sm">
+                                    <Icon as={Pencil} size="xs" color="#0A3A2D" />
+                                    <Text fontWeight="$bold" color="#0A3A2D" fontSize="$sm">
                                         {tertiaryLabel}
                                     </Text>
                                 </HStack>

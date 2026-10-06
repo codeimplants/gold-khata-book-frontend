@@ -1,5 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
+/*
+ * The web build uses the platform's own font, like the native app (see
+ * customConfig in App.tsx), not SoneBill's Outfit and Space Grotesk from
+ * Google Fonts. Dropping those imports also takes two render-blocking requests
+ * off first load.
+ */
+:root {
+  --gkb-font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
 
 html,
 body,
@@ -8,19 +15,19 @@ body,
   min-height: 100%;
 }
 
+/* Flat pearl paper, the Ledger background (src/theme/brand.ts). Not SoneBill's
+   tinted radial glow, and not the warm ivory its design-lab work moves to. */
 body {
   margin: 0;
-  font-family: "Outfit", sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(99, 102, 241, 0.14), transparent 34%),
-    linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
+  font-family: var(--gkb-font);
+  background: #F2F4EF;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: "Space Grotesk", sans-serif;
+  font-family: var(--gkb-font);
 }
 
 #root {
@@ -31,7 +38,7 @@ input,
 button,
 textarea,
 select {
-  font-family: "Outfit", sans-serif !important;
+  font-family: var(--gkb-font) !important;
   outline: none !important;
   box-shadow: none !important;
 }
@@ -39,8 +46,8 @@ select {
 /* Ensure placeholders use the same font */
 input::placeholder,
 textarea::placeholder {
-  font-family: "Outfit", sans-serif !important;
-  color: #9CA3AF;
+  font-family: var(--gkb-font) !important;
+  color: #A39E92;
 }
 
 /* Remove default focus ring and border changes */
@@ -59,12 +66,7 @@ button,
 [data-gluestack-component] {
   outline: none !important;
   box-shadow: none !important;
-  font-family: "Outfit", sans-serif !important;
-}
-
-input::placeholder,
-textarea::placeholder {
-  font-family: "Outfit", sans-serif !important;
+  font-family: var(--gkb-font) !important;
 }
 
 /* Fix for Gluestack Select height on web */
@@ -85,6 +87,6 @@ textarea::placeholder {
 
 @media (max-width: 767px) {
   body {
-    background: #ffffff;
+    background: #F2F4EF;
   }
 }

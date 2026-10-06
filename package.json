@@ -27,6 +27,7 @@
     "@codeimplants/app-core": "^1.0.1",
     "@codeimplants/app-network": "^1.0.6",
     "@codeimplants/app-review": "^1.0.1",
+    "@codeimplants/jewellery-catalog": "^0.1.0",
     "@codeimplants/support": "^1.0.0",
     "@codeimplants/ui-kit": "^1.0.11",
     "@codeimplants/version-control": "^1.2.0",

@@ -15,29 +15,19 @@ import AdminHomeScreen from '../screens/admin/AdminHomeScreen';
 
 // App screens
 import MainTabs from './MainTabs';
-import CreateInvoiceScreen from '../screens/invoice/CreateInvoiceScreen';
-import BillHistoryScreen from '../screens/dashboardPages/BillHistoryScreen';
-import SalesReportScreen from '../screens/dashboardPages/SalesReportScreen';
-import GstReportScreen from '../screens/dashboardPages/GstReportScreen';
-import PurchasesScreen from '../screens/drawer/PurchasesScreen';
 import CustomersScreen from '../screens/dashboardPages/CustomersScreen';
+import OrdersScreen from '../screens/dashboardPages/OrdersScreen';
 import NewOrderScreen from '../screens/orders/NewOrderScreen';
 import TakeMeltScreen from '../screens/orders/TakeMeltScreen';
 import MeltLotsScreen from '../screens/orders/MeltLotsScreen';
 import MeltLotScreen from '../screens/orders/MeltLotScreen';
-import MetalRatesScreen from '../screens/dashboardPages/MetalRatesScreen';
-import AdvanceOrderScreen from '../screens/dashboardPages/AdvanceOrderScreen';
-import AdvanceOrderSuccessScreen from '../screens/orders/AdvanceOrderSuccessScreen';
 import SelectCustomerScreen from '../screens/orders/SelectCustomerScreen';
 import CustomerDetailsScreen from '../screens/customers/CustomerDetailsScreen';
 import OrderDetailsScreen from '../screens/orders/OrderDetailsScreen';
-import CompleteAdvanceOrderScreen from '../screens/orders/CompleteAdvanceOrderScreen';
 import AddShopDetailsScreen from '../screens/drawer/AddShopDetailsScreen';
 import ItemsProductsScreen from '../screens/drawer/ItemsProductsScreen';
-import GstScreen from '../screens/drawer/GstScreen';
 import PrintSettingsScreen from '../screens/drawer/PrintSettingsScreen';
 import ThermalPrinterSetupScreen from '../screens/drawer/ThermalPrinterSetupScreen';
-import InvoiceBillSettingsScreen from '../screens/drawer/InvoiceBillSettingsScreen';
 import LanguageScreen from '../screens/drawer/LanguageScreen';
 import AboutUsScreen from '../screens/drawer/AboutUsScreen';
 import PrivacyPolicyScreen from '../screens/drawer/PrivacyPolicyScreen';
@@ -67,7 +57,7 @@ const RootNavigator = () => {
   if (!hydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#7C3AED" />
+        <ActivityIndicator size="large" color="#145F4A" />
       </View>
     );
   }
@@ -92,24 +82,12 @@ const RootNavigator = () => {
         <>
           <Stack.Screen name="CompleteRegistration" component={CompleteRegistrationScreen} />
           <Stack.Screen name="MainTabs" component={MainTabs} />
-          <Stack.Screen name="MetalRates" component={MetalRatesScreen} />
           <Stack.Screen
             name="SelectCustomer"
             component={SelectCustomerScreen}
           />
-          <Stack.Screen
-            name="CreateInvoice"
-            component={CreateInvoiceScreen}
-          />
-          <Stack.Screen name="AdvanceOrder" component={AdvanceOrderScreen} />
-          <Stack.Screen
-            name="AdvanceOrderSuccess"
-            component={AdvanceOrderSuccessScreen}
-          />
-          <Stack.Screen name="BillHistory" component={BillHistoryScreen} />
-          <Stack.Screen name="SalesReport" component={SalesReportScreen} />
-          <Stack.Screen name="GstReport" component={GstReportScreen} />
           <Stack.Screen name="Customers" component={CustomersScreen} />
+          <Stack.Screen name="SalesList" component={OrdersScreen} />
             <Stack.Screen name="NewOrder" component={NewOrderScreen} />
           <Stack.Screen name="TakeMelt" component={TakeMeltScreen} />
           <Stack.Screen name="MeltLots" component={MeltLotsScreen} />
@@ -120,10 +98,6 @@ const RootNavigator = () => {
           />
           <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
           <Stack.Screen
-            name="CompleteAdvanceOrder"
-            component={CompleteAdvanceOrderScreen}
-          />
-          <Stack.Screen
             name="AddShopDetails"
             component={AddShopDetailsScreen}
           />
@@ -131,8 +105,6 @@ const RootNavigator = () => {
             name="ItemsProducts"
             component={ItemsProductsScreen}
           />
-          <Stack.Screen name="Purchases" component={PurchasesScreen} />
-          <Stack.Screen name="GST" component={GstScreen} />
           <Stack.Screen
             name="PrintSettings"
             component={PrintSettingsScreen}
@@ -140,10 +112,6 @@ const RootNavigator = () => {
           <Stack.Screen
             name="ThermalPrinterSetup"
             component={ThermalPrinterSetupScreen}
-          />
-          <Stack.Screen
-            name="InvoiceBillSettings"
-            component={InvoiceBillSettingsScreen}
           />
           <Stack.Screen name="Language" component={LanguageScreen} />
           <Stack.Screen name="AboutUs" component={AboutUsScreen} />

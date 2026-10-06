@@ -142,20 +142,20 @@ const SetRateModal = ({
                 something rather than typing into a vacuum. */}
             {liveRate > 0 && (
               <HStack
-                bg="#FFFBEB"
+                bg="#FBF6EA"
                 borderWidth={1}
-                borderColor="#FDE68A"
+                borderColor="#EBD9AE"
                 rounded="$xl"
                 p="$3"
                 mb="$4"
                 alignItems="center"
                 space="sm"
               >
-                <Icon as={TrendingUp} size="xs" color="#B45309" />
-                <Text fontSize={13} color="#92400E" flex={1}>
+                <Icon as={TrendingUp} size="xs" color="#87661F" />
+                <Text fontSize={13} color="#6F5318" flex={1}>
                   {t('rate.liveIs') || 'Live rate'} ({t('rate.fineness') || '99.50'})
                 </Text>
-                <Text fontSize={14} fontWeight="$bold" color="#B45309">
+                <Text fontSize={14} fontWeight="$bold" color="#87661F">
                   {formatCurrencyValue(liveRate)}
                 </Text>
               </HStack>
@@ -187,8 +187,8 @@ const SetRateModal = ({
             <Pressable onPress={onSave} disabled={!canSave} style={{ marginTop: 20 }}>
               <Box height={52} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
                 {canSave
-                  ? <GradientSurface colors={['#6366F1', '#D946EF']} borderRadius={12} />
-                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#E5E7EB" />}
+                  ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={12} />
+                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
                 <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
                   {saving ? (t('common.saving') || 'Saving…') : (t('rate.save') || 'Set today’s rate')}
                 </Text>

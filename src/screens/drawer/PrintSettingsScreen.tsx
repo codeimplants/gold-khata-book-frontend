@@ -170,9 +170,9 @@ const PrintSettingsScreen = () => {
   // "Printing to: Regular printer (A4)" with nothing explaining why.
   const isWeb = Platform.OS === "web";
 
-  const lightRowBorder = "#E5E7EB";
-  const purple = "#6D5EF7";
-  const tint = "#F1E9FF";
+  const lightRowBorder = "#DCE2D8";
+  const purple = "#0E4D3C";
+  const tint = "#E7F0EC";
 
   return (
     <Box flex={1} bg="$coolGray50">
@@ -349,9 +349,9 @@ const PrintSettingsScreen = () => {
                 <RNSwitch
                   value={useCustom}
                   onValueChange={setUseCustom}
-                  trackColor={{ false: "#E5E7EB", true: purple }}
+                  trackColor={{ false: "#DCE2D8", true: purple }}
                   thumbColor={"#FFFFFF"}
-                  ios_backgroundColor="#E5E7EB"
+                  ios_backgroundColor="#DCE2D8"
                 />
               </HStack>
             </Box>
@@ -361,8 +361,8 @@ const PrintSettingsScreen = () => {
                 mt="$4"
                 rounded="$2xl"
                 borderWidth={1}
-                borderColor="#BFE7E2"
-                bg="#E9F7F4"
+                borderColor="#C3DDD2"
+                bg="#E7F0EC"
                 style={{ padding: 16 }}
               >
                 <HStack space="sm" alignItems="flex-start">
@@ -543,8 +543,8 @@ const PrintSettingsScreen = () => {
             mt="$4"
             rounded="$2xl"
             borderWidth={1}
-            borderColor="#BFE7E2"
-            bg="#E9F7F4"
+            borderColor="#C3DDD2"
+            bg="#E7F0EC"
             style={{ padding: 16 }}
           >
             <Text fontWeight="$bold" color="$coolGray900" style={{ fontSize: 15, lineHeight: 20 }}>

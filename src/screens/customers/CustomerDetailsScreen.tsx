@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Modal, Platform, StyleSheet, Keyboard, KeyboardAvoidingView } from 'react-native';
+import { Modal, Platform, StyleSheet, Keyboard, KeyboardAvoidingView, Text as RNText, TextInput, View, Pressable as RNPressable } from 'react-native';
 import {
   Box,
   HStack,
@@ -12,10 +12,9 @@ import {
   Input,
   InputField,
 } from '@gluestack-ui/themed';
-import { ArrowLeft, Phone, Mail, MapPin, User, ChevronRight, Clock, CheckCircle, Edit2, X, Search } from 'lucide-react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
+import { ChevronRight, Edit2, X, Search } from 'lucide-react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import type { RootStackParamList } from '../../navigation/types';
@@ -27,6 +26,8 @@ import {
   deleteCustomer,
   clearUserData,
   fetchRetailerAccount,
+  allocateCash,
+  applyMeltCredit,
 } from '../../store/data/dataSlice';
 import { ToastViewport } from '../../components/common/Toast';
 import { endImpersonation } from '../../store/auth/authSlice';
@@ -34,13 +35,12 @@ import { toast } from '../../components/common/Toast';
 import ImpersonationBlockModal from '../../components/ImpersonationBlockModal';
 import ValidationErrorModal from '../../components/ValidationErrorModal';
 import ConfirmModal from '../../components/ConfirmModal';
-import { Trash2, Plus, Wallet, Coins, MessageCircle, FileText } from 'lucide-react-native';
-import { LAYOUT } from '../../constants/layout';
-import { orderOutstanding, hasOutstanding, sumOutstanding, formatGrams } from '../../utils/dues';
+import { Trash2, Plus, MessageCircle, FileText, Hourglass, Coins, ArrowDownLeft } from 'lucide-react-native';
+import { useContentContainerStyle } from '../../constants/layout';
+import { orderOutstanding, hasOutstanding, formatGrams } from '../../utils/dues';
 import { INPUT_LIMITS, validateText } from '../../constants/inputLimits';
 import CharCounter from '../../components/common/CharCounter';
-import { formatOrderDateTime, formatCurrencyValue } from '../../utils/formatter';
-import CustomerCodeBadge from '../../components/customers/CustomerCodeBadge';
+import { formatCurrencyValue } from '../../utils/formatter';
 import { retailerDisplayName, retailerSubtitle } from '../../utils/retailerName';
 import { useShopRate } from '../../hooks/useShopRate';
 import { buildRetailerStatement, statementToWhatsAppText } from '../../utils/retailerStatement';
@@ -48,70 +48,27 @@ import { buildStatementHTML } from '../../print/statementTemplate';
 import { openWhatsApp } from '../../utils/whatsappUtils';
 import { generateInvoicePDF, sharePDF } from '../../utils/pdfService';
 import { CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
+import { buildDayBook } from '../../utils/dayBook';
+import LedgerHeader, { LedgerHeaderAction } from '../../components/ledger/LedgerHeader';
+import EntryRow from '../../components/ledger/EntryRow';
+import { GemBullet, GoldFrame } from '../../components/ledger/Motifs';
+import ReceiveOnAccountSheet from '../../components/account/ReceiveOnAccountSheet';
+import FixRateSheet from '../../components/account/FixRateSheet';
+import UseGoldSheet from '../../components/account/UseGoldSheet';
+import { planCashAllocation, planGoldApplication } from '../../utils/heldMoney';
+import { Brand, tabularNums } from '../../theme/brand';
 
+const LOCALES: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', gu: 'gu-IN' };
 
-/**
- * Tints for the three summary cards.
- *
- * Not decoration for its own sake — three identical white cards made the row
- * read as one block, and the eye had to parse the labels to find the number it
- * came for. A colour per card makes each findable at a glance.
- *
- * The values are the ones the rest of the app already uses for these ideas, so
- * the screen agrees with the dashboard rather than inventing a second scheme:
- * Sold to us is the dashboard tile's indigo, Orders is the violet of the
- * exchange badge on the orders list, and Total is the green every money figure
- * in the app is printed in.
- */
-const STAT_TONES = {
-  orders: { bg: '#F5F3FF', border: '#DDD6FE', fg: '#6D28D9', icon: '#7C3AED', chip: '#EDE9FE' },
-  sold:   { bg: '#EEF2FF', border: '#C7D2FE', fg: '#4338CA', icon: '#6366F1', chip: '#E0E7FF' },
-  // Kept although no tile uses it: the lifetime-value row on the info card is
-  // this green, and the next thing that needs a money tone should reach for the
-  // same one rather than inventing a second.
-  total:  { bg: '#ECFDF5', border: '#A7F3D0', fg: '#047857', icon: '#10B981', chip: '#D1FAE5' },
-} as const;
-
-/**
- * One line of contact detail, with its icon in a tinted chip.
- *
- * Three grey icons stacked in a column read as a list of the same thing; the
- * chips let phone, email and address be told apart without reading them. The
- * colours are only ever decoration — nothing downstream branches on them.
- *
- * `placeholder` renders in place of a missing value rather than dropping the
- * row, so a customer with no phone number shows that plainly instead of just
- * having one fewer line than the last customer looked at.
- */
-const ContactRow = ({
-  icon,
-  tint,
-  value,
-  placeholder,
-}: {
-  icon: any;
-  tint: { bg: string; fg: string };
-  value?: string;
-  placeholder?: string;
-}) => {
-  if (!value && !placeholder) return null;
-  return (
-    <HStack alignItems="center" space="sm">
-      <Box bg={tint.bg} p="$1.5" rounded="$lg">
-        <Icon as={icon} size="xs" color={tint.fg} />
-      </Box>
-      {value ? (
-        <Text color="$coolGray700" flex={1}>
-          {value}
-        </Text>
-      ) : (
-        <Text color="$coolGray400" fontStyle="italic" flex={1}>
-          {placeholder}
-        </Text>
-      )}
-    </HStack>
-  );
+const fmtDate = (value: any, language: string, opts: Intl.DateTimeFormatOptions) => {
+  const d = new Date(value || Date.now());
+  try {
+    return d.toLocaleDateString(LOCALES[language] || 'en-IN', opts);
+  } catch {
+    return d.toLocaleDateString('en-IN', opts);
+  }
 };
+
 
 type RouteProps = NativeStackScreenProps<RootStackParamList, 'CustomerDetails'>['route'];
 
@@ -122,7 +79,9 @@ export default function CustomerDetailsScreen() {
   const customerId = paramId || paramCustomer?.id;
 
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  // Centres and caps content on iPad; no-op on phones.
+  const contentStyle = useContentContainerStyle();
   const dispatch = useAppDispatch();
   const customers = useAppSelector(s => s.data.customers);
   const orders = useAppSelector(s => s.data.orders);
@@ -314,15 +273,6 @@ export default function CustomerDetailsScreen() {
     return list;
   }, [customerOrders, searchQuery]);
 
-  const totalAmount = customerOrders.reduce((sum: number, o: any) => sum + (Number(o.amount) || 0), 0);
-
-  /**
-   * This retailer's running position across every order they hold — the metal
-   * account in grams and the cash account in rupees, summed. Each order's own
-   * share is shown on its row below, so the total and the rows it came from are
-   * both on this screen rather than only the total.
-   */
-  const outstanding = useMemo(() => sumOutstanding(customerOrders), [customerOrders]);
   const gramShort = t('common.gramShort') || 'gm';
 
   /**
@@ -411,494 +361,407 @@ export default function CustomerDetailsScreen() {
   }, [statement, retailerLabel, customer, shopDetails, gramShort, statementLabels, t]);
 
 
-  const getStatusLabel = (status: string) => {
-    if (status === 'completed') {
-      return t('orders.status.completed') || 'Completed';
-    }
-    if (status === 'pending') {
-      return t('orders.status.pending') || 'Pending';
-    }
-    return status;
+  /** Everything that moved on this account, newest first, from the same
+   *  builder as the Day Book. What moved, never a balance. The balance above
+   *  is the authoritative one, from utils/dues.ts. */
+  const entries = useMemo(
+    () => buildDayBook(customerOrders, account ? [account] : []),
+    [customerOrders, account],
+  );
+
+  /**
+   * Taking money or metal onto the account, and spending what is held.
+   *
+   * The receipt that is NOT against a sale (cash with the rate fixed later, or
+   * an advance in cash or gold), and the two ways to use it: Fix rate turns
+   * held cash into grams at the rate the retailer names, and Use gold held
+   * puts held gold on their dues gram for gram. Both go oldest sale first
+   * (utils/heldMoney.ts) and post each step to the server, which re-checks
+   * every figure against the balance.
+   */
+  const [receiveOpen, setReceiveOpen] = React.useState(false);
+  const [fixRateOpen, setFixRateOpen] = React.useState(false);
+  const [useGoldOpen, setUseGoldOpen] = React.useState(false);
+
+  const guardWrite = (open: () => void) => () => {
+    if (impersonateUserId) { setBlockModalVisible(true); return; }
+    open();
   };
+
+  const onFixRate = React.useCallback(async (amount: number, rate: number): Promise<string | null> => {
+    if (!customerId) return null;
+    const steps = planCashAllocation(customerOrders, amount, rate);
+    if (steps.length === 0) return t('account.nothingToFix') || 'No sale owes gold to put this against.';
+    let grams = 0;
+    for (const step of steps) {
+      const res: any = await dispatch(allocateCash({
+        customerId,
+        orderId: step.orderId,
+        amount: step.amount,
+        goldRate: rate,
+      }) as any);
+      if (!allocateCash.fulfilled.match(res)) {
+        return String(res.payload || t('account.fixRateFailed') || 'Could not fix the rate');
+      }
+      grams += step.amount / rate;
+    }
+    toast.success(
+      (t('account.rateFixedToast') || 'Rate fixed. {grams} off their gold due.')
+        .replace('{grams}', formatGrams(grams, t('common.gramShort') || 'gm')),
+    );
+    return null;
+  }, [customerId, customerOrders, dispatch, t]);
+
+  /** Gold held onto their dues: the weight chosen in the sheet (all of it, half,
+   *  or any part), oldest sale first. */
+  const onUseGold = React.useCallback(async (weight: number): Promise<string | null> => {
+    if (!customerId) return null;
+    const steps = planGoldApplication(customerOrders, weight);
+    if (steps.length === 0) return t('account.nothingToFix') || 'No sale owes gold to put this against.';
+    for (const step of steps) {
+      const res: any = await dispatch(applyMeltCredit({
+        customerId,
+        orderId: step.orderId,
+        weight: step.weight,
+      }) as any);
+      if (!applyMeltCredit.fulfilled.match(res)) {
+        return String(res.payload || t('account.useGoldFailed') || 'Could not use the gold held');
+      }
+    }
+    toast.success(t('account.goldUsedToast') || 'Gold held put against their dues');
+    return null;
+  }, [customerId, customerOrders, dispatch, t]);
 
   if (!customer) {
     return (
-      <Box flex={1} bg="$white">
-        <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF' }}>
-          <Box bg="$white" borderBottomWidth={1} borderBottomColor="$coolGray200">
-            <HStack px="$4" py="$3.5" alignItems="center" space="md">
-              <Pressable onPress={() => navigation.goBack()} p="$2" rounded="$lg">
-                <ArrowLeft size={22} color="#111827" />
-              </Pressable>
-              <Text fontWeight="$bold" color="$coolGray900" style={{ fontSize: 20 }}>
-                {t('customers.detailsTitle') || 'Retailer Details'}
-              </Text>
-            </HStack>
-          </Box>
-        </SafeAreaView>
+      <View style={styles.screen}>
+        <LedgerHeader
+          title={t('customers.detailsTitle') || 'Retailer Details'}
+          onBack={() => navigation.goBack()}
+        />
         <Center flex={1} px="$6">
-          <Text color="$coolGray500">
-            {t('customers.notFound') || 'Retailer not found'}
-          </Text>
+          <RNText style={styles.muted}>{t('customers.notFound') || 'Retailer not found'}</RNText>
         </Center>
-      </Box>
+      </View>
     );
   }
 
+  const subtitle = [
+    customer.customerCode,
+    retailerSubtitle(customer),
+    customer.phone || (t('customers.noPhone') || 'No phone number'),
+    customer.address,
+  ].filter(Boolean).join(' · ');
+  const holding =
+    statement.heldCash >= CASH_SETTLED_EPSILON || statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM;
+
   return (
-    <Box flex={1} bg="#F3F4F6">
-      <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF' }}>
-        {/* Header */}
-        <Box bg="$white" borderBottomWidth={1} borderBottomColor="$coolGray200">
-          <HStack 
-            px="$4" 
-            py="$3.5" 
-            alignItems="center" 
-            space="md"
-            style={{ ...(LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}) }}
-          >
-            <Pressable onPress={() => navigation.goBack()} p="$2" rounded="$lg">
-              <ArrowLeft size={22} color="#111827" />
-            </Pressable>
-            <VStack>
-              <Text
-                fontWeight="$bold"
-                color="$coolGray900"
-                style={{ fontSize: 22, lineHeight: 26 }}
-              >
-                {t('customers.detailsTitle') || 'Retailer Details'}
-              </Text>
-            </VStack>
-            <Box flex={1} />
-            <HStack space="sm">
-              {/* Always offered. It used to be hidden once the customer had any
-                  order, which left no way to remove a duplicate or mistyped
-                  entry — the confirmation below carries the warning instead. */}
-              <Pressable
-                onPress={handleDelete}
-                p="$2"
-                rounded="$lg"
-                bg="$red50"
-              >
-                <Icon as={Trash2} size="sm" color="#EF4444" />
-              </Pressable>
-              <Pressable
-                onPress={() => setShowEditModal(true)}
-                p="$2"
-                rounded="$lg"
-                bg="#EDE9FE"
-              >
-                <Icon as={Edit2} size="sm" color="#6D5EF7" />
-              </Pressable>
-            </HStack>
-          </HStack>
-        </Box>
-      </SafeAreaView>
+    <View style={styles.screen}>
+      {/* The retailer's statement: what they owe as of today, what the shop is
+          holding for them, their sales and every entry on the account.
+
+          It was SoneBill's customer profile: contact chips, a lifetime rupee
+          total, tinted summary cards, invoice cards and a floating "+". App
+          Review rejected the app as a SoneBill copy under guideline 4.3(a)
+          (APP_STORE_4.3_REWORK.md). Balances still come from utils/dues.ts
+          through buildRetailerStatement. Nothing is computed here. */}
+      <LedgerHeader
+        title={customer.name}
+        subtitle={subtitle}
+        onBack={() => navigation.goBack()}
+        right={
+          <>
+            {/* Always offered. It used to be hidden once the retailer had any
+                sale, which left no way to remove a duplicate or mistyped
+                entry. The confirmation carries the warning instead. */}
+            <LedgerHeaderAction
+              icon={Trash2}
+              onPress={handleDelete}
+              accessibilityLabel={t('customers.delete.title') || 'Delete retailer'}
+            />
+            <LedgerHeaderAction
+              icon={Edit2}
+              onPress={() => setShowEditModal(true)}
+              accessibilityLabel={t('customers.detailsScreen.editTitle') || 'Edit Retailer'}
+            />
+          </>
+        }
+      />
 
       <ScrollView
         flex={1}
-        // The search box and the order rows share this container, so without
+        // The search box and the sale rows share this container, so without
         // this the first tap on a row while searching is spent dismissing the
         // keyboard and the row never opens.
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{
           padding: 16,
-          paddingBottom: Math.max(insets.bottom, 150),
-          ...(LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {})
+          paddingBottom: Math.max(insets.bottom, 24) + 16,
+          ...contentStyle,
         }}
       >
-        {/* Info card */}
-        <Box bg="$white" rounded="$2xl" p="$5" style={styles.card}>
-          {/* The code beside the name, so the shopkeeper can confirm they
-              opened the right one of two same-named customers before acting
-              on anything on this screen. */}
-          <HStack alignItems="center" space="sm">
-            <Text fontWeight="$bold" fontSize={20} color="$coolGray900" flexShrink={1}>
-              {customer.name}
-            </Text>
-            <CustomerCodeBadge code={customer.customerCode} size="md" />
-          </HStack>
-
-          <VStack mt="$4" space="sm">
-            {/* Who to ask for. Hidden when absent — plenty of retailers are
-                known only as the shop, and an empty row would suggest
-                something is missing when nothing is. */}
-            <ContactRow
-              icon={User}
-              tint={{ bg: '#F3E8FF', fg: '#7857FF' }}
-              value={retailerSubtitle(customer)}
-            />
-            {/* Shown even when empty, unlike the rows below: a missing number
-                is worth noticing here, and this is where it gets added. */}
-            <ContactRow
-              icon={Phone}
-              tint={{ bg: '#EDE9FE', fg: '#7C3AED' }}
-              value={customer.phone}
-              placeholder={t('customers.noPhone') || 'No phone number'}
-            />
-            {!!customer.email && (
-              <ContactRow
-                icon={Mail}
-                tint={{ bg: '#DBEAFE', fg: '#2563EB' }}
-                value={customer.email}
-              />
-            )}
-            {!!customer.address && (
-              <ContactRow
-                icon={MapPin}
-                tint={{ bg: '#FEF3C7', fg: '#D97706' }}
-                value={customer.address}
-              />
-            )}
-          </VStack>
-
-          {/* What this customer is worth, on the card that identifies them.
-
-              It was a third tile in the row below, where a lakh-and-above
-              figure had a third of the screen and the smallest type on it -
-              the most valuable number was the least legible. It also does
-              not belong there: the other two tiles switch the tabs below,
-              and this one never did, so it sat among controls looking like
-              one without being one.
-
-              Hidden at zero. A customer who has not bought anything yet does
-              not need a row telling them so. */}
-          {totalAmount > 0 && (
-            <HStack
-              mt="$4"
-              pt="$4"
-              borderTopWidth={1}
-              borderTopColor="$coolGray100"
-              alignItems="center"
-              justifyContent="space-between"
-            >
-              <Text fontSize={13} color="$coolGray500" fontWeight="$medium">
-                {t('customers.total') || 'Total'}
-              </Text>
-              <Text fontSize={20} fontWeight="$black" color="#059669">
-                {formatCurrencyValue(totalAmount)}
-              </Text>
-            </HStack>
-          )}
-        </Box>
-
-
-        {/* What this retailer still owes.
-
-            Two figures, never one. Metal is owed as metal and cash as cash, and
-            they settle independently — pricing the gold into the rupee total
-            would need today's rate, which is not the rate on the day the metal
-            actually comes back. Each order's own share is on its row below, so
-            this total can be traced to the orders that make it up.
-
-            Hidden entirely when nothing is owed rather than shown as a pair of
-            zeroes: a settled retailer is the common case, and an always-present
-            "₹0 / 0.000 gm" is a row of noise on every one of them. */}
-        {hasOutstanding(outstanding) && (
-          <Box
-            mt="$4"
-            bg="#FFFBEB"
-            rounded="$2xl"
-            p="$4"
-            borderWidth={1}
-            borderColor="#FDE68A"
-            style={styles.card}
-          >
-            <Text fontSize={13} fontWeight="$bold" color="#92400E" mb="$3">
-              {t('customers.detailsScreen.outstanding') || 'Outstanding'}
-            </Text>
-
-            <HStack space="md" alignItems="stretch">
-              {outstanding.gold > 0 && (
-                <VStack flex={1} space="xs">
-                  <HStack space="xs" alignItems="center">
-                    <Icon as={Coins} size="xs" color="#D97706" />
-                    <Text fontSize={12} color="$coolGray600">
-                      {t('dashboard.dues.gold') || 'Gold'}
-                    </Text>
-                  </HStack>
-                  <Text fontWeight="$black" fontSize={19} color="#B45309" numberOfLines={1}>
-                    {formatGrams(outstanding.gold, gramShort)}
-                  </Text>
-                </VStack>
-              )}
-
-              {outstanding.cash > 0 && (
-                <VStack flex={1} space="xs">
-                  <HStack space="xs" alignItems="center">
-                    <Icon as={Wallet} size="xs" color="#6366F1" />
-                    <Text fontSize={12} color="$coolGray600">
-                      {t('dashboard.dues.cash') || 'Cash'}
-                    </Text>
-                  </HStack>
-                  <Text fontWeight="$black" fontSize={19} color="#4338CA" numberOfLines={1}>
-                    {formatCurrencyValue(outstanding.cash)}
-                  </Text>
-                </VStack>
-              )}
-            </HStack>
-          </Box>
-        )}
-
-        {/* What the shop is holding FOR this retailer, kept in its own card
-            rather than netted off the Outstanding one above. They are two
-            different things — one is a debt, the other is the retailer's own
-            money sitting here — and subtracting one from the other hides the
-            second entirely. Green, because on this screen it is the only
-            figure that is in the retailer's favour. */}
-        {(statement.heldCash >= CASH_SETTLED_EPSILON
-          || statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM) && (
-          <Box
-            mt="$4"
-            bg="#F0FDF4"
-            rounded="$2xl"
-            p="$4"
-            borderWidth={1}
-            borderColor="#BBF7D0"
-            style={styles.card}
-          >
-            <Text fontSize={13} fontWeight="$bold" color="#166534" mb="$3">
-              {t('statement.heldTitle') || 'Held for this retailer'}
-            </Text>
-
-            <HStack space="md" alignItems="stretch">
-              {statement.heldCash >= CASH_SETTLED_EPSILON && (
-                <VStack flex={1} space="xs">
-                  <HStack space="xs" alignItems="center">
-                    <Icon as={Wallet} size="xs" color="#15803D" />
-                    <Text fontSize={12} color="$coolGray600">
-                      {t('statement.credit') || 'Credit with us'}
-                    </Text>
-                  </HStack>
-                  <Text fontWeight="$black" fontSize={19} color="#15803D" numberOfLines={1}>
-                    {formatCurrencyValue(statement.heldCash)}
-                  </Text>
-                </VStack>
-              )}
-
-              {statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM && (
-                <VStack flex={1} space="xs">
-                  <HStack space="xs" alignItems="center">
-                    <Icon as={Coins} size="xs" color="#15803D" />
-                    <Text fontSize={12} color="$coolGray600">
-                      {t('statement.meltCredit') || 'Melt credit'}
-                    </Text>
-                  </HStack>
-                  <Text fontWeight="$black" fontSize={19} color="#15803D" numberOfLines={1}>
-                    {formatGrams(statement.meltCredit, gramShort)}
-                  </Text>
-                </VStack>
-              )}
-            </HStack>
-          </Box>
-        )}
-
-        {/* Sending the statement. Shown whenever there is anything to say —
-            a debt OR a credit — because "you are ₹400 in hand with us" is
-            worth sending too, and hidden for a retailer whose account is
-            flat, where a reminder would be nothing but noise. */}
-        {!statement.isClear && (
-          <HStack mt="$4" space="md">
-            <Pressable flex={1} onPress={onRemindWhatsApp}>
-              <HStack
-                bg="#25D366"
-                rounded="$xl"
-                py="$3"
-                alignItems="center"
-                justifyContent="center"
-                space="sm"
-              >
-                <Icon as={MessageCircle} size="sm" color="$white" />
-                <Text color="$white" fontWeight="$bold" fontSize={14}>
-                  {t('statement.sendWhatsApp') || 'Remind on WhatsApp'}
-                </Text>
-              </HStack>
-            </Pressable>
-
-            <Pressable onPress={onShareStatementPdf}>
-              <HStack
-                bg="$coolGray100"
-                rounded="$xl"
-                py="$3"
-                px="$4"
-                alignItems="center"
-                justifyContent="center"
-                space="sm"
-              >
-                <Icon as={FileText} size="sm" color="$coolGray700" />
-                <Text color="$coolGray700" fontWeight="$bold" fontSize={14}>
-                  {t('statement.pdf') || 'PDF'}
-                </Text>
-              </HStack>
-            </Pressable>
-          </HStack>
-        )}
-
-        {/* Tabs and Search Section */}
-        <Box mt="$6">
-          {/* Search Bar */}
-          <Box bg="$white" rounded="$2xl" px="$4" py="$1" mb="$4" style={styles.card}>
-            <HStack alignItems="center" space="sm">
-              <Icon as={Search} size="sm" color="$coolGray400" />
-              <Input variant="outline" borderWidth={0} flex={1}>
-                <InputField
-                  placeholder={
-                    t('customers.detailsScreen.searchInvoicePlaceholder') ||
-                    'Search invoice number...'
-                  }
-                  value={searchQuery}
-                  onChangeText={setSearchQuery}
-                  maxLength={INPUT_LIMITS.searchQuery}
-                  fontSize="$sm"
-                />
-              </Input>
-              {searchQuery.length > 0 && (
-                <Pressable onPress={() => setSearchQuery('')}>
-                  <Icon as={X} size="xs" color="$coolGray400" />
-                </Pressable>
-              )}
-            </HStack>
-          </Box>
-
-          {filteredOrders.length === 0 ? (
-            <Box bg="$white" rounded="$2xl" p="$10" style={styles.card} alignItems="center">
-              <Icon as={Search} size="xl" color="$coolGray200" mb="$2" />
-              <Text textAlign="center" color="$coolGray500">
-                {searchQuery
-                  ? t('customers.detailsScreen.noMatchingResults') ||
-                  'No matching results found'
-                  : t('customers.detailsScreen.noInvoicesFound') ||
-                  'No invoices found'}
-              </Text>
-            </Box>
+        {/* The balance. Two figures, never one: metal is owed as metal and
+            cash as cash, and they settle independently. Pricing the gold into
+            rupees needs a rate, and the rate on the day the metal comes back
+            is not today's. */}
+        <View style={[styles.card, styles.heroCard]}>
+          <GoldFrame />
+          <View style={styles.kickerRow}>
+            <GemBullet />
+            <RNText style={styles.kicker}>
+              {(t('statement.asOn') || 'Balance as on')} {fmtDate(Date.now(), language, { day: 'numeric', month: 'short', year: 'numeric' })}
+            </RNText>
+          </View>
+          {statement.totalGold > 0 || statement.totalCash > 0 ? (
+            <View style={styles.balanceRow}>
+              <View style={{ flex: 1 }}>
+                <RNText style={styles.balanceLabel}>{t('khata.fineGold') || 'Fine gold (99.50)'}</RNText>
+                <RNText style={[styles.balanceValue, { color: statement.totalGold > 0 ? Brand.gold : Brand.inkFaint }, tabularNums]} numberOfLines={1} adjustsFontSizeToFit>
+                  {statement.totalGold > 0 ? formatGrams(statement.totalGold, gramShort) : '—'}
+                </RNText>
+              </View>
+              <View style={styles.balanceDivider} />
+              <View style={{ flex: 1 }}>
+                <RNText style={styles.balanceLabel}>{t('khata.cash') || 'Cash'}</RNText>
+                <RNText style={[styles.balanceValue, { color: statement.totalCash > 0 ? Brand.ink : Brand.inkFaint }, tabularNums]} numberOfLines={1} adjustsFontSizeToFit>
+                  {statement.totalCash > 0 ? formatCurrencyValue(statement.totalCash) : '—'}
+                </RNText>
+              </View>
+            </View>
           ) : (
-            <VStack space="md">
-              {filteredOrders.map(order => (
-                <Pressable key={order.id} onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}>
-                  <Box
-                    bg="$white"
-                    rounded="$2xl"
-                    p="$4"
-                    borderLeftWidth={4}
-                    borderLeftColor={STAT_TONES.orders.icon}
-                    style={styles.card}
-                  >
-                    <HStack justifyContent="space-between" alignItems="center">
-                      <VStack flex={1}>
-                        {/* Invoices and advance orders share this tab now, so the
-                            row has to say which it is, and whether old gold was
-                            taken in against it. */}
-                        <HStack mb="$1" space="xs" alignItems="center" flexWrap="wrap">
-                          <HStack
-                            px="$2"
-                            py="$1"
-                            rounded="$full"
-                            bg={order.status === 'completed' ? '#DCFCE7' : '#FEF3C7'}
-                            alignItems="center"
-                            space="xs"
-                          >
-                            <Icon as={order.status === 'completed' ? CheckCircle : Clock} size="xs" color={order.status === 'completed' ? '#166534' : '#92400E'} />
-                            <Text fontSize={10} fontWeight="$bold" color={order.status === 'completed' ? '#166534' : '#92400E'} textTransform="uppercase">
-                              {getStatusLabel(order.status)}
-                            </Text>
-                          </HStack>
-
-                          <Box px="$2" py="$1" rounded="$full" bg="$coolGray100">
-                            <Text fontSize={10} fontWeight="$bold" color="$coolGray600">
-                              {order.type === 'advance'
-                                ? t('orders.advancePayment.title') || 'Advance'
-                                : t('orders.fullPayment.title') || 'Full Payment'}
-                            </Text>
-                          </Box>
-
-                        </HStack>
-                        <HStack alignItems="center" space="sm" flexWrap="wrap">
-                          <Text fontWeight="$bold" fontSize={16} color="$coolGray900">
-                            {order.invoiceNumber || order.orderNumber || order.id.slice(-6).toUpperCase()}
-                          </Text>
-
-                        </HStack>
-                        <Text color="$coolGray500" fontSize="$xs" mt="$1">
-                          {formatOrderDateTime(order.date, order.createdAt)}
-                          {order.type === 'advance' &&
-                            order.items?.[0] &&
-                            ` • ${order.items[0].itemName || (t('orders.itemsFallback') || 'Jewelry')}`}
-                        </Text>
-                      </VStack>
-                      <HStack alignItems="center" space="xs">
-                        <VStack alignItems="flex-end">
-                          <Text color="#16A34A" fontWeight="$black" fontSize={17}>
-                            ₹{Number(order.amount).toFixed(2)}
-                          </Text>
-                          {/* This order's share of the two totals above.
-                              Previously one rupee "Due" read off
-                              estimatedBalance, which already prices the metal
-                              in — so an order owing only gold looked like a
-                              cash debt, and the row could not be reconciled
-                              against the gold total. Each account is printed
-                              only when it has something on it. */}
-                          {(() => {
-                            const due = orderOutstanding(order);
-                            if (!hasOutstanding(due)) return null;
-                            const dueLabel = t('customers.detailsScreen.dueLabel') || 'Due';
-                            return (
-                              <VStack alignItems="flex-end">
-                                {due.gold > 0 && (
-                                  <Text fontSize={10} color="#B45309">
-                                    {dueLabel}: {formatGrams(due.gold, gramShort)}
-                                  </Text>
-                                )}
-                                {due.cash > 0 && (
-                                  <Text fontSize={10} color="#4338CA">
-                                    {dueLabel}: {formatCurrencyValue(due.cash)}
-                                  </Text>
-                                )}
-                              </VStack>
-                            );
-                          })()}
-                        </VStack>
-                        <Icon as={ChevronRight} size="sm" color="#9CA3AF" />
-                      </HStack>
-                    </HStack>
-                  </Box>
-                </Pressable>
-              ))}
-            </VStack>
+            <RNText style={styles.nothingDue}>{t('statement.nothingDue') || 'Nothing due'}</RNText>
           )}
-        </Box>
+
+          {/* What the shop is HOLDING for this retailer, kept apart from what
+              they owe rather than netted off it. One is a debt, the other is
+              the retailer's own money sitting here, and subtracting one from
+              the other hides the second entirely. */}
+          {holding && (
+            <View style={styles.heldRow}>
+              <RNText style={styles.heldLabel}>{t('statement.heldTitle') || 'Held for this retailer'}</RNText>
+
+              {/* Cash whose rate is not fixed. With gold owed, Fix rate turns it
+                  into grams off the due at the rate the retailer names; with
+                  nothing owed it is an advance, waiting for their next sale. */}
+              {statement.heldCash >= CASH_SETTLED_EPSILON && (
+                <View style={styles.heldLine}>
+                  <View style={[styles.heldIcon, { backgroundColor: Brand.goldSoft }]}>
+                    <Hourglass size={15} color={Brand.goldDark} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <RNText style={[styles.heldValue, tabularNums]}>{formatCurrencyValue(statement.heldCash)}</RNText>
+                    <RNText style={styles.heldHint}>
+                      {statement.totalGold > 0
+                        ? (t('account.cashHeldRateLater') || 'Cash held · rate not fixed')
+                        : (t('account.cashAdvance') || 'Cash advance · for their next sale')}
+                    </RNText>
+                  </View>
+                  {statement.totalGold > 0 && (
+                    <RNPressable style={styles.heldAction} onPress={guardWrite(() => setFixRateOpen(true))}>
+                      <RNText style={styles.heldActionText}>{t('account.fixRate') || 'Fix rate'}</RNText>
+                    </RNPressable>
+                  )}
+                </View>
+              )}
+
+              {/* Gold held: advances and melt credit, in 99.50 grams. */}
+              {statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM && (
+                <View style={styles.heldLine}>
+                  <View style={[styles.heldIcon, { backgroundColor: Brand.goldSoft }]}>
+                    <Coins size={15} color={Brand.goldDark} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <RNText style={[styles.heldValue, tabularNums]}>{formatGrams(statement.meltCredit, gramShort)}</RNText>
+                    <RNText style={styles.heldHint}>
+                      {statement.totalGold > 0
+                        ? (t('account.goldHeld') || 'Gold held · fine 99.50')
+                        : (t('account.goldAdvanceHint') || 'Gold advance · for their next sale')}
+                    </RNText>
+                  </View>
+                  {statement.totalGold > 0 && (
+                    <RNPressable style={styles.heldAction} onPress={guardWrite(() => setUseGoldOpen(true))}>
+                      <RNText style={styles.heldActionText}>{t('account.useGold') || 'Use'}</RNText>
+                    </RNPressable>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
+        <View style={styles.actions}>
+          <RNPressable
+            style={[styles.action, styles.actionPrimary]}
+            onPress={() => navigation.navigate('NewOrder', { customerId })}
+          >
+            <Plus size={16} color="#FFFFFF" />
+            <RNText style={[styles.actionText, { color: '#FFFFFF' }]}>{t('newEntry.sale') || 'New sale'}</RNText>
+          </RNPressable>
+          {/* Money or metal that is not against one sale: cash with the rate
+              fixed later, or an advance. A payment against a sale is still
+              recorded on that sale, from the list below. */}
+          <RNPressable
+            style={[styles.action, styles.actionOutline, { flex: 1 }]}
+            onPress={guardWrite(() => setReceiveOpen(true))}
+          >
+            <ArrowDownLeft size={16} color={Brand.received} />
+            <RNText style={[styles.actionText, { color: Brand.received }]}>{t('account.receive') || 'Receive'}</RNText>
+          </RNPressable>
+        </View>
+        {/* Sending the statement. Offered whenever there is anything to say,
+            a debt OR a credit, and not for a flat account, where a reminder
+            would be noise. */}
+        {!statement.isClear && (
+          <View style={styles.actions}>
+            <RNPressable style={[styles.action, styles.actionWhatsApp, { flex: 1 }]} onPress={onRemindWhatsApp}>
+              <MessageCircle size={16} color="#FFFFFF" />
+              <RNText style={[styles.actionText, { color: '#FFFFFF' }]}>{t('retailer.remind') || 'Remind'}</RNText>
+            </RNPressable>
+            <RNPressable style={[styles.action, styles.actionOutline, { flex: 1 }]} onPress={onShareStatementPdf}>
+              <FileText size={16} color={Brand.primary} />
+              <RNText style={[styles.actionText, { color: Brand.primary }]}>{t('statement.pdf') || 'PDF'}</RNText>
+            </RNPressable>
+          </View>
+        )}
+
+        {/* Sales, with what is still owed on each. A receipt is recorded
+            against a sale, on its own screen, so this is where Receive starts. */}
+        <View style={styles.sectionHead}>
+          <RNText style={styles.sectionTitle}>{t('dayBook.sales') || 'Sales'}</RNText>
+          {customerOrders.length > 0 && (
+            <RNText style={styles.sectionHint}>{t('retailer.receiveHint') || 'Tap a sale to record what was received against it.'}</RNText>
+          )}
+        </View>
+
+        {customerOrders.length > 6 && (
+          <View style={styles.search}>
+            <Search size={16} color={Brand.inkFaint} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder={t('customers.detailsScreen.searchInvoicePlaceholder') || 'Search sale number...'}
+              placeholderTextColor={Brand.inkFaint}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              maxLength={INPUT_LIMITS.searchQuery}
+            />
+            {searchQuery.length > 0 && (
+              <RNPressable onPress={() => setSearchQuery('')} hitSlop={8}>
+                <X size={14} color={Brand.inkFaint} />
+              </RNPressable>
+            )}
+          </View>
+        )}
+
+        <View style={styles.table}>
+          {filteredOrders.length === 0 ? (
+            <RNText style={[styles.muted, { textAlign: 'center', paddingVertical: 20 }]}>
+              {searchQuery
+                ? t('customers.detailsScreen.noMatchingResults') || 'No matching results found'
+                : t('retailer.noSales') || 'No sales to this retailer yet.'}
+            </RNText>
+          ) : (
+            filteredOrders.map((order, i) => {
+              const due = orderOutstanding(order);
+              const owes = hasOutstanding(due);
+              return (
+                <RNPressable
+                  key={order.id}
+                  onPress={() => navigation.navigate('OrderDetails', { orderId: order.id })}
+                  style={({ pressed }) => [styles.saleRow, i < filteredOrders.length - 1 && styles.divider, pressed && { opacity: 0.6 }]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <RNText style={styles.saleNo}>
+                      {order.invoiceNumber || order.orderNumber || order.id.slice(-6).toUpperCase()}
+                    </RNText>
+                    <RNText style={styles.saleMeta} numberOfLines={1}>
+                      {fmtDate(order.date || order.createdAt, language, { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {order.items?.[0]?.itemName ? ` · ${order.items[0].itemName}` : ''}
+                      {(order.items?.length ?? 0) > 1 ? ` +${(order.items?.length ?? 0) - 1}` : ''}
+                    </RNText>
+                  </View>
+                  {/* This sale's share of the balance above, each account only
+                      when it has something on it. Settled sales stay listed so
+                      a retailer chased for one bill can see the last one was
+                      acknowledged. */}
+                  <View style={{ alignItems: 'flex-end', marginRight: 6 }}>
+                    {owes ? (
+                      <>
+                        {due.gold > 0 && (
+                          <RNText style={[styles.saleFigure, { color: Brand.gold }, tabularNums]}>{formatGrams(due.gold, gramShort)}</RNText>
+                        )}
+                        {due.cash > 0 && (
+                          <RNText style={[styles.saleFigure, { color: Brand.ink }, tabularNums]}>{formatCurrencyValue(due.cash)}</RNText>
+                        )}
+                      </>
+                    ) : (
+                      <RNText style={styles.settled}>{t('retailer.settled') || 'Settled'}</RNText>
+                    )}
+                  </View>
+                  <ChevronRight size={16} color={Brand.inkFaint} />
+                </RNPressable>
+              );
+            })
+          )}
+        </View>
+
+        {entries.length > 0 && (
+          <>
+            <View style={styles.sectionHead}>
+              <RNText style={styles.sectionTitle}>{t('retailer.entries') || 'Entries'}</RNText>
+            </View>
+            <View style={[styles.table, { paddingVertical: 0 }]}>
+              {entries.map(e => (
+                <EntryRow
+                  key={e.id}
+                  entry={e}
+                  name={fmtDate(e.at, language, { day: 'numeric', month: 'short', year: 'numeric' })}
+                  t={t}
+                  language={language}
+                  showDate={false}
+                  onPress={e.orderId ? () => navigation.navigate('OrderDetails', { orderId: e.orderId }) : undefined}
+                />
+              ))}
+            </View>
+          </>
+        )}
       </ScrollView>
 
-      {/* FAB */}
-      <Box position="absolute" bottom={insets.bottom + 20} right={20}>
-        <Pressable
-          onPress={() => navigation.navigate('NewOrder', { customerId })}
-          style={{
-            width: 60,
-            height: 60,
-            borderRadius: 30,
-            justifyContent: 'center',
-            alignItems: 'center',
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.3,
-            shadowRadius: 4.65,
-          }}
-        >
-          <Svg width="60" height="60">
-            <Defs>
-              <LinearGradient id="fabGradDetails" x1="0" y1="0" x2="1" y2="1">
-                <Stop offset="0" stopColor="#6366F1" />
-                <Stop offset="1" stopColor="#D946EF" />
-              </LinearGradient>
-            </Defs>
-            <Rect width="60" height="60" rx="30" fill="url(#fabGradDetails)" />
-          </Svg>
-          <Box position="absolute">
-            <Icon as={Plus} color="$white" size="xl" />
-          </Box>
-        </Pressable>
-      </Box>
+      <ReceiveOnAccountSheet
+        visible={receiveOpen}
+        onClose={() => setReceiveOpen(false)}
+        customerId={customerId}
+        retailerName={retailerLabel}
+        owesGold={statement.totalGold > 0}
+        t={t}
+      />
+
+      <FixRateSheet
+        visible={fixRateOpen}
+        onClose={() => setFixRateOpen(false)}
+        heldCash={statement.heldCash}
+        goldDue={statement.totalGold}
+        defaultRate={liveRate}
+        subtitle={(t('account.fixRateSubtitle') || '{cash} held for {name} · {gold} gold due')
+          .replace('{cash}', formatCurrencyValue(statement.heldCash))
+          .replace('{name}', retailerLabel)
+          .replace('{gold}', formatGrams(statement.totalGold, gramShort))}
+        onConfirm={onFixRate}
+        t={t}
+      />
+
+      <UseGoldSheet
+        visible={useGoldOpen}
+        onClose={() => setUseGoldOpen(false)}
+        heldGold={statement.meltCredit}
+        goldDue={statement.totalGold}
+        subtitle={(t('account.useGoldSubtitle') || '{held} held for {name} · {due} gold due')
+          .replace('{held}', formatGrams(statement.meltCredit, gramShort))
+          .replace('{name}', retailerLabel)
+          .replace('{due}', formatGrams(statement.totalGold, gramShort))}
+        hint={t('account.useGoldHint') || 'Gram for gram, oldest sale first.'}
+        onConfirm={onUseGold}
+        t={t}
+      />
 
       <ConfirmModal
         visible={showDeleteModal}
@@ -970,7 +833,7 @@ export default function CustomerDetailsScreen() {
                   highlighted border. */}
               <VStack space="xs">
                 <Text fontWeight="$semibold">{t('customers.ownerName') || 'Owner Name'}</Text>
-                <Input rounded="$xl" borderWidth={2} borderColor="#8B5CF6" bg="$white">
+                <Input rounded="$xl" borderWidth={2} borderColor="#145F4A" bg="$white">
                   <InputField
                     placeholder={t('customers.placeholders.ownerName') || 'e.g. Ramesh Patel'}
                     value={form.ownerName}
@@ -1036,7 +899,7 @@ export default function CustomerDetailsScreen() {
             </VStack>
 
             <Pressable onPress={handleUpdate} style={{ marginTop: 18 }}>
-              <Box bg="#6D5EF7" rounded="$xl" py="$3" alignItems="center">
+              <Box bg="#0E4D3C" rounded="$xl" py="$3" alignItems="center">
                 <Text color="$white" fontWeight="$bold" fontSize={16}>
                   {t('customers.detailsScreen.saveChanges') || 'Save Changes'}
                 </Text>
@@ -1082,17 +945,214 @@ export default function CustomerDetailsScreen() {
       </Modal>
 
       {!showEditModal && impersonationBlock}
-    </Box>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: Brand.paper,
+  },
+  muted: {
+    fontSize: 14,
+    color: Brand.inkMuted,
+  },
   card: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: Brand.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    padding: 16,
+  },
+  heroCard: {
+    padding: 18,
+  },
+  kickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  kicker: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Brand.inkMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  balanceRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  balanceDivider: {
+    width: StyleSheet.hairlineWidth,
+    backgroundColor: Brand.lineStrong,
+    marginHorizontal: 14,
+  },
+  balanceLabel: {
+    fontSize: 13,
+    color: Brand.inkMuted,
+  },
+  balanceValue: {
+    fontSize: 26,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  nothingDue: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Brand.received,
+    marginTop: 10,
+  },
+  heldRow: {
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Brand.line,
+  },
+  heldLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Brand.received,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  heldValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Brand.received,
+  },
+  heldLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  heldIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  heldHint: {
+    fontSize: 12,
+    color: Brand.inkMuted,
+    marginTop: 1,
+  },
+  heldAction: {
+    paddingHorizontal: 14,
+    height: 34,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Brand.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  heldActionText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Brand.primary,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  action: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: 8,
+    paddingHorizontal: 14,
+  },
+  actionPrimary: {
+    flex: 1,
+    backgroundColor: Brand.primary,
+  },
+  actionWhatsApp: {
+    backgroundColor: '#1F9D55',
+  },
+  actionOutline: {
+    borderWidth: 1,
+    borderColor: Brand.lineStrong,
+    backgroundColor: Brand.card,
+  },
+  actionText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  sectionHead: {
+    marginTop: 22,
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  sectionHint: {
+    fontSize: 13,
+    color: Brand.inkMuted,
+    marginTop: 2,
+  },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    backgroundColor: Brand.card,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    marginBottom: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: Brand.ink,
+    paddingVertical: 0,
+  },
+  table: {
+    backgroundColor: Brand.card,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    paddingHorizontal: 14,
+  },
+  saleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  divider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Brand.line,
+  },
+  saleNo: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: Brand.ink,
+  },
+  saleMeta: {
+    fontSize: 12,
+    color: Brand.inkMuted,
+    marginTop: 2,
+  },
+  saleFigure: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  settled: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: Brand.received,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
   },
   modalSheet: {
     borderTopLeftRadius: 24,

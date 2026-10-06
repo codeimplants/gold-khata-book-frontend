@@ -1,22 +1,24 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, StyleSheet, Platform, TouchableOpacity, View, Text } from "react-native";
+import { Animated, StyleSheet, Platform, TouchableOpacity, View, Text, Pressable } from "react-native";
 import { createBottomTabNavigator, BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { Home, ShoppingBag, Users, Settings, AlertTriangle } from "lucide-react-native";
+import { BookOpen, Store, ScrollText, Menu, Plus, AlertTriangle } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Svg, { Defs, LinearGradient, Stop, Rect } from "react-native-svg";
 import { useNavigation } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { endImpersonation } from "../store/auth/authSlice";
 import { clearUserData } from "../store/data/dataSlice";
 
 import DashboardScreen from "../screens/dashboard/DashboardScreen";
-import OrdersScreen from "../screens/dashboardPages/OrdersScreen";
+import DayBookScreen from "../screens/dayBook/DayBookScreen";
 import CustomersScreen from "../screens/dashboardPages/CustomersScreen";
 import SettingsScreen from "../screens/dashboardPages/SettingsScreen";
+import NewEntrySheet from "../components/ledger/NewEntrySheet";
+import AddCustomerModal from "../components/AddCustomerModal";
 
 import { MainTabParamList } from "./types";
 import { useTranslation } from "../hooks/useTranslation";
 import { LAYOUT } from "../constants/layout";
+import { Brand } from "../theme/brand";
 
 export const BannerHeightContext = React.createContext(0);
 
@@ -24,16 +26,63 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 
 type TabName = "Dashboard" | "Orders" | "Customers" | "Settings";
 
-const TAB_CONFIG: Record<TabName, { colors: [string, string]; IconComp: React.ComponentType<any> }> = {
-  Dashboard: { colors: ["#6366F1", "#D946EF"], IconComp: Home },
-  Orders:    { colors: ["#14B8A6", "#0D9488"], IconComp: ShoppingBag },
-  Customers: { colors: ["#F59E0B", "#EA580C"], IconComp: Users },
-  Settings:  { colors: ["#9CA3AF", "#6B7280"], IconComp: Settings },
+/**
+ * Route names are code (they are navigated to from across the app and typed in
+ * MainTabParamList) and stay as they were. What the user sees is the khata's
+ * own vocabulary: Khata, Retailers, Day Book, More.
+ */
+const TAB_ICONS: Record<TabName, React.ComponentType<{ size?: number; color?: string }>> = {
+  Dashboard: BookOpen,
+  Customers: Store,
+  Orders: ScrollText,
+  Settings: Menu,
 };
 
-function CustomTabBar({ state, navigation }: BottomTabBarProps) {
+/** The New Entry button sits between the second and third tabs. */
+const CENTRE_AFTER_INDEX = 1;
+
+/**
+ * The tab bar of the Ledger design (src/theme/brand.ts).
+ *
+ * SoneBill's bar, inherited by the fork, gave each tab its own gradient colour.
+ * The active icon sat in a gradient rounded square, with a gradient indicator
+ * along the top edge. That was part of the look App Review rejected under
+ * guideline 4.3(a) (APP_STORE_4.3_REWORK.md).
+ *
+ * This bar is flat and the same green for every tab. The active tab is marked
+ * by colour and a short gold underline. A gold New Entry button sits in the
+ * centre, so a sale, receipt or melt can be written from anywhere.
+ */
+function LedgerTabBar({ state, navigation, onNewEntry }: BottomTabBarProps & { onNewEntry: () => void }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
+
+  const renderTab = (route: (typeof state.routes)[number], index: number) => {
+    const focused = state.index === index;
+    const Icon = TAB_ICONS[route.name as TabName] ?? Menu;
+    const color = focused ? Brand.primary : Brand.inkMuted;
+    const label = t(`tabs.${route.name.toLowerCase()}`) || route.name;
+
+    return (
+      <TouchableOpacity
+        key={route.key}
+        style={styles.tabItem}
+        activeOpacity={0.7}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: focused }}
+        accessibilityLabel={label}
+        onPress={() => {
+          if (!focused) navigation.navigate(route.name as any);
+        }}
+      >
+        <Icon size={22} color={color} />
+        <Text style={[styles.label, { color }, focused && styles.labelActive]} numberOfLines={1}>
+          {label}
+        </Text>
+        <View style={[styles.underline, focused && styles.underlineActive]} />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={[
@@ -46,76 +95,29 @@ function CustomTabBar({ state, navigation }: BottomTabBarProps) {
             // its children) - without an explicit height, the surrounding
             // Tab.Navigator layout collapses/clips this bar against the
             // Android system navigation bar instead of reserving real space
-            // for it. 96 covers the icon/label content comfortably;
+            // for it. 66 covers the icon/label content comfortably;
             // insets.bottom on top of that clears the system nav bar.
-            height: 96 + Math.max(insets.bottom, 0),
+            height: 66 + Math.max(insets.bottom, 0),
           },
     ]}>
       <View style={[
         styles.inner,
         LAYOUT.isWeb ? LAYOUT.contentContainerStyle : { flex: 1 },
       ]}>
-        {state.routes.map((route, index) => {
-          const focused = state.index === index;
-          const config = TAB_CONFIG[route.name as TabName] ?? TAB_CONFIG.Settings;
-          const { colors, IconComp } = config;
-          const label = t(`tabs.${route.name.toLowerCase()}`);
+        {state.routes.slice(0, CENTRE_AFTER_INDEX + 1).map((r, i) => renderTab(r, i))}
 
-          return (
-            <TouchableOpacity
-              key={route.key}
-              style={styles.tabItem}
-              activeOpacity={0.7}
-              onPress={() => {
-                if (!focused) navigation.navigate(route.name as any);
-              }}
-            >
-              {/* Indicator — absolute top-0, left-0/right-0 centered
-                  Mirrors web: `absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1` */}
-              {focused && (
-                <View style={styles.indicator}>
-                  <Svg width="48" height="4">
-                    <Defs>
-                      <LinearGradient id={`ind${index}`} x1="0" y1="0" x2="1" y2="0">
-                        <Stop offset="0%" stopColor={colors[0]} />
-                        <Stop offset="100%" stopColor={colors[1]} />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect width="48" height="4" rx="2" fill={`url(#ind${index})`} />
-                  </Svg>
-                </View>
-              )}
+        <View style={styles.centreSlot}>
+          <Pressable
+            onPress={onNewEntry}
+            accessibilityRole="button"
+            accessibilityLabel={t('tabs.newEntry') || 'New Entry'}
+            style={({ pressed }) => [styles.centreButton, pressed && { opacity: 0.85 }]}
+          >
+            <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
+          </Pressable>
+        </View>
 
-              {/* Icon — SVG in normal flow sets the 40x40 size,
-                  then a centered absoluteFill View overlays the icon on top */}
-              {focused ? (
-                <View style={styles.activeIconWrapper}>
-                  <Svg width="40" height="40">
-                    <Defs>
-                      <LinearGradient id={`ic${index}`} x1="0" y1="0" x2="1" y2="1">
-                        <Stop offset="0%" stopColor={colors[0]} />
-                        <Stop offset="100%" stopColor={colors[1]} />
-                      </LinearGradient>
-                    </Defs>
-                    <Rect width="40" height="40" rx="12" fill={`url(#ic${index})`} />
-                  </Svg>
-                  <View style={[StyleSheet.absoluteFill, styles.centered]}>
-                    <IconComp size={18} color="#FFFFFF" />
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.inactiveIconWrapper}>
-                  <IconComp size={20} color="#6B7280" />
-                </View>
-              )}
-
-              {/* Label */}
-              <Text style={[styles.label, focused && { fontWeight: "700", color: colors[0] }]}>
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {state.routes.slice(CENTRE_AFTER_INDEX + 1).map((r, i) => renderTab(r, i + CENTRE_AFTER_INDEX + 1))}
       </View>
     </View>
   );
@@ -166,6 +168,9 @@ export default function MainTabs() {
   const { impersonateUserId, impersonatePhone } = useAppSelector(s => s.auth);
   const insets = useSafeAreaInsets();
   const [bannerHeight, setBannerHeight] = useState(0);
+  // Owned here, not by a screen, so New Entry works the same from every tab.
+  const [newEntryOpen, setNewEntryOpen] = useState(false);
+  const [addRetailerOpen, setAddRetailerOpen] = useState(false);
 
   useEffect(() => {
     if (!impersonateUserId) setBannerHeight(0);
@@ -178,16 +183,25 @@ export default function MainTabs() {
             Height is updated after the first onLayout measurement. */}
         {impersonateUserId ? <View style={{ height: bannerHeight }} /> : null}
 
+        {/* Order here is the order in the bar: Khata, Retailers, [New Entry],
+            Day Book, More. */}
         <Tab.Navigator
           initialRouteName="Dashboard"
-          tabBar={(props) => <CustomTabBar {...props} />}
+          tabBar={(props) => <LedgerTabBar {...props} onNewEntry={() => setNewEntryOpen(true)} />}
           screenOptions={{ headerShown: false, lazy: true }}
         >
           <Tab.Screen name="Dashboard" component={DashboardScreen} />
-          <Tab.Screen name="Orders" component={OrdersScreen} />
           <Tab.Screen name="Customers" component={CustomersScreen} />
+          <Tab.Screen name="Orders" component={DayBookScreen} />
           <Tab.Screen name="Settings" component={SettingsScreen} />
         </Tab.Navigator>
+
+        <NewEntrySheet
+          visible={newEntryOpen}
+          onClose={() => setNewEntryOpen(false)}
+          onAddRetailer={() => setAddRetailerOpen(true)}
+        />
+        <AddCustomerModal isOpen={addRetailerOpen} onClose={() => setAddRetailerOpen(false)} />
 
         {/* Absolutely positioned banner overlays the spacer area (covers status bar). */}
         {impersonateUserId && (
@@ -221,9 +235,9 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   impersonateBanner: {
-    backgroundColor: "#F59E0B",
+    backgroundColor: "#B08A3A",
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(180,83,9,0.3)",
+    borderBottomColor: "rgba(135, 102, 31,0.3)",
     paddingHorizontal: 16,
     paddingBottom: 10,
     // paddingTop is set dynamically via topInset prop to clear the status bar on both iOS and Android
@@ -254,9 +268,9 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: "#FEF3C7",
+    backgroundColor: "#F5ECD7",
     borderWidth: 2,
-    borderColor: "#F59E0B",
+    borderColor: "#B08A3A",
   },
   impersonateLabel: {
     fontSize: 10,
@@ -290,65 +304,68 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   impersonateBannerButtonText: {
-    color: "#FFFBEB",
+    color: "#FBF6EA",
     fontSize: 12,
     fontWeight: "700",
   },
 
   bar: {
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E5E7EB",
-    ...(Platform.OS !== "web" ? { elevation: 15 } : {}),
+    backgroundColor: Brand.card,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: Brand.lineStrong,
+    // Flat: a hairline separates the bar from the page, not a drop shadow.
   },
 
   inner: {
     flexDirection: "row",
+    alignItems: "stretch",
   },
 
-  // Each tab — mirrors web: `flex-1 flex-col items-center justify-center py-3 gap-1.5 relative`
   tabItem: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
-    position: "relative",
-  },
-
-  // Indicator — full width, centered child, absolute top-0
-  // Mirrors web: `absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 rounded-b-full`
-  indicator: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 4,
-    alignItems: "center",
-  },
-
-  // SVG is in normal flow (40x40), absoluteFill View overlays icon on top
-  activeIconWrapper: {
-    width: 40,
-    height: 40,
-    marginBottom: 6,
-  },
-
-  inactiveIconWrapper: {
-    width: 40,
-    height: 40,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-
-  centered: {
-    alignItems: "center",
-    justifyContent: "center",
+    paddingTop: 8,
+    paddingBottom: 4,
   },
 
   label: {
-    fontSize: 12,
-    color: "#6B7280",
+    fontSize: 11.5,
+    marginTop: 3,
     textAlign: "center",
+  },
+
+  labelActive: {
+    fontWeight: "700",
+  },
+
+  underline: {
+    width: 18,
+    height: 3,
+    borderRadius: 1.5,
+    marginTop: 4,
+    backgroundColor: "transparent",
+  },
+
+  underlineActive: {
+    backgroundColor: Brand.goldFill,
+  },
+
+  centreSlot: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  centreButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: Brand.goldFill,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: Brand.goldSoft,
+    ...(Platform.OS === "web" ? { cursor: "pointer" } as any : {}),
   },
 });

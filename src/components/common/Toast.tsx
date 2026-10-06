@@ -69,9 +69,9 @@ export const toast = {
 
 const STYLES: Record<ToastType, { colors: [string, string]; Icon: typeof CheckCircle2 }> = {
   success: { colors: ['#10B981', '#34D399'], Icon: CheckCircle2 },
-  error: { colors: ['#F43F5E', '#FB923C'], Icon: XCircle },
-  warning: { colors: ['#F59E0B', '#FBBF24'], Icon: TriangleAlert },
-  info: { colors: ['#8b5cf6', '#61CDEA'], Icon: Info },
+  error: { colors: ['#F43F5E', '#C6A25A'], Icon: XCircle },
+  warning: { colors: ['#B08A3A', '#C6A25A'], Icon: TriangleAlert },
+  info: { colors: ['#145F4A', '#61CDEA'], Icon: Info },
 };
 
 function ToastCard({ item }: { item: ToastItem }) {

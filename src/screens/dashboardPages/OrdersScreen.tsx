@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback, useEffect, useState, memo } from 'react';
-import { StyleSheet, RefreshControl, FlatList, Modal, Text as RNText } from 'react-native';
+import { StyleSheet, RefreshControl, FlatList, Modal } from 'react-native';
 import { useSheetBottomInset } from '../../hooks/useSheetBottomInset';
 import {
   Box,
@@ -16,25 +16,16 @@ import {
 import {
   Search,
   ArrowUpDown,
-  Clock,
-  CheckCircle,
   Plus,
-  Calendar,
-  User,
-  ChevronRight,
   FileText,
   Check,
   Trash2,
   RotateCcw,
   Trash,
-  FileSignature,
 } from 'lucide-react-native';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
-import { BannerHeightContext } from '../../navigation/MainTabs';
 import {
   fetchOrders,
   fetchTrashedOrders,
@@ -47,9 +38,12 @@ import {
 } from '../../store/data/dataSlice';
 import ConfirmModal from '../../components/ConfirmModal';
 import RemindButton from '../../components/customers/RemindButton';
-import { calcItemTotal, calculateItemMakingCharge } from '../../utils/calculations';
-import { formatNumber, formatOrderDateTime } from '../../utils/formatter';
-import GradientSurface from '../../components/common/GradientSurface';
+import { calculateItemMakingCharge } from '../../utils/calculations';
+import { formatOrderDateTime } from '../../utils/formatter';
+import LedgerHeader, { LedgerHeaderAction } from '../../components/ledger/LedgerHeader';
+import { orderOutstanding, hasOutstanding, formatGrams } from '../../utils/dues';
+import { formatCurrencyValue } from '../../utils/formatter';
+import { Brand, tabularNums } from '../../theme/brand';
 import { LAYOUT, useContentContainerStyle } from '../../constants/layout';
 import WatchTutorialLink from '../../components/common/WatchTutorialLink';
 import { HELP_TOPICS } from '../../tutorials/catalog';
@@ -100,58 +94,6 @@ const daysLeft = (deletedAt?: string) => {
   return Math.max(0, 30 - elapsed);
 };
 
-const Header = memo(({ t, totalOrders, onNewOrder }: any) => {
-  const insets = useSafeAreaInsets();
-  const bannerHeight = React.useContext(BannerHeightContext);
-  // Must match the list below, or the header sits off-centre from it on iPad.
-  const contentStyle = useContentContainerStyle();
-  // Same formula as the Dashboard header: clear the status bar dynamically
-  // instead of a hardcoded height, so all tab headers stay the same size
-  // relative to each other regardless of device/status-bar height.
-  const topPad = LAYOUT.isWeb ? 0 : (bannerHeight > 0 ? 0 : insets.top);
-
-  return (
-  <Box height={84 + topPad} overflow="hidden">
-    <GradientSurface colors={['#34D399', '#14B8A6']} />
-
-    <HStack
-      px="$5"
-      justifyContent="space-between"
-      alignItems="center"
-      flex={1}
-      style={{
-        ...contentStyle,
-        paddingTop: topPad,
-      }}
-    >
-      <VStack>
-        <Text color="$white" fontSize={22} fontWeight="$bold">
-          {t('orders.title')}
-        </Text>
-        <Text color="$white" fontSize={13}>
-          {totalOrders} {t('orders.total') || 'total orders'}
-        </Text>
-      </VStack>
-
-      <Pressable
-        bg="rgba(255,255,255,0.2)"
-        px="$4"
-        py="$2"
-        rounded="$xl"
-        flexDirection="row"
-        alignItems="center"
-        onPress={onNewOrder}
-      >
-        <Icon as={Plus} color="$white" size="sm" />
-        <Text color="$white" ml="$2" fontWeight="$bold">
-          {t('orders.newOrder')}
-        </Text>
-      </Pressable>
-    </HStack>
-  </Box>
-  );
-});
-
 const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
   const bottomInset = useSheetBottomInset(16);
   const options = [
@@ -193,11 +135,11 @@ const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
                   <HStack justifyContent="space-between" alignItems="center">
                     <Text
                       fontWeight={sortBy === opt.key ? "$bold" : "$medium"}
-                      color={sortBy === opt.key ? "#8B5CF6" : "$coolGray700"}
+                      color={sortBy === opt.key ? "#145F4A" : "$coolGray700"}
                     >
                       {opt.label}
                     </Text>
-                    {sortBy === opt.key && <Icon as={Check} color="#8B5CF6" size="sm" />}
+                    {sortBy === opt.key && <Icon as={Check} color="#145F4A" size="sm" />}
                   </HStack>
                 </Pressable>
               ))}
@@ -214,175 +156,97 @@ const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
 const isGstBill = (order: any) =>
   order?.type === 'full' && order?.includeGST !== false && (order?.gstAmount ?? 0) > 0;
 
-const OrderItemCard = memo(({ order, customerName, shopDetails, hasDeclaration, onPress, onDelete, t }: any) => {
+/**
+ * One sale in the Sales list, as a ledger row.
+ *
+ * It was SoneBill's order card: shadowed, with status pills, an exchange
+ * badge, a gradient progress bar and "₹… due" read off `estimatedBalance`.
+ * That figure is both accounts priced into rupees at today's rate, which
+ * AGENTS.md forbids for a due: shown beside the weight it counts the metal
+ * twice. What is owed now reads through utils/dues.ts, the same definition
+ * the Khata tab, Retailers and the statement use: gold and cash, each only
+ * when it has something on it. Restyled in the 4.3(a) rework
+ * (APP_STORE_4.3_REWORK.md).
+ */
+const OrderItemCard = memo(({ order, customerName, onPress, onDelete, t }: any) => {
   const isPending = order.status === 'pending';
-  const isAdvance = order.type === 'advance' || order.type === 'Advance';
+  const due = orderOutstanding(order);
+  const owes = hasOutstanding(due);
+  const gm = t('common.gramShort') || 'gm';
 
   const totalWeight = Number(order.totalWeight) || 0;
   const weightPaid = Number(order.weightPaid) || 0;
-  const progress = totalWeight > 0 ? (weightPaid / totalWeight) * 100 : 0;
-
-  const displayAmount = getOrderGrandTotal(order, shopDetails);
-  const amountStr = displayAmount.toLocaleString('en-IN', { maximumFractionDigits: 2 });
-  // Invoice date, plus the creation time when the bill was made the same day —
-  // see formatOrderDateTime for why the time cannot come from `date` itself.
+  const progress = totalWeight > 0 ? Math.min(100, (weightPaid / totalWeight) * 100) : 0;
+  // Sale date, plus the creation time when it was raised the same day; see
+  // formatOrderDateTime for why the time cannot come from `date` itself.
   const dateStr = formatOrderDateTime(order.date || order.orderDate, order.createdAt);
 
   return (
     <Pressable onPress={onPress}>
-      <Box bg="$white" rounded="$2xl" p="$4" style={styles.card} mb="$4" borderWidth={1} borderColor="$coolGray100">
-        <HStack justifyContent="space-between" alignItems="center" mb="$3">
-          <VStack space="xs" flex={1}>
-            {/* Wraps, and the number does not shrink below something readable.
-
-                The badges carry no flexShrink, so they held their width and the
-                title absorbed the entire deficit: a bill with three of them
-                (COMPLETED + GST + Exchange) crushed its own invoice number to a
-                single ellipsis, while an advance order with one badge showed
-                fine. The identifier is the last thing on the row that should
-                give way, so the badges wrap to a second line instead. */}
-            <HStack alignItems="center" space="sm" style={{ flexWrap: 'wrap', rowGap: 4 }}>
-              <Text
-                fontWeight="$bold"
-                fontSize={16}
-                color="$coolGray900"
-                numberOfLines={1}
-                style={{ flexShrink: 1, minWidth: 64 }}
-              >
-                {order.itemName || order.invoiceNumber || order.orderNumber || '---'}
+      <Box bg={Brand.card} rounded="$lg" px="$4" py="$3" mb="$2.5" borderWidth={1} borderColor={Brand.line}>
+        <HStack alignItems="center">
+          <VStack flex={1} pr="$2">
+            <HStack alignItems="center" space="sm">
+              <Text fontWeight="$bold" fontSize={15} color={Brand.ink} numberOfLines={1} style={{ flexShrink: 1 }}>
+                {order.invoiceNumber || order.orderNumber || '---'}
               </Text>
-              <Box
-                bg={order.status === 'completed' ? '#DCFCE7' : (isPending ? '#FEF3C7' : '#F3F4F6')}
-                px="$2"
-                py="$0.5"
-                rounded="$full"
-              >
-                <Text
-                  color={order.status === 'completed' ? '#166534' : (isPending ? '#92400E' : '$coolGray600')}
-                  fontSize={10}
-                >
-                  {(order.status || '---').toUpperCase()}
+              {!isPending && (
+                <Text fontSize={10} fontWeight="$bold" color={Brand.received} textTransform="uppercase" letterSpacing={0.6}>
+                  {t('retailer.settled') || 'Settled'}
                 </Text>
-              </Box>
-              {isGstBill(order) && (
-                <Box bg="#EEF2FF" px="$2" py="$0.5" rounded="$full">
-                  <Text color="#4F46E5" fontSize={10} fontWeight="$bold">
-                    {order.customerGstin ? 'GST • B2B' : 'GST'}
-                  </Text>
-                </Box>
-              )}
-              {order.isOrnamentExchanges && (order.exchanges?.length ?? 0) > 0 && (
-                <Box bg="#F5F3FF" px="$2" py="$0.5" rounded="$full">
-                  <Text color="#7C3AED" fontSize={10} fontWeight="$bold">
-                    {t('invoice.exchange.exchange_short') || 'Exchange'}
-                  </Text>
-                </Box>
-              )}
-              {/* The signed declaration for that exchange, when one exists.
-                  Needed because exchange declarations are no longer listed
-                  under the customer's "Sold to us" tab — the order is now the
-                  only way to reach one, and without this nothing on the row
-                  says whether there is one to reach. An icon rather than a
-                  third worded chip: this line already carries up to two, and
-                  the labels are longer in Marathi and Hindi than in English. */}
-              {hasDeclaration && (
-                <Box
-                  bg="#F5F3FF"
-                  px="$1.5"
-                  py="$0.5"
-                  rounded="$full"
-                  accessibilityLabel={t('declaration.title') || 'Declaration'}
-                >
-                  <Icon as={FileSignature} size="xs" color="#7C3AED" />
-                </Box>
               )}
             </HStack>
-
-            <HStack alignItems="center" space="xs">
-              <Icon as={Calendar} size="xs" color="#6B7280" />
-              <Text color="$coolGray500" fontSize={12}>
-                {dateStr}
-              </Text>
-            </HStack>
+            <Text fontSize={13} color={Brand.inkSoft} numberOfLines={1} mt="$0.5">
+              {customerName}
+            </Text>
+            <Text fontSize={12} color={Brand.inkMuted} mt="$0.5">
+              {dateStr}
+            </Text>
           </VStack>
 
-          <HStack alignItems="center" space="sm">
-            {/* Pending only. A settled bill has nothing to chase, and the
-                action sends the RETAILER's whole statement rather than this one
-                line — an order row is where the question gets asked, not what
-                the message is about. See useRetailerReminder. */}
-            {isPending && <RemindButton customerId={order.customerId} compact />}
-
-            {order.status === 'completed' || order.type === 'full' ? (
-              <Text color="#059669" fontWeight="$black" fontSize={18}>
-                ₹{amountStr}
-              </Text>
+          <VStack alignItems="flex-end" mr="$2">
+            {owes ? (
+              <>
+                {due.gold > 0 && (
+                  <Text fontSize={14} fontWeight="$bold" color={Brand.gold} style={tabularNums}>
+                    {formatGrams(due.gold, gm)}
+                  </Text>
+                )}
+                {due.cash > 0 && (
+                  <Text fontSize={13} fontWeight="$semibold" color={Brand.ink} style={tabularNums}>
+                    {formatCurrencyValue(due.cash)}
+                  </Text>
+                )}
+              </>
             ) : (
-              <Icon as={ChevronRight} color="#9CA3AF" size="sm" />
+              <Text fontSize={13} fontWeight="$semibold" color={Brand.inkMuted} style={tabularNums}>
+                {formatGrams(totalWeight, gm)}
+              </Text>
             )}
+          </VStack>
+
+          <HStack alignItems="center" space="xs">
+            {/* Pending only. A settled sale has nothing to chase, and the
+                action sends the RETAILER's whole statement rather than this one
+                line. See useRetailerReminder. */}
+            {isPending && <RemindButton customerId={order.customerId} compact />}
             <Pressable
-              onPress={(e) => { e.stopPropagation?.(); onDelete?.(); }}
+              onPress={onDelete}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               p="$1"
+              accessibilityLabel={t('orders.delete') || 'Delete'}
             >
-              <Trash2 size={16} color="#EF4444" />
+              <Trash2 size={15} color={Brand.inkFaint} />
             </Pressable>
           </HStack>
         </HStack>
 
-        <HStack alignItems="center" space="xs" mb={isAdvance && isPending ? "$3" : 0}>
-          <Icon as={User} size="xs" color="#6B7280" />
-          <Text color="$coolGray600" fontSize={13}>
-            {customerName}
-          </Text>
-        </HStack>
-
-        {isAdvance && isPending && (
-          <VStack space="xs">
-            <Box width="100%" height={8} bg="$coolGray100" rounded="$full" overflow="hidden">
-              <Svg height="100%" width="100%">
-                <Defs>
-                  <LinearGradient id={`progressGrad-${order.id}`} x1="0" y1="0" x2="1" y2="0">
-                    <Stop offset="0" stopColor="#8B5CF6" />
-                    <Stop offset="1" stopColor="#6D5EF7" />
-                  </LinearGradient>
-                </Defs>
-                <Rect
-                  x="0"
-                  y="0"
-                  width={`${Math.min(progress, 100)}%`}
-                  height="100%"
-                  fill={`url(#progressGrad-${order.id})`}
-                />
-              </Svg>
-            </Box>
-
-            <HStack justifyContent="space-between" alignItems="center">
-              <HStack space="xs" alignItems="center">
-                <Text fontSize={12} color="$coolGray500">
-                  {formatNumber(weightPaid, 3)}/{formatNumber(totalWeight, 3)} gm
-                </Text>
-                <Text color="$coolGray300" fontSize={12}>•</Text>
-                <Text fontSize={12} color="$coolGray700">
-                  ₹{(order.totalPaid || 0).toLocaleString()} paid
-                </Text>
-              </HStack>
-              <Text fontSize={12} color="#d97706">
-                ₹{(order.estimatedBalance || 0).toLocaleString()} due
-              </Text>
-            </HStack>
-          </VStack>
-        )}
-
-        {(order.status === 'completed' || order.type === 'full') && (
-          <HStack mt="$3" pt="$3" borderTopWidth={1} borderColor="$coolGray100" justifyContent="space-between">
-            <Text color="$coolGray500" fontSize={12}>
-              {order.type === 'full' ? t('orders.fullPayment.title') : t('orders.advancePayment.title')}
-            </Text>
-            <Text color="$coolGray500" fontSize={12}>
-              {order.items?.length || 0} {t('orders.items')}
-            </Text>
-          </HStack>
+        {/* How much of the sale's metal has come back. Flat, like every bar in
+            the Ledger design; SoneBill's was a gradient. */}
+        {isPending && totalWeight > 0 && (
+          <Box mt="$2.5" h={4} rounded="$full" bg={Brand.sunken} overflow="hidden">
+            <Box h="100%" w={`${progress}%`} bg={Brand.primaryMid} />
+          </Box>
         )}
       </Box>
     </Pressable>
@@ -408,19 +272,19 @@ const DeletedOrderCard = memo(({ entry, customerName, onRestore, onDeleteForever
             <Text fontWeight="$bold" fontSize={15} color="$coolGray900" numberOfLines={1} style={{ flexShrink: 1 }}>
               {label}
             </Text>
-            <Box bg="#F3F4F6" px="$2" py="$0.5" rounded="$full">
+            <Box bg="#E8ECE5" px="$2" py="$0.5" rounded="$full">
               <Text color="$coolGray600" fontSize={10}>{badge.toUpperCase()}</Text>
             </Box>
           </HStack>
           <Text fontSize={12} color="$coolGray500">{customerName} • {amount}</Text>
         </VStack>
         <Box
-          bg="#FFFBEB"
+          bg="#FBF6EA"
           px="$2"
           py="$1"
           rounded="$lg"
         >
-          <Text fontSize={11} color="#D97706" fontWeight="$medium">
+          <Text fontSize={11} color="#9A7425" fontWeight="$medium">
             {days}d left
           </Text>
         </Box>
@@ -438,7 +302,7 @@ const DeletedOrderCard = memo(({ entry, customerName, onRestore, onDeleteForever
             justifyContent="center"
             bg="$white"
           >
-            <RotateCcw size={13} color="#4B5563" />
+            <RotateCcw size={13} color="#545047" />
             <Text fontSize={13} fontWeight="$medium" color="$coolGray700" ml="$1">
               Restore
             </Text>
@@ -714,8 +578,15 @@ const OrdersScreen = () => {
   }, [visibleFilterTabs, activeFilter]);
 
   return (
-    <Box flex={1} bg="#F9FAFB">
-      <Header t={t} totalOrders={activeOrders.length} onNewOrder={handleNewOrder} />
+    <Box flex={1} bg="#F2F4EF">
+      {/* Pushed from the Day Book header since the Day Book took this list's
+          tab. Back when there is somewhere to go back to. */}
+      <LedgerHeader
+        title={t('dayBook.salesTitle') || 'Sales'}
+        subtitle={`${activeOrders.length} ${t('orders.total') || 'total orders'}`}
+        onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}
+        right={<LedgerHeaderAction icon={Plus} label={t('newEntry.sale') || 'New sale'} onPress={handleNewOrder} />}
+      />
 
       <FlatList
         data={activeFilter === 'deleted' ? [] : filteredOrders}
@@ -731,28 +602,33 @@ const OrdersScreen = () => {
         }}
         ListHeaderComponent={
           <>
+            {/* Flat search and underlined text filters, as on the Retailers
+                tab. These were SoneBill's shadowed search card and filled
+                pill chips. */}
             <HStack
-              bg="$white"
-              rounded="$2xl"
-              px="$4"
-              py="$1"
+              bg={Brand.card}
+              rounded="$md"
+              px="$3"
+              h={44}
               mt="$4"
               alignItems="center"
-              style={styles.card}
+              borderWidth={1}
+              borderColor={Brand.line}
             >
-              <Icon as={Search} color="#9CA3AF" size="sm" />
+              <Icon as={Search} color={Brand.inkFaint} size="sm" />
               <Input variant="outline" flex={1} ml="$1" borderWidth={0}>
                 <InputField
                   placeholder={t('orders.search')}
+                  placeholderTextColor={Brand.inkFaint}
                   value={q}
                   onChangeText={setQ}
                   maxLength={INPUT_LIMITS.searchQuery}
-                  fontSize={14}
+                  fontSize={15}
+                  color={Brand.ink}
                 />
               </Input>
-              <Box h={20} w={1} bg="$coolGray200" mx="$2" />
               <Pressable p="$2" onPress={() => setIsSortModalOpen(true)}>
-                <Icon as={ArrowUpDown} color={sortBy !== 'newest' ? "#8B5CF6" : "#9CA3AF"} size="sm" />
+                <Icon as={ArrowUpDown} color={sortBy !== 'newest' ? Brand.primary : Brand.inkFaint} size="sm" />
               </Pressable>
             </HStack>
 
@@ -760,38 +636,35 @@ const OrdersScreen = () => {
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{ paddingVertical: 16 }}
+                contentContainerStyle={{ paddingTop: 12, paddingBottom: 12, gap: 18 }}
               >
-                {visibleFilterTabs.map((item) => (
-                  <Pressable key={item.key} onPress={() => setActiveFilter(item.key as FilterType)}>
-                    <Box
-                      style={[
-                        styles.filter,
-                        activeFilter === item.key && (item.key === 'deleted' ? styles.deletedFilter : styles.activeFilter)
-                      ]}
-                      mr="$3"
+                {visibleFilterTabs.map((item) => {
+                  const active = activeFilter === item.key;
+                  const isTrash = item.key === 'deleted';
+                  return (
+                    <Pressable
+                      key={item.key}
+                      onPress={() => setActiveFilter(item.key as FilterType)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: active }}
+                      alignItems="center"
                     >
-                      {item.key === 'pending' && (
-                        <Icon as={Clock} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
-                      )}
-                      {item.key === 'completed' && (
-                        <Icon as={CheckCircle} size="xs" color={activeFilter === item.key ? '#fff' : '#4B5563'} mr="$1.5" />
-                      )}
-                      {item.key === 'deleted' && (
-                        <Trash2 size={12} color={activeFilter === item.key ? '#fff' : '#4B5563'} style={{ marginRight: 6 }} />
-                      )}
                       <Text
-                        style={{
-                          color: activeFilter === item.key ? '#fff' : '#1F2937',
-                          fontWeight: '600',
-                          fontSize: 13,
-                        }}
+                        fontSize={14}
+                        fontWeight={active ? '$bold' : '$medium'}
+                        color={active ? (isTrash ? Brand.due : Brand.primary) : Brand.inkMuted}
                       >
-                        {item.label} ({item.count})
+                        {item.label} <Text fontSize={12} color={Brand.inkFaint}>{item.count}</Text>
                       </Text>
-                    </Box>
-                  </Pressable>
-                ))}
+                      <Box
+                        h={2}
+                        alignSelf="stretch"
+                        mt="$1.5"
+                        bg={active ? (isTrash ? Brand.due : Brand.goldFill) : 'transparent'}
+                      />
+                    </Pressable>
+                  );
+                })}
               </ScrollView>
             </Box>
 
@@ -802,7 +675,7 @@ const OrdersScreen = () => {
                   <Center mt="$20">
                     <VStack space="md" alignItems="center">
                       <Box p="$5" bg="$coolGray100" rounded="$full">
-                        <Trash2 size={32} color="#9CA3AF" />
+                        <Trash2 size={32} color="#A39E92" />
                       </Box>
                       <Text color="$coolGray500" fontSize={16} fontWeight="$medium">
                         Deleted is empty
@@ -872,7 +745,7 @@ const OrdersScreen = () => {
                   rounded="$xl"
                   flexDirection="row"
                   alignItems="center"
-                  style={{ backgroundColor: '#7857ff' }}
+                  style={{ backgroundColor: '#0E4D3C' }}
                   onPress={handleNewOrder}
                 >
                   <Icon as={Plus} color="$white" size="sm" />
@@ -978,10 +851,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   activeFilter: {
-    backgroundColor: '#8B5CF6',
+    backgroundColor: '#145F4A',
   },
   deletedFilter: {
-    backgroundColor: '#6B7280',
+    backgroundColor: '#6B665B',
   },
   filter: {
     backgroundColor: '#FFFFFF',

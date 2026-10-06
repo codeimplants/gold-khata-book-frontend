@@ -14,7 +14,7 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { fetchMeltLots, fetchCustomers, type MeltLot } from '../../store/data/dataSlice';
 import { formatGrams } from '../../utils/dues';
 
-const PURPLE = '#6366F1';
+const PURPLE = '#0E4D3C';
 
 /**
  * Every lot still waiting on a reading, and the way back into one.
@@ -73,18 +73,18 @@ const MeltLotsScreen = () => {
         <Box
           w={40} h={40} rounded="$full"
           alignItems="center" justifyContent="center"
-          bg={lot.status === 'received' ? '#EEF2FF' : lot.status === 'melted' ? '#FEF3C7' : '#F0FDF4'}
+          bg={lot.status === 'received' ? '#E7F0EC' : lot.status === 'melted' ? '#F5ECD7' : '#F0FDF4'}
         >
           <Icon
             as={lot.status === 'received' ? Coins : lot.status === 'melted' ? Flame : TestTube}
             size="sm"
-            color={lot.status === 'received' ? PURPLE : lot.status === 'melted' ? '#B45309' : '#15803D'}
+            color={lot.status === 'received' ? PURPLE : lot.status === 'melted' ? '#87661F' : '#15803D'}
           />
         </Box>
 
         <VStack flex={1}>
           <HStack alignItems="center" space="xs">
-            <Text fontWeight="$bold" fontSize={15} color="#111827" numberOfLines={1} flexShrink={1}>
+            <Text fontWeight="$bold" fontSize={15} color="#1D1B16" numberOfLines={1} flexShrink={1}>
               {nameOf(lot.customerId)}
             </Text>
             <Text fontSize={12} color="$coolGray500">{lot.lotNumber}</Text>
@@ -99,7 +99,7 @@ const MeltLotsScreen = () => {
         <VStack alignItems="flex-end">
           {/* The most recent weighing, because that is what the next one gets
               compared against at the bench. */}
-          <Text fontSize={14} fontWeight="$bold" color="#111827">
+          <Text fontSize={14} fontWeight="$bold" color="#1D1B16">
             {formatGrams(lot.afterTesting ?? lot.afterMelt ?? lot.potWeight, gramShort)}
           </Text>
           <Text fontSize={11} color="$coolGray400">
@@ -123,7 +123,7 @@ const MeltLotsScreen = () => {
       </Text>
       <Box bg="$white" rounded="$2xl" px="$4" style={styles.card}>
         {rows.map((lot, i) => (
-          <Box key={lot.id} borderTopWidth={i === 0 ? 0 : 1} borderColor="#F3F4F6">
+          <Box key={lot.id} borderTopWidth={i === 0 ? 0 : 1} borderColor="#E8ECE5">
             <LotRow lot={lot} />
           </Box>
         ))}
@@ -132,17 +132,17 @@ const MeltLotsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: '#F9FAFB' }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#F2F4EF' }} edges={['top']}>
       <HStack
         alignItems="center" px="$4" py="$3" bg="$white"
-        borderBottomWidth={1} borderColor="#F3F4F6"
+        borderBottomWidth={1} borderColor="#E8ECE5"
         style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
       >
         <Pressable onPress={() => navigation.goBack()} p="$2" mr="$1">
-          <Icon as={ArrowLeft} size="lg" color="#111827" />
+          <Icon as={ArrowLeft} size="lg" color="#1D1B16" />
         </Pressable>
         <VStack flex={1}>
-          <Text fontWeight="$bold" fontSize={20} color="#111827">
+          <Text fontWeight="$bold" fontSize={20} color="#1D1B16">
             {t('melt.listTitle') || 'Old Gold'}
           </Text>
           <Text fontSize={12} color="$coolGray500">
@@ -186,13 +186,13 @@ const MeltLotsScreen = () => {
       </ScrollView>
 
       <Box
-        bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#E5E7EB"
+        bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#DCE2D8"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
         <Box style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}>
           <Pressable onPress={() => navigation.navigate('TakeMelt')}>
             <Box height={54} rounded="$2xl" overflow="hidden" justifyContent="center" alignItems="center">
-              <GradientSurface colors={['#6366F1', '#D946EF']} borderRadius={16} />
+              <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={16} />
               <HStack alignItems="center" space="sm">
                 <Icon as={Plus} color="$white" size="sm" />
                 <Text color="$white" fontWeight="$bold" fontSize={16}>

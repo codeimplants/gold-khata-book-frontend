@@ -3829,21 +3829,30 @@ export interface AccountEntry {
     | 'cash-refunded'
     | 'melt-credited'
     | 'melt-applied'
-    | 'melt-paid-out';
+    | 'melt-paid-out'
+    /** Gold left as an advance, credited at 99.50 and held. */
+    | 'gold-received';
     /** Rupees moved. Positive adds to what is held, negative draws it down. */
     cashDelta: number;
     /** Grams of 99.50 moved, same sign convention. */
     metalDelta: number;
     rate?: number;
+    /** On a cash-received entry, set only when it is an order's overpayment. */
     orderId?: string;
+    /** `gold-received` only: the metal as handed over, before conversion. */
+    goldWeight?: number;
+    goldPurity?: number;
     notes?: string;
 }
 
 export interface RetailerAccount {
     customerId: string;
-    /** Rupees paid in and deliberately not applied to anything yet. */
+    /** Rupees paid in and deliberately not applied to anything yet. The
+     *  retailer fixes the rate when it is used (`allocateCash`). */
     heldCash: number;
-    /** Grams of 99.50 fine credited from melt lots and not yet used. */
+    /** Grams of 99.50 fine held for the retailer and not yet used: from melt
+     *  lots and from gold advances. Named for melt on the wire; the entries
+     *  say where each gram came from. */
     meltCredit: number;
     entries: AccountEntry[];
 }
@@ -3856,6 +3865,8 @@ const mapAccountEntry = (e: any): AccountEntry => ({
     metalDelta: Number(e?.metalDelta) || 0,
     ...(e?.rate != null ? { rate: Number(e.rate) } : {}),
     ...(e?.orderId ? { orderId: String(e.orderId?._id || e.orderId?.id || e.orderId) } : {}),
+    ...(e?.goldWeight != null ? { goldWeight: Number(e.goldWeight) } : {}),
+    ...(e?.goldPurity != null ? { goldPurity: Number(e.goldPurity) } : {}),
     ...(e?.notes ? { notes: String(e.notes) } : {}),
 });
 
@@ -3901,6 +3912,91 @@ export const fetchRetailerAccount = createAsyncThunk(
                 STALE_TIMES_MS.retailerAccounts,
             );
         },
+    },
+);
+
+/**
+ * Every retailer account this shop has used, in one call.
+ *
+ * For the khata home ("held for retailers") and the day book, which list cash
+ * held and gold advances beside sales. Each account replaces the per-retailer
+ * copy, so a statement opened afterwards shows the same figures.
+ */
+export const fetchRetailerAccounts = createAsyncThunk(
+    'data/fetchRetailerAccounts',
+    async (_: void, { rejectWithValue }) => {
+        try {
+            const response = await apiClient.get<any>('/api/retailer-account');
+            const raw = response.data?.data ?? response.data;
+            return (Array.isArray(raw) ? raw : []).map(mapRetailerAccount);
+        } catch (err: any) {
+            return rejectWithValue(err?.message || 'Could not load retailer accounts');
+        }
+    },
+    {
+        condition: (_arg, { getState }) => !(getState() as RootState).auth.isGuest,
+    },
+);
+
+/**
+ * Cash in, held and NOT applied to any sale.
+ *
+ * The two cases it exists for: a retailer who owes gold, pays cash and asks
+ * for the rate to be fixed later, when it suits them; and cash left as an
+ * advance before the purchases it is meant for. Either way it buys metal only
+ * when `allocateCash` runs, at the rate of that day.
+ */
+export const receiveHeldCash = createAsyncThunk(
+    'data/receiveHeldCash',
+    async (
+        payload: { customerId: string; amount: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/cash`,
+                {
+                    amount: payload.amount,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(err?.message || 'Could not record the cash');
+        }
+    },
+);
+
+/**
+ * Gold in, held as an advance.
+ *
+ * Weight and purity as handed over. The server restates it at 99.50 with the
+ * inbound rule (`priceInboundMetal`), the same one a metal payment on a sale
+ * goes through, and it is applied later gram for gram (`applyMeltCredit`).
+ */
+export const receiveGoldAdvance = createAsyncThunk(
+    'data/receiveGoldAdvance',
+    async (
+        payload: { customerId: string; weight: number; purity: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/gold`,
+                {
+                    weight: payload.weight,
+                    purity: payload.purity,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(err?.message || 'Could not record the gold');
+        }
     },
 );
 
@@ -4534,6 +4630,18 @@ const dataSlice = createSlice({
         });
 
         builder.addCase(creditMelt.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(fetchRetailerAccounts.fulfilled, (state, action) => {
+            for (const account of action.payload) storeAccount(state, account);
+        });
+
+        builder.addCase(receiveHeldCash.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(receiveGoldAdvance.fulfilled, (state, action) => {
             storeAccount(state, action.payload);
         });
 

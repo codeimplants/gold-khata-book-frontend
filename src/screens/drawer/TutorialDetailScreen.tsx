@@ -21,7 +21,7 @@ import {
   youtubeWatchUrl,
 } from '../../tutorials/catalog';
 
-const PURPLE = '#6D5EF7';
+const PURPLE = '#0E4D3C';
 
 /**
  * Plays one tutorial. Which one is decided by the route param alone — the video
@@ -162,8 +162,8 @@ const TutorialDetailScreen = () => {
 
         {isFallback && (
           <HStack style={styles.notice} space="sm" alignItems="center">
-            <Icon as={Languages} size="sm" color="$amber700" />
-            <Text flex={1} fontSize={12} color="$amber800">
+            <Icon as={Languages} size="sm" color="$gold700" />
+            <Text flex={1} fontSize={12} color="$gold800">
               {t('tutorials.onlyInEnglish') ||
                 'This video is only available in English for now.'}
             </Text>
@@ -220,12 +220,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#E8ECE5',
     padding: 16,
   },
   notice: {
-    backgroundColor: '#FFFBEB',
-    borderColor: '#FDE68A',
+    backgroundColor: '#FBF6EA',
+    borderColor: '#EBD9AE',
     borderWidth: 1,
     borderRadius: 12,
     padding: 12,
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DCE2D8',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',

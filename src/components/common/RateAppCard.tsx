@@ -63,26 +63,26 @@ const RateAppCard = () => {
 
   return (
     <Box
-      bg="#FFFBEB"
+      bg="#FBF6EA"
       p="$4"
       rounded="$2xl"
       borderWidth={1}
-      borderColor="#FDE68A"
+      borderColor="#EBD9AE"
     >
       <HStack space="sm" alignItems="flex-start">
-        <Icon as={Star} color="#D97706" size="sm" mt="$1" />
+        <Icon as={Star} color="#9A7425" size="sm" mt="$1" />
 
         <VStack flex={1} space="xs">
-          <Text color="#B45309" fontWeight="$bold">
+          <Text color="#87661F" fontWeight="$bold">
             {t('rateApp.title') || 'Enjoying Gold Khata Book?'}
           </Text>
-          <Text fontSize={13} color="#B45309" opacity={0.9}>
+          <Text fontSize={13} color="#87661F" opacity={0.9}>
             {t('rateApp.body') ||
               'A rating helps other jewellers find the app.'}
           </Text>
 
           <Pressable onPress={handleAccept} alignSelf="flex-start" mt="$2">
-            <Box bg="#D97706" px="$4" py="$2" rounded="$lg">
+            <Box bg="#9A7425" px="$4" py="$2" rounded="$lg">
               <Text color="$white" fontWeight="$medium" fontSize={13}>
                 {t('rateApp.action') || 'Rate now'}
               </Text>
@@ -93,7 +93,7 @@ const RateAppCard = () => {
         {/* Generous hit area — this is the escape route, and a card you cannot
             comfortably dismiss is the definition of nagging. */}
         <Pressable onPress={handleDismiss} p="$2" m="-$2">
-          <Icon as={X} color="#B45309" size="sm" />
+          <Icon as={X} color="#87661F" size="sm" />
         </Pressable>
       </HStack>
     </Box>

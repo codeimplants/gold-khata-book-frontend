@@ -220,7 +220,7 @@ const OrderDocumentView = ({
                 resizeMode="contain"
               />
             )}
-            <Text fontSize="$2xl" fontWeight="$black" color="#6D5EF7">
+            <Text fontSize="$2xl" fontWeight="$black" color="#0E4D3C">
               {shop.shopName || shop.name || 'Gold Khata Book'}
             </Text>
             {!!shop.address && (
@@ -358,7 +358,7 @@ const OrderDocumentView = ({
                     only, never on the printed bill - the customer's copy should
                     not carry our doubt about the shop's data entry. */}
                 {!!finding && (
-                  <Text fontSize="$2xs" color="$amber700" mt="$1">
+                  <Text fontSize="$2xs" color="$gold700" mt="$1">
                     {finding.suggestedWeight !== undefined && finding.suggestedRate !== undefined
                       ? (t('invoicePreview.lineNeedsCheck') || '')
                           .replace(
@@ -493,10 +493,10 @@ const OrderDocumentView = ({
         <Divider my="$1" bg="$coolGray100" />
 
         <HStack justifyContent="space-between" alignItems="center">
-          <Text fontSize="$lg" fontWeight="$black" color="#6D5EF7">
+          <Text fontSize="$lg" fontWeight="$black" color="#0E4D3C">
             {t('invoicePreview.grandTotal') || 'Grand Total'}
           </Text>
-          <Text fontSize="$lg" fontWeight="$black" color="#6D5EF7">
+          <Text fontSize="$lg" fontWeight="$black" color="#0E4D3C">
             {formatCurrencyValue(derived.grandTotal)}
           </Text>
         </HStack>

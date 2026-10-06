@@ -66,17 +66,17 @@ interface Props {
  * and the form as a wall of purple. Grey at rest, violet on focus, is the
  * standard signal: colour marks the one field you are in.
  *
- * #9CA3AF matches `placeholderTextColor` already used in AdminHomeScreen and
+ * #A39E92 matches `placeholderTextColor` already used in AdminHomeScreen and
  * CompleteRegistrationScreen, so a resting label and a plain placeholder are
  * the same grey rather than two greys a shade apart.
  */
-const ACCENT = '#7C3AED';
-const REST_BORDER = '#E9DCF7';
-const REST_LABEL = '#9CA3AF';
+const ACCENT = '#145F4A';
+const REST_BORDER = '#DCEBE4';
+const REST_LABEL = '#A39E92';
 /** Violet, kept for the suffix — a live-rate hint is information, not a label. */
-const SUFFIX_COLOR = '#8B5CF6';
-const FILL = '#FCFAFE';
-const FILL_DISABLED = '#F4F4F6';
+const SUFFIX_COLOR = '#145F4A';
+const FILL = '#F7FAF8';
+const FILL_DISABLED = '#E8ECE5';
 const DANGER = '#DC2626';
 
 /** What a parent can do to the field from outside. */
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#1D1B16',
     padding: 0,
     margin: 0,
     // Android gives TextInput a minimum height that outgrows the box.
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   },
   suffix: { fontSize: 13, color: SUFFIX_COLOR, marginLeft: 8 },
   error: { fontSize: 12, color: DANGER, marginTop: 4, marginLeft: 4 },
-  hint: { fontSize: 12, color: '#6B7280', marginTop: 4, marginLeft: 4 },
+  hint: { fontSize: 12, color: '#6B665B', marginTop: 4, marginLeft: 4 },
 });
 
 export default FloatingLabelInput;

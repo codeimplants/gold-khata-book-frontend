@@ -1,73 +1,33 @@
 import React from 'react';
-import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
-import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
 type GradientSurfaceProps = {
   colors: string[];
   borderRadius?: number;
+  /** Kept so existing callers compile. The surface is flat. */
   direction?: 'horizontal' | 'diagonal';
   style?: StyleProp<ViewStyle>;
 };
 
-const GradientSurface = ({
-  colors,
-  borderRadius = 0,
-  direction = 'diagonal',
-  style,
-}: GradientSurfaceProps) => {
-  const gradientId = React.useMemo(
-    () => `grad_${Math.random().toString(16).slice(2)}`,
-    []
-  );
-
-  const stops = colors.map((color, index) => {
-    const offset =
-      colors.length === 1 ? '0%' : `${(index / (colors.length - 1)) * 100}%`;
-    return <Stop key={`${gradientId}_${index}`} offset={offset} stopColor={color} />;
-  });
-
-  if (Platform.OS === 'web') {
-    const angle = direction === 'horizontal' ? '90deg' : '135deg';
-    return (
-      <View
-        pointerEvents="none"
-        style={[
-          StyleSheet.absoluteFill,
-          {
-            borderRadius,
-            overflow: 'hidden',
-            backgroundColor: colors[0],
-            zIndex: -1,
-          },
-          {
-            background: `linear-gradient(${angle}, ${colors.join(', ')})`,
-          } as ViewStyle,
-          style,
-        ]}
-      />
-    );
-  }
-
-  const gradientProps =
-    direction === 'horizontal'
-      ? { x1: '0', y1: '0', x2: '1', y2: '0' }
-      : { x1: '0', y1: '0', x2: '1', y2: '1' };
-
-  return (
-    <Svg
-      pointerEvents="none"
-      width="100%"
-      height="100%"
-      style={[StyleSheet.absoluteFill, style]}
-    >
-      <Defs>
-        <LinearGradient id={gradientId} {...gradientProps}>
-          {stops}
-        </LinearGradient>
-      </Defs>
-      <Rect width="100%" height="100%" rx={borderRadius} ry={borderRadius} fill={`url(#${gradientId})`} />
-    </Svg>
-  );
-};
+/**
+ * Background fill for headers, cards and modal tops.
+ *
+ * This used to draw a gradient: an SVG on native, CSS on web. Gradients were
+ * the most recognisable part of SoneBill's look, and App Review rejected this
+ * app as a SoneBill copy under guideline 4.3(a) (see APP_STORE_4.3_REWORK.md).
+ * The Ledger design language (src/theme/brand.ts) is flat, so this now paints
+ * the first colour solid. The name and props stay so the 13 call sites did not
+ * all have to change at once. New code should set a backgroundColor instead.
+ */
+const GradientSurface = ({ colors, borderRadius = 0, style }: GradientSurfaceProps) => (
+  <View
+    pointerEvents="none"
+    style={[
+      StyleSheet.absoluteFill,
+      { borderRadius, overflow: 'hidden', backgroundColor: colors[0], zIndex: -1 },
+      style,
+    ]}
+  />
+);
 
 export default GradientSurface;
