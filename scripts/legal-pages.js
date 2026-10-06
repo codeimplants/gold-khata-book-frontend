@@ -108,13 +108,13 @@ const renderPage = (doc, { canonicalPath }) => {
   .meta { color: #6b7280; font-size: .875rem; margin: 0; }
   h2 { font-size: 1.0625rem; margin: 2rem 0 .5rem; }
   p { margin: 0; }
-  a { color: #7c3aed; }
+  a { color: #0E4D3C; } /* ledger green (src/theme/brand.ts), not SoneBill violet */
   footer { margin-top: 3rem; padding-top: 1.25rem; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: .875rem; }
   @media (prefers-color-scheme: dark) {
     body { color: #e5e7eb; background: #111827; }
     header, footer { border-color: #374151; }
     .meta, footer { color: #9ca3af; }
-    a { color: #c4b5fd; }
+    a { color: #93C4B1; }
   }
 </style>
 </head>
