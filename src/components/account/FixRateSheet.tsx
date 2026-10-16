@@ -33,6 +33,7 @@ export default function FixRateSheet({
   hint,
   onConfirm,
   t,
+  metal = 'gold',
 }: {
   visible: boolean;
   onClose: () => void;
@@ -48,7 +49,13 @@ export default function FixRateSheet({
   /** Posts the conversion. Resolves to an error message, or null when done. */
   onConfirm: (amount: number, rate: number) => Promise<string | null>;
   t: any;
+  /**
+   * Fixing held cash onto SILVER: the same sum at a silver rate, buying grams
+   * of silver. `goldDue` then carries grams of silver owed.
+   */
+  metal?: 'gold' | 'silver';
 }) {
+  const silverMetal = metal === 'silver';
   const gm = t('common.gramShort') || 'gm';
   const [rate, setRate] = React.useState('');
   const [amount, setAmount] = React.useState('');
@@ -115,12 +122,16 @@ export default function FixRateSheet({
     <LedgerSheet
       visible={visible}
       onClose={onClose}
-      title={t('account.fixRateTitle') || 'Fix rate'}
+      title={silverMetal
+        ? (t('account.fixSilverTitle') || 'Fix rate for silver')
+        : (t('account.fixRateTitle') || 'Fix rate')}
       subtitle={subtitle}
       closeLabel={t('common.close') || 'Close'}
     >
       <SheetField
-        label={t('account.rateLabel') || 'Rate, per gm of 99.50'}
+        label={silverMetal
+          ? (t('silver.rateLabel') || 'Silver rate, per gram')
+          : (t('account.rateLabel') || 'Rate, per gm of 99.50')}
         prefix="₹"
         keyboardType="decimal-pad"
         value={rate}
@@ -173,7 +184,9 @@ export default function FixRateSheet({
         </SheetNote>
       )}
       <SheetNote>
-        {hint || t('account.fixRateHint') || 'Oldest sale first. Their gold due comes down by the grams this buys.'}
+        {hint || (silverMetal
+          ? (t('account.fixSilverHint') || 'Oldest sale first. Their silver due comes down by the grams this buys.')
+          : (t('account.fixRateHint') || 'Oldest sale first. Their gold due comes down by the grams this buys.'))}
       </SheetNote>
 
       {!!error && <SheetNote tone="warn">{error}</SheetNote>}

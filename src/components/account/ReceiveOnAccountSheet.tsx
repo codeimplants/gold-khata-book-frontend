@@ -3,13 +3,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Coins, Hourglass } from 'lucide-react-native';
 import LedgerSheet, { SheetButton, SheetField, SheetNote } from '../ledger/LedgerSheet';
 import { useAppDispatch } from '../../store/hooks';
-import { receiveGoldAdvance, receiveHeldCash } from '../../store/data/dataSlice';
+import { receiveGoldAdvance, receiveHeldCash, receiveSilverAdvance } from '../../store/data/dataSlice';
 import { priceInboundMetal } from '../../utils/goldPricing';
 import { formatGrams } from '../../utils/dues';
 import { toast } from '../common/Toast';
 import { Brand, tabularNums } from '../../theme/brand';
 
-type Mode = 'cash' | 'gold';
+type Mode = 'cash' | 'gold' | 'silver';
 
 /** Purities a wholesaler is handed most: a bar, the settlement grade, 22K, 20K. */
 const PURITY_CHIPS = ['99.9', '99.5', '91.6', '84'];
@@ -32,6 +32,9 @@ const inr = (n: number) => `₹${Number(n || 0).toLocaleString('en-IN', { maximu
  * the same one a metal payment on a sale goes through; the preview here uses
  * the app's mirror of it (utils/goldPricing.ts), and the server's figure is
  * the one that is kept.
+ *
+ * Silver: an advance in silver, held gram for gram with no purity, because a
+ * silver sale is charged by net weight alone. Its own balance, never gold's.
  *
  * A payment against one particular sale is still recorded on that sale.
  */
@@ -76,7 +79,11 @@ export default function ReceiveOnAccountSheet({
 
   const credit = mode === 'gold' ? priceInboundMetal(num(weight), num(purity)) : 0;
   const purityOk = num(purity) > 0 && num(purity) <= 100;
-  const canSave = mode === 'cash' ? num(amount) >= 1 : num(weight) > 0 && purityOk && credit > 0;
+  const canSave = mode === 'cash'
+    ? num(amount) >= 1
+    : mode === 'silver'
+      ? num(weight) > 0
+      : num(weight) > 0 && purityOk && credit > 0;
 
   const save = async () => {
     if (!canSave || busy) return;
@@ -91,15 +98,23 @@ export default function ReceiveOnAccountSheet({
               ? (t('account.noteRateLater') || 'Rate to be fixed later')
               : (t('account.noteAdvance') || 'Advance')),
           }) as any)
-        : await dispatch(receiveGoldAdvance({
-            customerId,
-            weight: num(weight),
-            purity: num(purity),
-            notes: note.trim() || (t('account.noteGoldAdvance') || 'Gold advance'),
-          }) as any);
+        : mode === 'silver'
+          ? await dispatch(receiveSilverAdvance({
+              customerId,
+              weight: num(weight),
+              notes: note.trim() || (t('account.noteSilverAdvance') || 'Silver advance'),
+            }) as any)
+          : await dispatch(receiveGoldAdvance({
+              customerId,
+              weight: num(weight),
+              purity: num(purity),
+              notes: note.trim() || (t('account.noteGoldAdvance') || 'Gold advance'),
+            }) as any);
       const ok = mode === 'cash'
         ? receiveHeldCash.fulfilled.match(action)
-        : receiveGoldAdvance.fulfilled.match(action);
+        : mode === 'silver'
+          ? receiveSilverAdvance.fulfilled.match(action)
+          : receiveGoldAdvance.fulfilled.match(action);
       if (!ok) {
         setError(String(action.payload || t('account.saveFailed') || 'Could not record it'));
         return;
@@ -107,7 +122,9 @@ export default function ReceiveOnAccountSheet({
       toast.success(
         (mode === 'cash'
           ? (t('account.cashHeldFor') || 'Cash held for {name}')
-          : (t('account.goldHeldFor') || 'Gold held for {name}')).replace('{name}', retailerName),
+          : mode === 'silver'
+            ? (t('account.silverHeldFor') || 'Silver held for {name}')
+            : (t('account.goldHeldFor') || 'Gold held for {name}')).replace('{name}', retailerName),
       );
       onClose();
     } finally {
@@ -118,6 +135,7 @@ export default function ReceiveOnAccountSheet({
   const tabs: { key: Mode; label: string; Icon: any }[] = [
     { key: 'cash', label: t('account.tabCash') || 'Cash · fix rate later', Icon: Hourglass },
     { key: 'gold', label: t('account.tabGold') || 'Gold advance', Icon: Coins },
+    { key: 'silver', label: t('account.tabSilver') || 'Silver advance', Icon: Coins },
   ];
 
   return (
@@ -140,7 +158,9 @@ export default function ReceiveOnAccountSheet({
               style={[styles.tab, on && styles.tabOn]}
             >
               <Icon size={15} color={on ? Brand.primary : Brand.inkMuted} />
-              <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{label}</Text>
+              {/* Two lines: three tabs share a phone's width, and "Cash · fix
+                  rate later" cut to one line read as "Cash · fi…". */}
+              <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={2}>{label}</Text>
             </Pressable>
           );
         })}
@@ -160,6 +180,20 @@ export default function ReceiveOnAccountSheet({
             {owesGold
               ? (t('account.cashHintDue') || 'Their gold due stays as it is until the rate is fixed. Fix it from their account when they ask, at the rate they choose.')
               : (t('account.cashHintAdvance') || 'An advance. When they buy, fix the rate on the sale and it comes off what they owe.')}
+          </SheetNote>
+        </>
+      ) : mode === 'silver' ? (
+        <>
+          <SheetField
+            label={t('account.silverWeight') || 'Silver weight'}
+            suffix={gm}
+            keyboardType="decimal-pad"
+            value={weight}
+            onChangeText={setWeight}
+            autoFocus
+          />
+          <SheetNote>
+            {t('account.silverHint') || 'Held gram for gram. Used on their silver dues from the sale screen, or handed back.'}
           </SheetNote>
         </>
       ) : (
@@ -212,7 +246,9 @@ export default function ReceiveOnAccountSheet({
         onChangeText={setNote}
         placeholder={mode === 'cash'
           ? (t('account.notePlaceholderCash') || 'e.g. Will fix at 14,500')
-          : (t('account.notePlaceholderGold') || 'e.g. Bar, for Diwali orders')}
+          : mode === 'silver'
+            ? (t('account.notePlaceholderSilver') || 'e.g. Bars, for wedding orders')
+            : (t('account.notePlaceholderGold') || 'e.g. Bar, for Diwali orders')}
       />
 
       {!!error && <SheetNote tone="warn">{error}</SheetNote>}
@@ -222,7 +258,9 @@ export default function ReceiveOnAccountSheet({
           ? (num(amount) >= 1
               ? (t('account.holdAmount') || 'Hold {amount}').replace('{amount}', inr(num(amount)))
               : (t('account.holdCash') || 'Hold cash'))
-          : (t('account.keepGold') || 'Keep gold on account')}
+          : mode === 'silver'
+            ? (t('account.keepSilver') || 'Keep silver on account')
+            : (t('account.keepGold') || 'Keep gold on account')}
         onPress={save}
         disabled={!canSave}
         busy={busy}
@@ -243,7 +281,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 40,
+    minHeight: 40,
+    paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: Brand.lineStrong,

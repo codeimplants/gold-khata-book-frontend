@@ -46,6 +46,10 @@ export const useRetailerReminder = () => {
     credit: t('statement.credit') || 'Credit with us',
     meltCredit: t('statement.meltCredit') || 'Melt credit',
     nothingDue: t('statement.nothingDue') || 'Nothing due',
+    // The same words the statement screen uses, so a reminder sent from a
+    // list reads like one sent from the retailer's own page.
+    silver: t('statement.silverWord') || 'silver',
+    silverHeld: t('statement.silverHeld') || 'Silver held',
   }), [t, gramShort]);
 
   /**

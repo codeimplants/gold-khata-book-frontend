@@ -38,6 +38,8 @@ export interface RetailerStatement {
   heldCash: number;
   /** Grams of melt credit held, likewise unapplied. */
   meltCredit: number;
+  /** Grams of silver held for the retailer, likewise unapplied. */
+  silverHeld: number;
   /** True when nothing is owed and nothing is held — there is no reason to send. */
   isClear: boolean;
 }
@@ -59,7 +61,7 @@ const asDate = (order: Order): string =>
  */
 export const buildRetailerStatement = (
   orders: Order[],
-  account?: { heldCash?: number; meltCredit?: number },
+  account?: { heldCash?: number; meltCredit?: number; silverHeld?: number },
 ): RetailerStatement => {
   const lines: StatementLine[] = orders
     .filter((o: any) => !o.deletedAt)
@@ -80,6 +82,7 @@ export const buildRetailerStatement = (
   const totalSilver = lines.reduce((sum, l) => sum + l.silver, 0);
   const heldCash = Number(account?.heldCash || 0);
   const meltCredit = Number(account?.meltCredit || 0);
+  const silverHeld = Number(account?.silverHeld || 0);
 
   return {
     lines,
@@ -88,12 +91,14 @@ export const buildRetailerStatement = (
     totalSilver,
     heldCash,
     meltCredit,
+    silverHeld,
     isClear:
       totalGold < WEIGHT_SETTLED_EPSILON_GM &&
       totalCash < CASH_SETTLED_EPSILON &&
       totalSilver < WEIGHT_SETTLED_EPSILON_GM &&
       heldCash < CASH_SETTLED_EPSILON &&
-      meltCredit < WEIGHT_SETTLED_EPSILON_GM,
+      meltCredit < WEIGHT_SETTLED_EPSILON_GM &&
+      silverHeld < WEIGHT_SETTLED_EPSILON_GM,
   };
 };
 
@@ -137,6 +142,8 @@ export const statementToWhatsAppText = (
       nothingDue: string;
       /** Appended to a silver weight so it cannot be read as gold. */
       silver?: string;
+      /** The line for silver held, like `meltCredit` for gold. */
+      silverHeld?: string;
     };
   },
 ): string => {
@@ -189,6 +196,9 @@ export const statementToWhatsAppText = (
   }
   if (statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM) {
     out.push(`${labels.meltCredit}: ${formatGrams(statement.meltCredit, gramShort)}`);
+  }
+  if (statement.silverHeld >= WEIGHT_SETTLED_EPSILON_GM) {
+    out.push(`${labels.silverHeld || 'Silver held'}: ${silverGrams(statement.silverHeld)}`);
   }
 
   if (opts.shopName) {

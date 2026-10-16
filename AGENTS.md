@@ -50,7 +50,8 @@ second unit of account.
 **Except silver, which is its own account** (2026-10-16): a silver line is net
 weight at a rate per gram of silver, owed as grams of silver, and never added
 to a gold figure. `utils/silverPricing.ts`, the `silver` field in `dues.ts`, and
-section 12 of `APP_STORE_4.3_REWORK.md`.
+section 12 of `APP_STORE_4.3_REWORK.md`. Silver held for a retailer
+(`silverHeld`) follows the held-money rules below, gram for gram.
 
 ## Dues: `src/utils/dues.ts`
 

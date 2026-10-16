@@ -161,7 +161,7 @@ export default {
     appName: 'Gold Khata Book',
     version: 'Version',
     aboutTitle: 'About Gold Khata Book',
-    aboutDescription: 'Gold Khata Book is a ledger for gold wholesalers. It keeps every retailer\'s account in fine gold and cash, with sales, receipts, melt lots and statements in one place.',
+    aboutDescription: 'Gold Khata Book is a ledger for gold and silver wholesalers. It keeps every retailer\'s account in fine gold, silver and cash, with sales, receipts, melt lots and statements in one place.',
     featuresTitle: 'Key Features',
     features: [
       'Easy Invoice Generation',
@@ -285,7 +285,7 @@ export default {
       },
       {
         title: '2. Free Usage Policy',
-        content: 'This App is currently provided free of cost to support gold wholesalers in keeping their accounts with retailers. However, free usage is subject to our infrastructure, server, and database capacity limits. As the number of users and stored data increases, we reserve the right to introduce paid subscription plans, charge a minimal maintenance fee, restrict certain features for free users, or request users to export and delete their data if they choose not to continue under updated pricing plans. We will make reasonable efforts to inform users in advance before any pricing changes take effect.',
+        content: 'This App is currently provided free of cost to support gold and silver wholesalers in keeping their accounts with retailers. However, free usage is subject to our infrastructure, server, and database capacity limits. As the number of users and stored data increases, we reserve the right to introduce paid subscription plans, charge a minimal maintenance fee, restrict certain features for free users, or request users to export and delete their data if they choose not to continue under updated pricing plans. We will make reasonable efforts to inform users in advance before any pricing changes take effect.',
       },
       {
         title: '3. Data Ownership',
@@ -744,6 +744,15 @@ export default {
   },
 
   orders: {
+    pieceWord: 'Piece',
+    totalWeightGrams: 'Total weight (grams)',
+    totalNet: 'Total net',
+    piecesOverMax: 'Over {n} pieces: enter the total weight.',
+    weighEach: 'Weigh each piece',
+    weighTogether: 'Weigh all together',
+    eachPiece: 'Each',
+    silverHeld: 'From silver held',
+    silverHeldOverdrawn: 'That is more silver than is held for this retailer',
     goldWord: 'Gold',
     silverWord: 'Silver',
     silverAbbr: 'silver',
@@ -1175,6 +1184,7 @@ export default {
     },
 
     dues: {
+      silver: 'Silver',
       totalCash: 'Total Cash Dues',
       totalGold: 'Total Gold Dues',
       listTitle: 'Retailer Dues List',
@@ -1206,6 +1216,7 @@ export default {
   },
 
   newEntry: {
+    receiveAny: 'Receive gold, silver or cash',
     title: 'New entry',
     subtitle: 'What do you want to record?',
     sale: 'New sale',
@@ -1246,6 +1257,40 @@ export default {
     clear: 'Clear',
   },
   account: {
+    returnGrams: 'Return {grams}',
+    noteSilverAdvance: 'Silver advance',
+    silverHeldFor: 'Silver held for {name}',
+    tabSilver: 'Silver advance',
+    silverWeight: 'Silver weight',
+    silverHint: 'Held gram for gram. Used on their silver dues, or handed back.',
+    notePlaceholderSilver: 'e.g. Bars, for wedding orders',
+    keepSilver: 'Keep silver on account',
+    returnSilverTitle: 'Return silver held?',
+    useSilverTitle: 'Use silver held?',
+    silverToReturn: 'Silver to hand back',
+    silverToUse: 'Silver to use',
+    returnSilverConfirm: 'Return silver',
+    useSilverConfirm: 'Use silver held',
+    fixSilverTitle: 'Fix rate for silver',
+    fixSilverHint: 'Oldest sale first. Their silver due comes down by the grams this buys.',
+    nothingToFixSilver: 'No sale owes silver to put this against.',
+    silverRateFixedToast: 'Rate fixed. {grams} off their silver due.',
+    useSilverFailed: 'Could not use the silver held',
+    silverUsedToast: 'Silver held put against their dues',
+    returnSilverFailed: 'Could not return the silver',
+    silverReturnedToast: 'Silver handed back',
+    fixGold: 'Fix for gold',
+    fixSilver: 'Fix for silver',
+    silverHeldHint: 'Silver held',
+    silverAdvanceHint: 'Silver advance · for their next sale',
+    returnShort: 'Return',
+    fixSilverSubtitle: '{cash} held for {name} · {silver} silver due',
+    useSilverSubtitle: '{held} held for {name} · {due} silver due',
+    returnSilverSubtitle: '{held} held for {name}',
+    orForSilver: 'Or fix it onto the silver due',
+    useSilverSubtitleSale: '{held} held · {due} still due on this sale',
+    fixSilverSubtitleSale: '{cash} held · {silver} silver still due on this sale',
+    fixSilverHintSale: 'Their silver due on this sale comes down by the grams this buys.',
     receive: 'Receive',
     receiveTitle: 'Receive on account',
     receiveSubtitle: 'Not against a sale. Held for {name} until it is used.',
@@ -1260,7 +1305,7 @@ export default {
     noteRateLater: 'Rate to be fixed later',
     noteAdvance: 'Advance',
     noteGoldAdvance: 'Gold advance',
-    cashHintDue: 'Their gold due stays as it is until the rate is fixed. Fix it from their account when they ask, at the rate they choose.',
+    cashHintDue: 'Their dues stay as they are until the rate is fixed. Fix it from their account when they ask, at the rate they choose.',
     cashHintAdvance: 'An advance. When they buy, fix the rate on the sale and it comes off what they owe.',
     goldHint: 'Used on their sales gram for gram, oldest due first, or on the next sale they make.',
     creditPreview: 'Credited as {grams} of 99.50',
@@ -1323,8 +1368,8 @@ export default {
   },
 
   welcome: {
-    tagline: 'Wholesale gold khata',
-    point1: 'Fine gold and cash dues for every retailer',
+    tagline: 'Wholesale gold and silver khata',
+    point1: 'Gold, silver and cash dues for every retailer',
     point2: 'A day book of sales and receipts',
     point3: 'Statements and reminders on WhatsApp',
     signIn: 'Sign in with your mobile number',
@@ -1367,6 +1412,18 @@ export default {
   },
 
   khata: {
+    heldExplain: 'Their advances with you. Not owed to you.',
+    heldWhose: 'See whose',
+    heldSheetSub: 'Advances they left with you, and cash waiting for a rate. Used on their dues, or handed back.',
+    colOwes: 'Owes',
+    colGoldOwed: 'Gold owed',
+    colSilverOwed: 'Silver owed',
+    colCashOwed: 'Cash owed',
+    silverRateFixedAt: 'Silver rate fixed at {rate}',
+    silverRateFixed: 'Silver rate fixed',
+    silverAdvance: 'Silver advance',
+    silverUsed: 'Silver held used',
+    silverBack: 'Silver returned',
     silver: 'Silver',
     silverOwed: 'Silver owed',
     owedToYou: 'Owed to you',
@@ -1671,7 +1728,7 @@ export default {
   },
 
   auth: {
-    tagline: 'Wholesale gold khata',
+    tagline: 'Wholesale gold and silver khata',
     enterPhone: 'Enter Phone Number',
     otpInfo: 'We will send you an OTP',
     phonePlaceholder: 'Enter phone number',
@@ -1725,6 +1782,9 @@ export default {
   },
 
   bill: {
+    goldReceived: 'Gold received',
+    silverReceived: 'Silver received',
+    silverPayment: 'Paid for silver',
     invoice: 'Invoice',
     cashMemo: 'Cash Memo',
     billTo: 'Bill To',
@@ -1818,6 +1878,7 @@ export default {
   /* The retailer's account, sent to them — the WhatsApp text and the PDF
      share these labels so the two copies cannot drift apart. */
   statement: {
+    silverHeld: 'Silver held',
     silverWord: 'silver',
     title: 'Account Statement',
     asOn: 'Balance as on',
@@ -1852,6 +1913,11 @@ export default {
      the dashboard card or Settings; a day with none uses the live feed and
      every screen says so rather than leaving it to be inferred. */
   silver: {
+    updateFailed: 'Could not update the silver receipt',
+    updated: 'Silver receipt updated',
+    editTitle: 'Edit silver receipt',
+    owedBefore: '{grams} of silver owed before this receipt',
+    saveEdit: 'Save changes',
     receiveTitle: 'Receive silver',
     owedOnSale: '{grams} of silver owed on this sale',
     cashLabel: 'Cash',

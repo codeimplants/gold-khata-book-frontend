@@ -92,12 +92,11 @@ const RetailerRow = React.memo(({ customer, stats, held, onPress, onDelete, t }:
       )}
 
       <View style={styles.colName}>
-        {/* The code sits on the name line, not under it: the pair is one
-            identity, and a wholesaler scanning a list of six Rameshes is
-            reading across, not down. */}
+        {/* No retailer code (C-1, C-2): the owner had them taken off every
+            screen on 2026-10-17. The phone or address below tells two
+            Rameshes apart. */}
         <Text style={styles.name} numberOfLines={1}>
           {customer.name}
-          {customer.customerCode ? <Text style={styles.code}>{`  ${customer.customerCode}`}</Text> : null}
         </Text>
         {customer.phone ? (
           <Text style={styles.sub}>{customer.phone}</Text>
@@ -125,12 +124,16 @@ const RetailerRow = React.memo(({ customer, stats, held, onPress, onDelete, t }:
         )}
         {/* What the shop holds for them: cash with the rate not fixed, an
             advance, gold held. Beside the dues, never netted off them. */}
-        {(held?.cash >= CASH_SETTLED_EPSILON || held?.gold >= WEIGHT_SETTLED_EPSILON_GM) && (
+        {(held?.cash >= CASH_SETTLED_EPSILON || held?.gold >= WEIGHT_SETTLED_EPSILON_GM
+          || (held?.silver || 0) >= WEIGHT_SETTLED_EPSILON_GM) && (
           <Text style={[styles.held, tabularNums]} numberOfLines={1}>
             {t('khata.holds') || 'Holds'}{' '}
             {[
               held.cash >= CASH_SETTLED_EPSILON ? formatCurrencyValue(held.cash) : null,
               held.gold >= WEIGHT_SETTLED_EPSILON_GM ? formatGrams(held.gold, gramShort) : null,
+              (held.silver || 0) >= WEIGHT_SETTLED_EPSILON_GM
+                ? `${formatGrams(held.silver || 0, gramShort)} ${t('statement.silverWord') || 'silver'}`
+                : null,
             ].filter(Boolean).join(' · ')}
           </Text>
         )}
@@ -428,7 +431,11 @@ export default function CustomersScreen() {
       customer={item}
       stats={statsByCustomer.get(item.id)}
       held={accountsById?.[item.id]
-        ? { cash: accountsById[item.id].heldCash || 0, gold: accountsById[item.id].meltCredit || 0 }
+        ? {
+          cash: accountsById[item.id].heldCash || 0,
+          gold: accountsById[item.id].meltCredit || 0,
+          silver: accountsById[item.id].silverHeld || 0,
+        }
         : undefined}
       t={t}
       onPress={() => navigation.navigate("CustomerDetails", { customerId: item.id })}
@@ -472,7 +479,7 @@ export default function CustomersScreen() {
                 <Search size={18} color={Brand.inkFaint} />
                 <TextInput
                   style={styles.searchInput}
-                  placeholder={t("customers.searchWithCode") || t("customers.search") || "Search"}
+                  placeholder={t("customers.search") || "Search by name or phone..."}
                   placeholderTextColor={Brand.inkFaint}
                   value={q}
                   onChangeText={setQ}
@@ -730,11 +737,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: Brand.ink,
-  },
-  code: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: Brand.inkFaint,
   },
   sub: {
     fontSize: 13,

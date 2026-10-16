@@ -29,7 +29,6 @@ import LedgerHeader, { LedgerHeaderAction } from '../../components/ledger/Ledger
 import { Brand } from '../../theme/brand';
 import GradientButton from '../../components/GradientButton';
 import { LAYOUT } from "../../constants/layout";
-import CustomerCodeBadge from '../../components/customers/CustomerCodeBadge';
 import { INPUT_LIMITS, clampToLimit, validateText } from "../../constants/inputLimits";
 import { retailerDisplayName } from "../../utils/retailerName";
 import CharCounter from "../../components/common/CharCounter";
@@ -203,7 +202,7 @@ export default function SelectCustomerScreen() {
           <Icon as={Search} color="#6B665B" />
           <Input variant="rounded" flex={1} ml="$2" borderWidth={0}>
             <InputField
-              placeholder={t('customers.searchWithCode') || 'Search by name, phone or code'}
+              placeholder={t('customers.search') || 'Search by name or phone...'}
               value={q}
               onChangeText={setQ}
               maxLength={INPUT_LIMITS.searchQuery}
@@ -233,18 +232,18 @@ export default function SelectCustomerScreen() {
               <Box bg={Brand.card} p="$4" rounded="$lg" borderWidth={1} borderColor={Brand.line}>
                 <HStack alignItems="center" justifyContent="space-between">
                   <VStack flex={1} mr="$3">
-                    {/* The code matters most here. Everywhere else it is a
-                        label; on this screen it is the only thing separating
-                        two identical phoneless rows, and picking the wrong one
-                        files the bill against the wrong person. */}
-                    <HStack alignItems="center" space="xs">
-                      <Text fontWeight="$bold" fontSize={16} numberOfLines={1} flexShrink={1}>
-                        {c.name}
-                      </Text>
-                      <CustomerCodeBadge code={c.customerCode} />
-                    </HStack>
+                    <Text fontWeight="$bold" fontSize={16} numberOfLines={1} flexShrink={1}>
+                      {c.name}
+                    </Text>
+                    {/* The retailer code used to tell two phoneless rows with
+                        the same name apart here; picking the wrong one files
+                        the bill against the wrong person. The owner had the
+                        codes removed (2026-10-17), so the address does that
+                        job now when there is no phone. */}
                     {c.phone ? (
                       <Text color="$coolGray500">{c.phone}</Text>
+                    ) : c.address ? (
+                      <Text color="$coolGray500" numberOfLines={1}>{c.address}</Text>
                     ) : (
                       <Text color="$coolGray400" fontStyle="italic">
                         {t('customers.noPhone') || 'No phone number'}

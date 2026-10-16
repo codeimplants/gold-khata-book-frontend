@@ -28,6 +28,8 @@ import {
   fetchRetailerAccount,
   allocateCash,
   applyMeltCredit,
+  applySilverHeld,
+  returnSilverHeld,
 } from '../../store/data/dataSlice';
 import { ToastViewport } from '../../components/common/Toast';
 import { endImpersonation } from '../../store/auth/authSlice';
@@ -42,7 +44,7 @@ import { INPUT_LIMITS, validateText } from '../../constants/inputLimits';
 import CharCounter from '../../components/common/CharCounter';
 import { formatCurrencyValue } from '../../utils/formatter';
 import { retailerDisplayName, retailerSubtitle } from '../../utils/retailerName';
-import { useShopRate } from '../../hooks/useShopRate';
+import { useShopRate, useSilverRate } from '../../hooks/useShopRate';
 import { buildRetailerStatement, statementToWhatsAppText } from '../../utils/retailerStatement';
 import { buildStatementHTML } from '../../print/statementTemplate';
 import { openWhatsApp } from '../../utils/whatsappUtils';
@@ -55,7 +57,7 @@ import { GemBullet, GoldFrame } from '../../components/ledger/Motifs';
 import ReceiveOnAccountSheet from '../../components/account/ReceiveOnAccountSheet';
 import FixRateSheet from '../../components/account/FixRateSheet';
 import UseGoldSheet from '../../components/account/UseGoldSheet';
-import { planCashAllocation, planGoldApplication } from '../../utils/heldMoney';
+import { planCashAllocation, planGoldApplication, planSilverApplication, planSilverCashAllocation } from '../../utils/heldMoney';
 import { Brand, tabularNums } from '../../theme/brand';
 
 const LOCALES: Record<string, string> = { en: 'en-IN', hi: 'hi-IN', mr: 'mr-IN', gu: 'gu-IN' };
@@ -297,6 +299,8 @@ export default function CustomerDetailsScreen() {
   /** Today's 99.50 rate — the shop's own when set, the feed otherwise. Used
    *  only to restate a metal balance in rupees on the statement. */
   const { rate: liveRate } = useShopRate();
+  /** Today's silver rate, the default when held cash is fixed onto silver. */
+  const { rate: silverRateToday } = useSilverRate();
 
   const statement = useMemo(
     () => buildRetailerStatement(customerOrders, account),
@@ -315,6 +319,7 @@ export default function CustomerDetailsScreen() {
     meltCredit: t('statement.meltCredit') || 'Melt credit',
     nothingDue: t('statement.nothingDue') || 'Nothing due',
     silver: t('statement.silverWord') || 'silver',
+    silverHeld: t('statement.silverHeld') || 'Silver held',
   }), [t]);
 
   const retailerLabel = customer ? retailerDisplayName(customer.shopName, customer.name) : '';
@@ -350,7 +355,9 @@ export default function CustomerDetailsScreen() {
         ...statementLabels,
       },
     });
-    const fileName = `statement-${(customer?.customerCode || retailerLabel || 'retailer')
+    // The retailer's name, not their code: the retailer sees this file name
+    // when it arrives on WhatsApp, and the codes are not shown anywhere now.
+    const fileName = `statement-${(retailerLabel || 'retailer')
       .replace(/[^a-zA-Z0-9-]/g, '-')}.pdf`;
 
     const filePath = await generateInvoicePDF(html, fileName);
@@ -383,6 +390,11 @@ export default function CustomerDetailsScreen() {
   const [receiveOpen, setReceiveOpen] = React.useState(false);
   const [fixRateOpen, setFixRateOpen] = React.useState(false);
   const [useGoldOpen, setUseGoldOpen] = React.useState(false);
+  /** The silver twins: held cash fixed onto silver, silver held used, and
+   *  silver held handed back. */
+  const [fixSilverOpen, setFixSilverOpen] = React.useState(false);
+  const [useSilverOpen, setUseSilverOpen] = React.useState(false);
+  const [returnSilverOpen, setReturnSilverOpen] = React.useState(false);
 
   const guardWrite = (open: () => void) => () => {
     if (impersonateUserId) { setBlockModalVisible(true); return; }
@@ -412,6 +424,62 @@ export default function CustomerDetailsScreen() {
     );
     return null;
   }, [customerId, customerOrders, dispatch, t]);
+
+  /** Held cash onto their SILVER dues at a silver rate, oldest sale first. */
+  const onFixSilver = React.useCallback(async (amount: number, rate: number): Promise<string | null> => {
+    if (!customerId) return null;
+    const steps = planSilverCashAllocation(customerOrders, amount, rate);
+    if (steps.length === 0) return t('account.nothingToFixSilver') || 'No sale owes silver to put this against.';
+    let grams = 0;
+    for (const step of steps) {
+      const res: any = await dispatch(allocateCash({
+        customerId,
+        orderId: step.orderId,
+        amount: step.amount,
+        goldRate: rate,
+        metal: 'silver',
+      }) as any);
+      if (!allocateCash.fulfilled.match(res)) {
+        return String(res.payload || t('account.fixRateFailed') || 'Could not fix the rate');
+      }
+      grams += step.amount / rate;
+    }
+    toast.success(
+      (t('account.silverRateFixedToast') || 'Rate fixed. {grams} off their silver due.')
+        .replace('{grams}', formatGrams(grams, t('common.gramShort') || 'gm')),
+    );
+    return null;
+  }, [customerId, customerOrders, dispatch, t]);
+
+  /** Silver held onto their silver dues, gram for gram, oldest sale first. */
+  const onUseSilver = React.useCallback(async (weight: number): Promise<string | null> => {
+    if (!customerId) return null;
+    const steps = planSilverApplication(customerOrders, weight);
+    if (steps.length === 0) return t('account.nothingToFixSilver') || 'No sale owes silver to put this against.';
+    for (const step of steps) {
+      const res: any = await dispatch(applySilverHeld({
+        customerId,
+        orderId: step.orderId,
+        weight: step.weight,
+      }) as any);
+      if (!applySilverHeld.fulfilled.match(res)) {
+        return String(res.payload || t('account.useSilverFailed') || 'Could not use the silver held');
+      }
+    }
+    toast.success(t('account.silverUsedToast') || 'Silver held put against their dues');
+    return null;
+  }, [customerId, customerOrders, dispatch, t]);
+
+  /** Silver held handed back to the retailer. */
+  const onReturnSilver = React.useCallback(async (weight: number): Promise<string | null> => {
+    if (!customerId) return null;
+    const res: any = await dispatch(returnSilverHeld({ customerId, weight }) as any);
+    if (!returnSilverHeld.fulfilled.match(res)) {
+      return String(res.payload || t('account.returnSilverFailed') || 'Could not return the silver');
+    }
+    toast.success(t('account.silverReturnedToast') || 'Silver handed back');
+    return null;
+  }, [customerId, dispatch, t]);
 
   /** Gold held onto their dues: the weight chosen in the sheet (all of it, half,
    *  or any part), oldest sale first. */
@@ -447,14 +515,15 @@ export default function CustomerDetailsScreen() {
     );
   }
 
+  // No retailer code here: the owner had the C-n codes taken off every screen.
   const subtitle = [
-    customer.customerCode,
     retailerSubtitle(customer),
     customer.phone || (t('customers.noPhone') || 'No phone number'),
     customer.address,
   ].filter(Boolean).join(' · ');
   const holding =
-    statement.heldCash >= CASH_SETTLED_EPSILON || statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM;
+    statement.heldCash >= CASH_SETTLED_EPSILON || statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM
+    || statement.silverHeld >= WEIGHT_SETTLED_EPSILON_GM;
 
   return (
     <View style={styles.screen}>
@@ -566,16 +635,30 @@ export default function CustomerDetailsScreen() {
                   <View style={{ flex: 1 }}>
                     <RNText style={[styles.heldValue, tabularNums]}>{formatCurrencyValue(statement.heldCash)}</RNText>
                     <RNText style={styles.heldHint}>
-                      {statement.totalGold > 0
+                      {statement.totalGold > 0 || statement.totalSilver > 0
                         ? (t('account.cashHeldRateLater') || 'Cash held · rate not fixed')
                         : (t('account.cashAdvance') || 'Cash advance · for their next sale')}
                     </RNText>
                   </View>
-                  {statement.totalGold > 0 && (
-                    <RNPressable style={styles.heldAction} onPress={guardWrite(() => setFixRateOpen(true))}>
-                      <RNText style={styles.heldActionText}>{t('account.fixRate') || 'Fix rate'}</RNText>
-                    </RNPressable>
-                  )}
+                  {/* One action per due it can be fixed onto: gold at the gold
+                      rate, silver at the silver rate. Never one cash amount
+                      split between two metals by guesswork. */}
+                  <View style={{ gap: 6 }}>
+                    {statement.totalGold > 0 && (
+                      <RNPressable style={styles.heldAction} onPress={guardWrite(() => setFixRateOpen(true))}>
+                        <RNText style={styles.heldActionText}>
+                          {statement.totalSilver > 0
+                            ? (t('account.fixGold') || 'Fix for gold')
+                            : (t('account.fixRate') || 'Fix rate')}
+                        </RNText>
+                      </RNPressable>
+                    )}
+                    {statement.totalSilver > 0 && (
+                      <RNPressable style={styles.heldAction} onPress={guardWrite(() => setFixSilverOpen(true))}>
+                        <RNText style={styles.heldActionText}>{t('account.fixSilver') || 'Fix for silver'}</RNText>
+                      </RNPressable>
+                    )}
+                  </View>
                 </View>
               )}
 
@@ -596,6 +679,35 @@ export default function CustomerDetailsScreen() {
                   {statement.totalGold > 0 && (
                     <RNPressable style={styles.heldAction} onPress={guardWrite(() => setUseGoldOpen(true))}>
                       <RNText style={styles.heldActionText}>{t('account.useGold') || 'Use'}</RNText>
+                    </RNPressable>
+                  )}
+                </View>
+              )}
+
+              {/* Silver held: a silver advance, in grams of silver. Used on
+                  their silver dues when they owe some, or handed back. */}
+              {statement.silverHeld >= WEIGHT_SETTLED_EPSILON_GM && (
+                <View style={styles.heldLine}>
+                  <View style={[styles.heldIcon, { backgroundColor: Brand.silverSoft }]}>
+                    <Coins size={15} color={Brand.silver} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <RNText style={[styles.heldValue, tabularNums]}>
+                      {formatGrams(statement.silverHeld, gramShort)} {t('statement.silverWord') || 'silver'}
+                    </RNText>
+                    <RNText style={styles.heldHint}>
+                      {statement.totalSilver > 0
+                        ? (t('account.silverHeldHint') || 'Silver held')
+                        : (t('account.silverAdvanceHint') || 'Silver advance · for their next sale')}
+                    </RNText>
+                  </View>
+                  {statement.totalSilver > 0 ? (
+                    <RNPressable style={styles.heldAction} onPress={guardWrite(() => setUseSilverOpen(true))}>
+                      <RNText style={styles.heldActionText}>{t('account.useGold') || 'Use'}</RNText>
+                    </RNPressable>
+                  ) : (
+                    <RNPressable style={styles.heldAction} onPress={guardWrite(() => setReturnSilverOpen(true))}>
+                      <RNText style={styles.heldActionText}>{t('account.returnShort') || 'Return'}</RNText>
                     </RNPressable>
                   )}
                 </View>
@@ -764,6 +876,50 @@ export default function CustomerDetailsScreen() {
           .replace('{name}', retailerLabel)
           .replace('{gold}', formatGrams(statement.totalGold, gramShort))}
         onConfirm={onFixRate}
+        t={t}
+      />
+
+      <FixRateSheet
+        metal="silver"
+        visible={fixSilverOpen}
+        onClose={() => setFixSilverOpen(false)}
+        heldCash={statement.heldCash}
+        goldDue={statement.totalSilver}
+        defaultRate={silverRateToday}
+        subtitle={(t('account.fixSilverSubtitle') || '{cash} held for {name} · {silver} silver due')
+          .replace('{cash}', formatCurrencyValue(statement.heldCash))
+          .replace('{name}', retailerLabel)
+          .replace('{silver}', formatGrams(statement.totalSilver, gramShort))}
+        onConfirm={onFixSilver}
+        t={t}
+      />
+
+      <UseGoldSheet
+        metal="silver"
+        visible={useSilverOpen}
+        onClose={() => setUseSilverOpen(false)}
+        heldGold={statement.silverHeld}
+        goldDue={statement.totalSilver}
+        subtitle={(t('account.useSilverSubtitle') || '{held} held for {name} · {due} silver due')
+          .replace('{held}', formatGrams(statement.silverHeld, gramShort))
+          .replace('{name}', retailerLabel)
+          .replace('{due}', formatGrams(statement.totalSilver, gramShort))}
+        hint={t('account.useGoldHint') || 'Gram for gram, oldest sale first.'}
+        onConfirm={onUseSilver}
+        t={t}
+      />
+
+      <UseGoldSheet
+        metal="silver"
+        returning
+        visible={returnSilverOpen}
+        onClose={() => setReturnSilverOpen(false)}
+        heldGold={statement.silverHeld}
+        goldDue={statement.silverHeld}
+        subtitle={(t('account.returnSilverSubtitle') || '{held} held for {name}')
+          .replace('{held}', formatGrams(statement.silverHeld, gramShort))
+          .replace('{name}', retailerLabel)}
+        onConfirm={onReturnSilver}
         t={t}
       />
 

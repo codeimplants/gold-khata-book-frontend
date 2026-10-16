@@ -30,6 +30,7 @@ export default function ReceiveSilverSheet({
   defaultRate,
   onConfirm,
   t,
+  editing,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -40,6 +41,12 @@ export default function ReceiveSilverSheet({
   /** Posts it. Resolves to an error message, or null when done. */
   onConfirm: (p: { amount: number; silverRate: number; silverWeight: number }) => Promise<string | null>;
   t: any;
+  /**
+   * An existing silver receipt being corrected. The fields start from it, and
+   * the due is taken back to before it was paid, so the preview says what the
+   * corrected receipt leaves owed rather than counting the old one twice.
+   */
+  editing?: { amount: number; silverRate: number; silverWeight: number };
 }) {
   const gm = t('common.gramShort') || 'gm';
   const [cash, setCash] = React.useState('');
@@ -50,9 +57,15 @@ export default function ReceiveSilverSheet({
 
   React.useEffect(() => {
     if (!visible) return;
-    setCash('');
-    setSilver('');
-    setRate(defaultRate > 0 ? String(defaultRate) : '');
+    if (editing) {
+      setCash(editing.amount > 0 ? String(editing.amount) : '');
+      setSilver(editing.silverWeight > 0 ? String(editing.silverWeight) : '');
+      setRate(editing.silverRate > 0 ? String(editing.silverRate) : (defaultRate > 0 ? String(defaultRate) : ''));
+    } else {
+      setCash('');
+      setSilver('');
+      setRate(defaultRate > 0 ? String(defaultRate) : '');
+    }
     setError(null);
     // defaultRate is left out: a rate arriving while the sheet is open must
     // not overwrite the one being typed.
@@ -64,7 +77,14 @@ export default function ReceiveSilverSheet({
   const s = num(silver);
   const cashGrams = c > 0 && r > 0 ? c / r : 0;
   const covered = cashGrams + s;
-  const stillDue = round3(silverDue - covered);
+  // What was owed before this receipt: the current due, plus what the receipt
+  // being edited already took off it.
+  const dueBefore = editing
+    ? silverDue
+      + (editing.amount > 0 && editing.silverRate > 0 ? editing.amount / editing.silverRate : 0)
+      + (editing.silverWeight || 0)
+    : silverDue;
+  const stillDue = round3(dueBefore - covered);
   const needsRate = c > 0 && r <= 0;
   const canSave = (c > 0 || s > WEIGHT_SETTLED_EPSILON_GM) && !needsRate;
 
@@ -85,9 +105,13 @@ export default function ReceiveSilverSheet({
     <LedgerSheet
       visible={visible}
       onClose={onClose}
-      title={t('silver.receiveTitle') || 'Receive silver'}
-      subtitle={(t('silver.owedOnSale') || '{grams} of silver owed on this sale')
-        .replace('{grams}', formatGrams(silverDue, gm))}
+      title={editing
+        ? (t('silver.editTitle') || 'Edit silver receipt')
+        : (t('silver.receiveTitle') || 'Receive silver')}
+      subtitle={(editing
+        ? (t('silver.owedBefore') || '{grams} of silver owed before this receipt')
+        : (t('silver.owedOnSale') || '{grams} of silver owed on this sale'))
+        .replace('{grams}', formatGrams(dueBefore, gm))}
       closeLabel={t('common.close') || 'Close'}
     >
       <SheetField
@@ -132,7 +156,9 @@ export default function ReceiveSilverSheet({
       {!!error && <SheetNote tone="warn">{error}</SheetNote>}
 
       <SheetButton
-        label={t('silver.receiveConfirm') || 'Record receipt'}
+        label={editing
+          ? (t('silver.saveEdit') || 'Save changes')
+          : (t('silver.receiveConfirm') || 'Record receipt')}
         onPress={save}
         disabled={!canSave}
         busy={busy}

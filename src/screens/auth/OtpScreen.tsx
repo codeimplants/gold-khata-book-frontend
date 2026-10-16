@@ -83,7 +83,7 @@ const OtpScreen: React.FC<Props> = ({ navigation, route }) => {
   return (
     <AuthLayout
       appName={t('appName') || 'Gold Khata Book'}
-      tagline={t('welcome.tagline') || 'Wholesale gold khata'}
+      tagline={t('welcome.tagline') || 'Wholesale gold and silver khata'}
     >
       <Text style={styles.title}>{t('welcome.enterCode') || 'Enter the code'}</Text>
       <View style={styles.sentRow}>

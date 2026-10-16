@@ -74,7 +74,9 @@ export interface DayBookEntry {
   detail?:
     | 'cash-held' | 'gold-advance' | 'melt'
     | 'fix-rate' | 'gold-used' | 'overpaid'
-    | 'cash-back' | 'gold-back';
+    | 'cash-back' | 'gold-back'
+    /* Silver held: an advance, put on a sale, or handed back. */
+    | 'silver-advance' | 'silver-used' | 'silver-back';
   /** The rate held cash was converted at (fix-rate), per gram of 99.50. */
   rate?: number;
   /** Gold advance only: weight and purity as handed over. */
@@ -149,7 +151,11 @@ export const buildDayBook = (orders: Order[], accounts: RetailerAccount[] = []):
         ...(silverIn > 0 ? { silverIn } : {}),
         ...(transfer
           ? {
-              detail: cashIn > 0 ? 'fix-rate' as const : 'gold-used' as const,
+              // Silver held put on a sale is its own line: listed as "gold
+              // held used" it named the wrong metal.
+              detail: cashIn > 0
+                ? 'fix-rate' as const
+                : p?.settles === 'silver' ? 'silver-used' as const : 'gold-used' as const,
               ...(cashIn > 0 && Number(p?.goldRate) > 0 ? { rate: Number(p.goldRate) } : {}),
             }
           : {}),
@@ -200,6 +206,14 @@ export const buildDayBook = (orders: Order[], accounts: RetailerAccount[] = []):
           break;
         case 'melt-paid-out':
           entries.push({ ...base, kind: 'payout', detail: e.rate ? 'cash-back' : 'gold-back', goldIn: Math.abs(e.metalDelta), cashIn: 0, ...(e.rate ? { rate: e.rate } : {}) });
+          break;
+        // Silver held. Its use on a sale ('silver-applied') is left out for
+        // the same reason as melt-applied: the sale lists it as a transfer.
+        case 'silver-received':
+          entries.push({ ...base, kind: 'held', detail: 'silver-advance', goldIn: 0, cashIn: 0, silverIn: Number(e.silverDelta || 0) });
+          break;
+        case 'silver-returned':
+          entries.push({ ...base, kind: 'payout', detail: 'silver-back', goldIn: 0, cashIn: 0, silverIn: Math.abs(Number(e.silverDelta || 0)) });
           break;
         default:
           break;

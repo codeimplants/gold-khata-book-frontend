@@ -29,6 +29,8 @@ export default function UseGoldSheet({
   hint,
   onConfirm,
   t,
+  metal = 'gold',
+  returning = false,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -41,8 +43,38 @@ export default function UseGoldSheet({
   /** Posts it. Resolves to an error message, or null when done. */
   onConfirm: (weight: number) => Promise<string | null>;
   t: any;
+  /**
+   * Silver held works the same way, gram for gram, so it is this sheet with
+   * silver's words rather than a second copy of it. `heldGold` and `goldDue`
+   * then carry grams of silver.
+   */
+  metal?: 'gold' | 'silver';
+  /** Handing held silver back rather than using it: no due to stop at. */
+  returning?: boolean;
 }) {
   const gm = t('common.gramShort') || 'gm';
+  const silver = metal === 'silver';
+  const L = silver
+    ? {
+      title: returning
+        ? (t('account.returnSilverTitle') || 'Return silver held?')
+        : (t('account.useSilverTitle') || 'Use silver held?'),
+      field: returning
+        ? (t('account.silverToReturn') || 'Silver to hand back')
+        : (t('account.silverToUse') || 'Silver to use'),
+      clears: t('silver.clearsDue') || 'Clears the silver due.',
+      leaves: t('silver.leavesDue') || '{grams} of silver stays owed.',
+      confirm: returning
+        ? (t('account.returnSilverConfirm') || 'Return silver')
+        : (t('account.useSilverConfirm') || 'Use silver held'),
+    }
+    : {
+      title: t('account.useGoldTitle') || 'Use gold held?',
+      field: t('account.goldToUse') || 'Gold to use, fine 99.50',
+      clears: t('account.clearsDue') || 'Clears the gold due.',
+      leaves: t('account.leavesDue') || '{grams} of gold stays owed.',
+      confirm: t('account.useGoldConfirm') || 'Use gold held',
+    };
   const full = round3(Math.max(0, Math.min(heldGold, goldDue)));
   const half = round3(full / 2);
   const [weight, setWeight] = React.useState('');
@@ -84,7 +116,7 @@ export default function UseGoldSheet({
     <LedgerSheet
       visible={visible}
       onClose={onClose}
-      title={t('account.useGoldTitle') || 'Use gold held?'}
+      title={L.title}
       subtitle={subtitle}
       closeLabel={t('common.close') || 'Close'}
     >
@@ -107,7 +139,7 @@ export default function UseGoldSheet({
       </View>
 
       <SheetField
-        label={t('account.goldToUse') || 'Gold to use, fine 99.50'}
+        label={L.field}
         suffix={gm}
         keyboardType="decimal-pad"
         value={weight}
@@ -122,12 +154,12 @@ export default function UseGoldSheet({
         <SheetNote tone="warn">
           {(t('account.moreThanDue') || 'That is more than the {due} owed.').replace('{due}', formatGrams(goldDue, gm))}
         </SheetNote>
-      ) : w > 0 ? (
+      ) : w > 0 && !returning ? (
         <SheetNote tone="good">
           <Text style={tabularNums}>
             {stillDue <= WEIGHT_SETTLED_EPSILON_GM
-              ? (t('account.clearsDue') || 'Clears the gold due.')
-              : (t('account.leavesDue') || '{grams} of gold stays owed.').replace('{grams}', formatGrams(stillDue, gm))}
+              ? L.clears
+              : L.leaves.replace('{grams}', formatGrams(stillDue, gm))}
             {staysHeld > WEIGHT_SETTLED_EPSILON_GM
               ? ` ${(t('account.goldStaysHeld') || '{grams} stays held.').replace('{grams}', formatGrams(staysHeld, gm))}`
               : ''}
@@ -140,8 +172,10 @@ export default function UseGoldSheet({
 
       <SheetButton
         label={w > 0
-          ? (t('account.useGrams') || 'Use {grams}').replace('{grams}', formatGrams(w, gm))
-          : (t('account.useGoldConfirm') || 'Use gold held')}
+          ? (returning
+            ? (t('account.returnGrams') || 'Return {grams}')
+            : (t('account.useGrams') || 'Use {grams}')).replace('{grams}', formatGrams(w, gm))
+          : L.confirm}
         onPress={save}
         disabled={!canSave}
         busy={busy}

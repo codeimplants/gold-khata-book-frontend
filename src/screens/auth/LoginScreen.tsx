@@ -85,9 +85,9 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <AuthLayout
       appName={t('appName') || 'Gold Khata Book'}
-      tagline={t('welcome.tagline') || 'Wholesale gold khata'}
+      tagline={t('welcome.tagline') || 'Wholesale gold and silver khata'}
       points={[
-        t('welcome.point1') || 'Fine gold and cash dues for every retailer',
+        t('welcome.point1') || 'Gold, silver and cash dues for every retailer',
         t('welcome.point2') || 'A day book of sales and receipts',
         t('welcome.point3') || 'Statements and reminders on WhatsApp',
       ]}

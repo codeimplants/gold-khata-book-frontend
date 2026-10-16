@@ -70,3 +70,48 @@ export const planGoldApplication = (orders: Order[], grams: number): GoldStep[] 
   }
   return steps;
 };
+
+/* ---------------------------------------------------------------------------
+ * SILVER
+ *
+ * The same plans for the silver account: grams of silver owed on silver lines
+ * (`orderOutstanding(o).silver`), never the gold figures above. Cash fixed at a
+ * silver rate buys silver grams; silver held goes on gram for gram.
+ * ------------------------------------------------------------------------- */
+
+/** Pending sales with silver still owed, oldest first. */
+export const salesOwingSilver = (orders: Order[]): Order[] =>
+  orders
+    .filter((o: any) => !o?.deletedAt && orderOutstanding(o).silver > 0)
+    .sort((a, b) => at(a) - at(b));
+
+/** Held cash spread over the sales owing silver, at `rate` per gram of silver. */
+export const planSilverCashAllocation = (orders: Order[], amount: number, rate: number): CashStep[] => {
+  if (!(amount >= CASH_SETTLED_EPSILON) || !(rate > 0)) return [];
+  const steps: CashStep[] = [];
+  let left = round2(amount);
+  for (const order of salesOwingSilver(orders)) {
+    if (left < CASH_SETTLED_EPSILON) break;
+    const worth = round2(orderOutstanding(order).silver * rate);
+    const take = Math.min(left, worth);
+    if (take < CASH_SETTLED_EPSILON) continue;
+    steps.push({ orderId: order.id, amount: take });
+    left = round2(left - take);
+  }
+  return steps;
+};
+
+/** Held silver spread over the sales owing silver, gram for gram. */
+export const planSilverApplication = (orders: Order[], grams: number): GoldStep[] => {
+  if (!(grams > WEIGHT_SETTLED_EPSILON_GM)) return [];
+  const steps: GoldStep[] = [];
+  let left = grams;
+  for (const order of salesOwingSilver(orders)) {
+    if (left <= WEIGHT_SETTLED_EPSILON_GM) break;
+    const take = Math.min(left, orderOutstanding(order).silver);
+    if (take <= WEIGHT_SETTLED_EPSILON_GM) continue;
+    steps.push({ orderId: order.id, weight: take });
+    left -= take;
+  }
+  return steps;
+};

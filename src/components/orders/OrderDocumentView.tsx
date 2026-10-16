@@ -357,10 +357,34 @@ const OrderDocumentView = ({
                       item.grossWeight ? `${t('orders.grossShort') || 'Gross'} ${formatNumber(item.grossWeight, 3)}` : '',
                       item.packetWeight ? `${t('orders.packetShort') || 'Pkt'} ${formatNumber(item.packetWeight, 3)}` : '',
                     ]
-                    : [item.purity, item.pieces ? `${item.pieces} ${t('orders.details.piecesShort') || 'Pcs'}` : ''])
+                    : [
+                      item.purity,
+                      // A wholesale gold line's count is `quantity`; `pieces`
+                      // is the retail field it replaced.
+                      Number(item.quantity) > 1
+                        ? `${item.quantity} ${t('orders.details.piecesShort') || 'Pcs'}`
+                        : item.pieces ? `${item.pieces} ${t('orders.details.piecesShort') || 'Pcs'}` : '',
+                    ])
                     .filter(Boolean)
                     .join(' • ')}
                 </Text>
+                {/* Each piece's own weight, when the line was weighed piece by
+                    piece: what a disputed piece is answered from. Silver shows
+                    each piece's net. */}
+                {Array.isArray(item.pieceWeights) && item.pieceWeights.length > 1 && (
+                  <Text fontSize="$2xs" color="$coolGray500">
+                    {t('orders.eachPiece') || 'Each'}:{' '}
+                    {item.pieceWeights
+                      .map((p: any) => formatNumber(
+                        isSilverLine
+                          ? Math.max(0, (Number(p.weight) || 0) - (Number(p.packetWeight) || 0))
+                          : Number(p.weight) || 0,
+                        3,
+                      ))
+                      .join(' · ')}{' '}
+                    {t('common.gramShort') || 'gm'}
+                  </Text>
+                )}
                 {!!makingDetail && (
                   <Text fontSize="$2xs" color="$coolGray400">
                     {t('invoicePreview.makingCharges') || 'Making Charges'}: {makingDetail}

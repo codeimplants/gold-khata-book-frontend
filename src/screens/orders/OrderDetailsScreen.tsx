@@ -51,6 +51,8 @@ import {
   fetchCustomers,
   addPaymentToAdvanceOrder,
   addSilverPaymentToOrder,
+  applySilverHeld,
+  updateSilverPayment,
   fetchRetailerAccount,
   applyMeltCredit,
   allocateCash,
@@ -316,6 +318,10 @@ export default function OrderDetailsScreen() {
       weightCovered: paymentLegs(p).totalGrams.toFixed(3),
       purity: p.purity || '',
       notes: p.notes || p.remarks || '',
+      // What came in besides cash, and which account it went to, so the bill
+      // can print a metal receipt as metal (see PaymentDetail.metalGrams).
+      metal: paymentLegs(p).isSilver ? 'silver' as const : 'gold' as const,
+      metalGrams: paymentLegs(p).metalGrams.toFixed(3),
     }));
 
     const totalWeightValue = Number(order.totalWeight ?? 0);
@@ -893,9 +899,76 @@ export default function OrderDetailsScreen() {
   };
   const canUseGold = owesMetal && meltToApply > WEIGHT_SETTLED_EPSILON_GM;
   const canFixRate = owesMetal && creditCashAvailable >= CASH_SETTLED_EPSILON;
-  const canUseCredit = canUseGold || canFixRate;
+
+  /**
+   * The silver twins, for this sale's silver due: silver held put on gram for
+   * gram, and held cash fixed at a silver rate. Capped at what the sale owes
+   * for the same reason gold is: past it, the surplus only comes back onto
+   * the account as held cash.
+   */
+  const silverDueHere = order?.status === 'pending' ? Number((order as any)?.remainingSilverWeight || 0) : 0;
+  const owesSilver = silverDueHere > WEIGHT_SETTLED_EPSILON_GM;
+  const silverHeldAvailable = Number(account?.silverHeld || 0);
+  const canUseSilver = owesSilver && silverHeldAvailable > WEIGHT_SETTLED_EPSILON_GM;
+  const canFixSilver = owesSilver && creditCashAvailable >= CASH_SETTLED_EPSILON;
+
+  const canUseCredit = canUseGold || canFixRate || canUseSilver || canFixSilver;
   const [fixRateOpen, setFixRateOpen] = React.useState(false);
   const [useGoldOpen, setUseGoldOpen] = React.useState(false);
+  const [fixSilverOpen, setFixSilverOpen] = React.useState(false);
+  const [useSilverOpen, setUseSilverOpen] = React.useState(false);
+  /** The silver receipt being edited, when the silver sheet is open for one. */
+  const [editingSilver, setEditingSilver] = React.useState<any | null>(null);
+
+  const onUseSilverHeld = React.useCallback(async (weight: number): Promise<string | null> => {
+    if (!order?.customerId || !order?.id) return null;
+    const res: any = await dispatch(applySilverHeld({
+      customerId: order.customerId,
+      orderId: order.id,
+      weight,
+    }) as any);
+    if (!applySilverHeld.fulfilled.match(res)) {
+      return String(res.payload || t('account.useSilverFailed') || 'Could not use the silver held');
+    }
+    toast.success(t('account.silverUsedToast') || 'Silver held put against their dues');
+    return null;
+  }, [order, dispatch, t]);
+
+  const onFixSilverHere = React.useCallback(async (amount: number, rate: number): Promise<string | null> => {
+    if (!order?.customerId || !order?.id) return null;
+    const res: any = await dispatch(allocateCash({
+      customerId: order.customerId,
+      orderId: order.id,
+      amount,
+      goldRate: rate,
+      metal: 'silver',
+    }) as any);
+    if (!allocateCash.fulfilled.match(res)) {
+      return String(res.payload || t('account.fixRateFailed') || 'Could not fix the rate');
+    }
+    toast.success(
+      (t('account.silverRateFixedToast') || 'Rate fixed. {grams} off their silver due.')
+        .replace('{grams}', formatGrams(amount / rate, t('common.gramShort') || 'gm')),
+    );
+    return null;
+  }, [order, dispatch, t]);
+
+  /** Saves an edited silver receipt: its cash, rate and silver. */
+  const onEditSilver = async (p: { amount: number; silverRate: number; silverWeight: number }) => {
+    if (!order || !editingSilver?._id) return null;
+    const action = await dispatch(updateSilverPayment({
+      orderId: order.id,
+      paymentId: String(editingSilver._id),
+      amount: p.amount,
+      silverRate: p.silverRate,
+      silverWeight: p.silverWeight,
+    }) as any);
+    if (!updateSilverPayment.fulfilled.match(action)) {
+      return String(action.payload || t('silver.updateFailed') || 'Could not update the silver receipt');
+    }
+    toast.success(t('silver.updated') || 'Silver receipt updated');
+    return null;
+  };
 
   /** Gold held for the retailer (advances, melt credit) onto this sale, gram
    *  for gram, all of what the sale owes or any part of it. No rate: it is
@@ -1171,6 +1244,14 @@ export default function OrderDetailsScreen() {
   };
 
   const openEditPayment = (p: any) => {
+    // A silver receipt edits in the silver sheet: the gold one would send
+    // gold's shape and drop the silver it was paid in.
+    if (p?.settles === 'silver') {
+      setShowPaymentDetailsModal(false);
+      setEditingSilver(p);
+      setShowSilverSheet(true);
+      return;
+    }
     setSelectedPayment(p);
     setPaymentAmount(String(p.amount));
     setPaymentNotes(p.notes || '');
@@ -1473,7 +1554,57 @@ export default function OrderDetailsScreen() {
                   <Pressable onPress={() => setFixRateOpen(true)}>
                     <Box borderWidth={1} borderColor={Brand.primary} rounded="$md" px="$3.5" py="$2">
                       <Text color={Brand.primary} fontWeight="$bold" fontSize={13}>
-                        {t('account.fixRate') || 'Fix rate'}
+                        {canFixSilver
+                          ? (t('account.fixGold') || 'Fix for gold')
+                          : (t('account.fixRate') || 'Fix rate')}
+                      </Text>
+                    </Box>
+                  </Pressable>
+                </HStack>
+              )}
+
+              {/* Silver held, onto this sale's silver due. */}
+              {canUseSilver && (
+                <HStack alignItems="center" justifyContent="space-between" mt={canUseGold || canFixRate ? '$3' : '$0'}>
+                  <VStack flex={1} mr="$3">
+                    <Text fontSize={15} fontWeight="$bold" color={Brand.ink} style={tabularNums}>
+                      {formatGrams(silverHeldAvailable, t('common.gramShort') || 'gm')} {t('statement.silverWord') || 'silver'}
+                    </Text>
+                    <Text fontSize={12} color={Brand.inkMuted}>
+                      {t('account.silverHeldHint') || 'Silver held'}
+                    </Text>
+                  </VStack>
+                  <Pressable onPress={() => setUseSilverOpen(true)}>
+                    <Box bg={Brand.primary} rounded="$md" px="$3.5" py="$2">
+                      <Text color="$white" fontWeight="$bold" fontSize={13}>
+                        {t('account.useGold') || 'Use'}
+                      </Text>
+                    </Box>
+                  </Pressable>
+                </HStack>
+              )}
+
+              {/* Held cash fixed at a SILVER rate onto the silver due. Its own
+                  row, so one cash amount is never split between metals by a
+                  guess. Shows the cash only when the gold row above did not. */}
+              {canFixSilver && (
+                <HStack alignItems="center" justifyContent="space-between" mt={canUseGold || canFixRate || canUseSilver ? '$3' : '$0'}>
+                  <VStack flex={1} mr="$3">
+                    {!canFixRate && (
+                      <Text fontSize={15} fontWeight="$bold" color={Brand.ink} style={tabularNums}>
+                        {formatCurrencyValue(creditCashAvailable)}
+                      </Text>
+                    )}
+                    <Text fontSize={12} color={Brand.inkMuted}>
+                      {canFixRate
+                        ? (t('account.orForSilver') || 'Or fix it onto the silver due')
+                        : (t('account.cashHeldRateLater') || 'Cash held · rate not fixed')}
+                    </Text>
+                  </VStack>
+                  <Pressable onPress={() => setFixSilverOpen(true)}>
+                    <Box borderWidth={1} borderColor={Brand.primary} rounded="$md" px="$3.5" py="$2">
+                      <Text color={Brand.primary} fontWeight="$bold" fontSize={13}>
+                        {t('account.fixSilver') || 'Fix for silver'}
                       </Text>
                     </Box>
                   </Pressable>
@@ -2163,10 +2294,45 @@ export default function OrderDetailsScreen() {
 
       <ReceiveSilverSheet
         visible={showSilverSheet}
-        onClose={() => setShowSilverSheet(false)}
+        onClose={() => { setShowSilverSheet(false); setEditingSilver(null); }}
         silverDue={Number((order as any)?.remainingSilverWeight || 0)}
         defaultRate={silverRate.rate}
-        onConfirm={onReceiveSilver}
+        onConfirm={editingSilver ? onEditSilver : onReceiveSilver}
+        editing={editingSilver
+          ? {
+            amount: Number(editingSilver.amount || 0),
+            silverRate: Number(editingSilver.goldRate || 0),
+            silverWeight: Number(editingSilver.silverWeight || 0),
+          }
+          : undefined}
+        t={t}
+      />
+
+      <UseGoldSheet
+        metal="silver"
+        visible={useSilverOpen}
+        onClose={() => setUseSilverOpen(false)}
+        heldGold={silverHeldAvailable}
+        goldDue={silverDueHere}
+        subtitle={(t('account.useSilverSubtitleSale') || '{held} held · {due} still due on this sale')
+          .replace('{held}', formatGrams(silverHeldAvailable, t('common.gramShort') || 'gm'))
+          .replace('{due}', formatGrams(silverDueHere, t('common.gramShort') || 'gm'))}
+        onConfirm={onUseSilverHeld}
+        t={t}
+      />
+
+      <FixRateSheet
+        metal="silver"
+        visible={fixSilverOpen}
+        onClose={() => setFixSilverOpen(false)}
+        heldCash={creditCashAvailable}
+        goldDue={silverDueHere}
+        defaultRate={silverRate.rate}
+        subtitle={(t('account.fixSilverSubtitleSale') || '{cash} held · {silver} silver still due on this sale')
+          .replace('{cash}', formatCurrencyValue(creditCashAvailable))
+          .replace('{silver}', formatGrams(silverDueHere, t('common.gramShort') || 'gm'))}
+        hint={t('account.fixSilverHintSale') || 'Their silver due on this sale comes down by the grams this buys.'}
+        onConfirm={onFixSilverHere}
         t={t}
       />
 
@@ -2624,7 +2790,11 @@ export default function OrderDetailsScreen() {
                       fontWeight="$black"
                       color="$coolGray900"
                     >
-                      ₹{selectedPayment.amount.toLocaleString()}
+                      {/* Metal-only: the weight is the headline, as in the
+                          receipts list. "₹0" read as a receipt of nothing. */}
+                      {(selectedPayment.amount || 0) > 0 || !(paymentLegs(selectedPayment).metalGrams > 0)
+                        ? `₹${(selectedPayment.amount || 0).toLocaleString()}`
+                        : `${paymentLegs(selectedPayment).metalGrams.toFixed(3)} gm${paymentLegs(selectedPayment).isSilver ? ` ${t('statement.silverWord') || 'silver'}` : ''}`}
                     </Text>
                     <Text fontSize="$xs" color="$coolGray400">
                       {new Date(selectedPayment.date).toLocaleDateString(
@@ -2647,17 +2817,23 @@ export default function OrderDetailsScreen() {
                   borderColor="$coolGray100"
                 >
                   <VStack space="md">
+                    {/* A silver receipt has no purity; the 22K fallback here
+                        read a silver receipt as gold. */}
+                    {selectedPayment.settles !== 'silver' && (
+                      <HStack justifyContent="space-between">
+                        <Text color="$coolGray500">
+                          {t('invoice.labels.purity') || 'Purity'}
+                        </Text>
+                        <Text fontWeight="$bold" color="$coolGray800">
+                          {getPurityLabel(selectedPayment.purity || '22K - 91.6%')}
+                        </Text>
+                      </HStack>
+                    )}
                     <HStack justifyContent="space-between">
                       <Text color="$coolGray500">
-                        {t('invoice.labels.purity') || 'Purity'}
-                      </Text>
-                      <Text fontWeight="$bold" color="$coolGray800">
-                        {getPurityLabel(selectedPayment.purity || '22K - 91.6%')}
-                      </Text>
-                    </HStack>
-                    <HStack justifyContent="space-between">
-                      <Text color="$coolGray500">
-                        {t('orders.details.goldRate') || 'Gold Rate'}
+                        {selectedPayment.settles === 'silver'
+                          ? (t('silver.rateLabel') || 'Silver rate, per gram')
+                          : (t('orders.details.goldRate') || 'Gold Rate')}
                       </Text>
                       <Text fontWeight="$bold" color="$coolGray800">
                         ₹{selectedPayment.goldRate.toLocaleString()}/gm
@@ -2667,8 +2843,9 @@ export default function OrderDetailsScreen() {
                       <Text color="$coolGray500">
                         {t('orders.details.weightCovered') || 'Weight Covered'}
                       </Text>
-                      <Text fontWeight="$bold" color={PURPLE}>
+                      <Text fontWeight="$bold" color={selectedPayment.settles === 'silver' ? Brand.silver : PURPLE}>
                         {paymentLegs(selectedPayment).totalGrams.toFixed(3)} gm
+                        {selectedPayment.settles === 'silver' ? ` ${t('statement.silverWord') || 'silver'}` : ''}
                       </Text>
                     </HStack>
                     {selectedPayment.notes && (

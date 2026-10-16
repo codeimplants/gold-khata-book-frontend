@@ -429,6 +429,17 @@ export interface PaymentDetail {
   weightCovered?: string;
   purity?: string;
   notes?: string;
+  /**
+   * Which account the payment settled: 'silver' for a silver receipt. Missing
+   * is gold, as every payment before silver existed.
+   */
+  metal?: 'gold' | 'silver';
+  /**
+   * Metal handed over as this payment, in grams: fine 99.50 for gold, grams
+   * of silver for silver. A receipt paid in metal alone has no rupee amount,
+   * and printed as "- Rs 0" without this.
+   */
+  metalGrams?: string;
 }
 
 export interface PaymentSummary {

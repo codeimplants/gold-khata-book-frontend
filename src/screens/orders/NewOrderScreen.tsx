@@ -18,10 +18,15 @@ import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import {
   createWholesaleOrder, fetchCustomers, fetchMetalRates, fetchCatalogProducts,
   fetchRetailerAccount, applyMeltCredit, addMetalPaymentToOrder, allocateCash,
-  addSilverPaymentToOrder, fetchShopDetails,
+  addSilverPaymentToOrder, fetchShopDetails, applySilverHeld,
 } from '../../store/data/dataSlice';
 import { useShopRate, useSilverRate } from '../../hooks/useShopRate';
 import { silverNetWeight, silverLineValue } from '../../utils/silverPricing';
+import QuantityStepper from '../../components/orders/QuantityStepper';
+import PieceWeights, { WeighModeLink } from '../../components/orders/PieceWeights';
+import {
+  MAX_PIECE_ROWS, type PieceDraft, asField, goldTotal, pieceCount, resizePieces, silverTotals as sumSilverPieces, weighsEach,
+} from '../../utils/pieceWeights';
 import FloatingLabelInput from '../../components/common/FloatingLabelInput';
 import ItemPicker, { type ItemPick } from '../../components/catalog/ItemPicker';
 import ItemNameField from '../../components/catalog/ItemNameField';
@@ -46,6 +51,11 @@ interface DraftItem {
   rate: string;
   /** Follows the live rate until the user types over it. */
   useLiveRate: boolean;
+  /** Pieces on the line. Above one, each is weighed on its own row unless
+   *  `together` (see utils/pieceWeights.ts), and `weight` is their sum. */
+  quantity: string;
+  together: boolean;
+  pieces: PieceDraft[];
 }
 
 /**
@@ -67,6 +77,9 @@ const blankItem = (shopRate?: number): DraftItem => ({
   // Off either way. Ticking it makes the line follow the rate as it moves;
   // until then nothing writes to the field but the user.
   useLiveRate: false,
+  quantity: '1',
+  together: false,
+  pieces: [],
 });
 
 const num = (v: string) => Number(String(v ?? '').trim()) || 0;
@@ -91,6 +104,10 @@ interface SilverDraft {
   /** True once the user has typed a net weight of their own. */
   netTouched: boolean;
   rate: string;
+  /** As on a gold line: weighed lot-wise (`together`) or piece by piece,
+   *  each piece a gross and a packet, the line's weights their sums. */
+  together: boolean;
+  pieces: PieceDraft[];
 }
 
 /** Seeded with today's silver rate, the shop's own or the live one. Unlike
@@ -98,16 +115,30 @@ interface SilverDraft {
 const blankSilver = (rate?: number): SilverDraft => ({
   key: Math.random().toString(36).slice(2),
   itemName: '',
-  quantity: '',
+  quantity: '1',
   grossWeight: '',
   packetWeight: '',
   netWeight: '',
   netTouched: false,
   rate: rate && rate > 0 ? String(rate) : '',
+  together: false,
+  pieces: [],
 });
 
-/** A silver line can be saved once it has a name and some net weight. */
-const silverDone = (s: SilverDraft) => s.itemName.trim().length > 0 && num(s.netWeight) > 0;
+/** Every piece weighed, when the line is weighed piece by piece. A blank row
+ *  would save as a piece weighing nothing. */
+const piecesWeighed = (quantity: string, together: boolean, pieces: PieceDraft[]) =>
+  !weighsEach(quantity, together) || pieces.every(p => num(p.weight) > 0);
+
+/** A silver line can be saved once it has a name and some net weight, and
+ *  every piece is weighed. */
+const silverDone = (s: SilverDraft) =>
+  s.itemName.trim().length > 0 && num(s.netWeight) > 0 && piecesWeighed(s.quantity, s.together, s.pieces);
+
+/** A gold line can be priced once it has a weight and purity, and every piece
+ *  is weighed. */
+const goldReady = (i: DraftItem) =>
+  isLinePriceable({ weight: i.weight, purity: i.purity }) && piecesWeighed(i.quantity, i.together, i.pieces);
 
 const NewOrderScreen = () => {
   const navigation: any = useNavigation();
@@ -271,6 +302,12 @@ const NewOrderScreen = () => {
   const heldCash = useAppSelector(
     s => (customerId ? s.data.retailerAccounts[customerId]?.heldCash : 0) || 0,
   );
+  /** Grams of silver held for the retailer (a silver advance), spendable on
+   *  this sale's silver lines gram for gram. */
+  const silverHeld = useAppSelector(
+    s => (customerId ? s.data.retailerAccounts[customerId]?.silverHeld : 0) || 0,
+  );
+  const [paySilverHeld, setPaySilverHeld] = React.useState('');
 
   React.useEffect(() => {
     if (!customerId) return;
@@ -279,7 +316,7 @@ const NewOrderScreen = () => {
 
   // A retailer swap must not carry the previous one's credit draw across —
   // that weight belongs to an account this order is no longer against.
-  React.useEffect(() => { setPayMelt(''); setPayHeld(''); }, [customerId]);
+  React.useEffect(() => { setPayMelt(''); setPayHeld(''); setPaySilverHeld(''); }, [customerId]);
 
   const meltAvailable = meltCredit;
   const heldApplied = Math.min(num(payHeld), heldCash);
@@ -310,7 +347,8 @@ const NewOrderScreen = () => {
         const n = parseFloat(raw.replace(/[^0-9.]/g, ''));
         return Number.isFinite(n) && n > 0 ? String(n) : i.purity;
       })(),
-      weight: saved.grossWt ? String(saved.grossWt) : i.weight,
+      // Not over a line weighed piece by piece: its weight is the pieces' sum.
+      weight: saved.grossWt && !weighsEach(i.quantity, i.together) ? String(saved.grossWt) : i.weight,
     } : i));
   };
 
@@ -356,6 +394,86 @@ const NewOrderScreen = () => {
       return next;
     }));
 
+  /**
+   * Quantity changed. Above one (and up to MAX_PIECE_ROWS) the line gets a
+   * row per piece and its weight becomes their sum. The first time in, a
+   * weight already typed becomes piece 1. An empty field is someone mid-way
+   * through typing a new number, so nothing is reshaped until there is one.
+   */
+  const setGoldQuantity = (key: string, q: string) =>
+    setItems(prev => prev.map(i => {
+      if (i.key !== key) return i;
+      const next = { ...i, quantity: q };
+      if (!q.trim()) return next;
+      if (weighsEach(q, i.together)) {
+        const seed = i.pieces.length ? i.pieces : (num(i.weight) > 0 ? [{ weight: i.weight, packet: '' }] : []);
+        next.pieces = resizePieces(seed, pieceCount(q));
+        next.weight = asField(goldTotal(next.pieces));
+      } else {
+        // Back to one weight (one piece, a lot, or too many rows): the total
+        // stays in the field, editable.
+        next.pieces = [];
+      }
+      return next;
+    }));
+
+  const setGoldPiece = (key: string, index: number, change: Partial<PieceDraft>) =>
+    setItems(prev => prev.map(i => {
+      if (i.key !== key) return i;
+      const pieces = i.pieces.map((p, j) => (j === index ? { ...p, ...change } : p));
+      return { ...i, pieces, weight: asField(goldTotal(pieces)) };
+    }));
+
+  /** Weigh the lot together (one total) or each piece (fresh rows). */
+  const setGoldTogether = (key: string, together: boolean) =>
+    setItems(prev => prev.map(i => {
+      if (i.key !== key) return i;
+      if (together) return { ...i, together: true, pieces: [] };
+      const pieces = resizePieces([], pieceCount(i.quantity));
+      return { ...i, together: false, pieces, weight: asField(goldTotal(pieces)) };
+    }));
+
+  /** A silver line's gross, packet and net from its pieces. */
+  const withPieceTotals = (s: SilverDraft): SilverDraft => {
+    const sum = sumSilverPieces(s.pieces);
+    return { ...s, grossWeight: asField(sum.gross), packetWeight: asField(sum.packet), netWeight: asField(sum.net), netTouched: false };
+  };
+
+  const setSilverQuantity = (key: string, q: string) =>
+    setSilverItems(prev => prev.map(s => {
+      if (s.key !== key) return s;
+      const next = { ...s, quantity: q };
+      if (!q.trim()) return next;
+      if (weighsEach(q, s.together)) {
+        const seed = s.pieces.length
+          ? s.pieces
+          : (num(s.grossWeight) > 0 ? [{ weight: s.grossWeight, packet: s.packetWeight }] : []);
+        return withPieceTotals({ ...next, pieces: resizePieces(seed, pieceCount(q)) });
+      }
+      return { ...next, pieces: [] };
+    }));
+
+  const setSilverPiece = (key: string, index: number, change: Partial<PieceDraft>) =>
+    setSilverItems(prev => prev.map(s => {
+      if (s.key !== key) return s;
+      return withPieceTotals({ ...s, pieces: s.pieces.map((p, j) => (j === index ? { ...p, ...change } : p)) });
+    }));
+
+  const setSilverTogether = (key: string, together: boolean) =>
+    setSilverItems(prev => prev.map(s => {
+      if (s.key !== key) return s;
+      if (together) return { ...s, together: true, pieces: [] };
+      return withPieceTotals({ ...s, together: false, pieces: resizePieces([], pieceCount(s.quantity)) });
+    }));
+
+  const pieceLabels = {
+    piece: t('orders.pieceWord') || 'Piece',
+    weight: t('orders.weightGrams') || 'Weight (grams)',
+    gross: t('orders.grossShort') || 'Gross',
+    packet: t('orders.packetShort') || 'Pkt',
+    net: t('orders.netShort') || 'Net',
+  };
+
   const addSilverItem = () => {
     const next = blankSilver(silverRate.rate);
     setSilverItems(prev => [...prev, next]);
@@ -374,9 +492,14 @@ const NewOrderScreen = () => {
     return { net, value, rate };
   }, [silverItems, silverRate.rate]);
 
+  /** Clamped like gold held: an over-typed figure must not show the silver as
+   *  settled by silver that is not there. */
+  const silverHeldApplied = Math.min(num(paySilverHeld), silverHeld);
+  const silverHeldOverdrawn = num(paySilverHeld) > silverHeld + 0.0005;
+
   const silverSettling = React.useMemo(() => {
     const cashBuys = num(paySilverCash) > 0 && silverTotals.rate > 0 ? num(paySilverCash) / silverTotals.rate : 0;
-    const covered = cashBuys + num(paySilver);
+    const covered = cashBuys + num(paySilver) + silverHeldApplied;
     const difference = silverTotals.net - covered;
     return {
       covered,
@@ -385,12 +508,12 @@ const NewOrderScreen = () => {
       isOver: silverTotals.net > 0 && difference < -0.0005,
       isExact: silverTotals.net > 0 && Math.abs(difference) <= 0.0005,
     };
-  }, [paySilverCash, paySilver, silverTotals]);
+  }, [paySilverCash, paySilver, silverHeldApplied, silverTotals]);
 
   const priced = React.useMemo(
     () => items.map(i => ({
       key: i.key,
-      priceable: isLinePriceable({ weight: i.weight, purity: i.purity }),
+      priceable: goldReady(i),
       ...priceLine({ weight: num(i.weight), purity: num(i.purity), wastage: num(i.wastage) }),
       // `|| liveRate` mirrors what onSave sends for a line with no rate typed.
       // Without it a blank rate showed VALUE Rs.0 on screen while the order
@@ -467,19 +590,18 @@ const NewOrderScreen = () => {
   }, [payCash, payGold, meltApplied, heldApplied, settlementRate, totals.fine]);
 
   /** Every row has to be priceable before another can be opened. */
-  const canAddGold = items.length > 0 && items.every(i =>
-    isLinePriceable({ weight: i.weight, purity: i.purity }) && i.itemName.trim().length > 0,
-  );
+  const canAddGold = items.length > 0 && items.every(i => goldReady(i) && i.itemName.trim().length > 0);
   const canAddSilver = silverItems.length > 0 && silverItems.every(silverDone);
   const canAddItem = metalTab === 'silver' ? canAddSilver : canAddGold;
   const hasGold = priced.some(p => p.priceable);
   const hasSilver = silverUsable.length > 0;
 
-  const canSave = !!customerId && (hasGold || hasSilver) && !saving && !meltOverdrawn && !heldOverdrawn;
+  const canSave = !!customerId && (hasGold || hasSilver) && !saving && !meltOverdrawn && !heldOverdrawn
+    && !(hasSilver && silverHeldOverdrawn);
 
   const onSave = async () => {
     if (!customerId) { toast.error(t('orders.selectRetailerFirst') || 'Choose a retailer first'); return; }
-    const usable = items.filter(i => isLinePriceable({ weight: i.weight, purity: i.purity }));
+    const usable = items.filter(goldReady);
     if (usable.length === 0 && silverUsable.length === 0) { toast.error(t('orders.addOneItem') || 'Add at least one item with a weight and purity'); return; }
 
     if (meltOverdrawn) {
@@ -499,15 +621,23 @@ const NewOrderScreen = () => {
         purity: num(i.purity),
         wastage: num(i.wastage),
         rate: num(i.rate) || liveRate,
+        quantity: pieceCount(i.quantity),
+        // The pieces, when weighed one by one; the server sums them.
+        ...(weighsEach(i.quantity, i.together)
+          ? { pieceWeights: i.pieces.map(p => ({ weight: num(p.weight) })) }
+          : {}),
       })).concat(silverUsable.map(s => ({
         metal: 'silver' as const,
         itemName: s.itemName.trim(),
         // On a silver line `weight` is the net weight: the grams owed.
         weight: num(s.netWeight),
         rate: num(s.rate) || silverRate.rate,
-        quantity: num(s.quantity) || undefined,
+        quantity: pieceCount(s.quantity),
         grossWeight: num(s.grossWeight) || undefined,
         packetWeight: num(s.packetWeight) || undefined,
+        ...(weighsEach(s.quantity, s.together)
+          ? { pieceWeights: s.pieces.map(p => ({ weight: num(p.weight), packetWeight: num(p.packet) || undefined })) }
+          : {}),
       })) as any),
       /**
        * The SAME rate the screen priced the payment at, not the live one.
@@ -593,6 +723,20 @@ const NewOrderScreen = () => {
       }) as any);
       if (!addSilverPaymentToOrder.fulfilled.match(silverLeg)) {
         failures.push(String(silverLeg.payload || t('orders.silverWord') || 'Silver'));
+      }
+    }
+
+    // Silver held for the retailer, gram for gram. Posted after the order
+    // exists, like gold held; the server re-checks it against the account.
+    if (orderId && hasSilver && silverHeldApplied > 0.0005) {
+      const heldLeg = await dispatch(applySilverHeld({
+        customerId,
+        orderId,
+        weight: Math.round(silverHeldApplied * 1000) / 1000,
+        date: orderDate,
+      }) as any);
+      if (!applySilverHeld.fulfilled.match(heldLeg)) {
+        failures.push(String(heldLeg.payload || t('orders.silverHeld') || 'Silver held'));
       }
     }
 
@@ -814,7 +958,7 @@ const NewOrderScreen = () => {
                   {/* The summary line the collapsed row is worth having. */}
                   {done && !expanded && (
                     <Text fontSize={12} color="$coolGray500" mt="$1">
-                      {num(item.weight)} {gramShort} · {num(item.purity)}% {t('orders.purityWord') || 'purity'} · {num(item.wastage)}% {t('orders.wastageWord') || 'wastage'} · {formatCurrencyValue(num(item.rate))}/{gramShort}
+                      {pieceCount(item.quantity) > 1 ? `${pieceCount(item.quantity)} ${t('orders.pcsShort') || 'pcs'} · ` : ''}{num(item.weight)} {gramShort} · {num(item.purity)}% {t('orders.purityWord') || 'purity'} · {num(item.wastage)}% {t('orders.wastageWord') || 'wastage'} · {formatCurrencyValue(num(item.rate))}/{gramShort}
                     </Text>
                   )}
                 </Pressable>
@@ -833,14 +977,50 @@ const NewOrderScreen = () => {
                     onPress={() => setNamePickerFor(item.key)}
                   />
 
-                  <HStack space="md">
+                  {/* Quantity, and the weight: typed for one piece or a lot,
+                      the pieces' sum when they are weighed one by one. */}
+                  <HStack space="md" alignItems="flex-end">
+                    <QuantityStepper
+                      label={t('orders.quantity') || 'Quantity'}
+                      value={item.quantity}
+                      onChange={q => setGoldQuantity(item.key, q)}
+                    />
                     <FloatingLabelInput
-                      label={t('orders.weightGrams') || 'Weight (grams)'}
+                      label={weighsEach(item.quantity, item.together)
+                        ? (t('orders.totalWeightGrams') || 'Total weight (grams)')
+                        : (t('orders.weightGrams') || 'Weight (grams)')}
                       required
                       keyboardType="decimal-pad"
                       value={item.weight}
+                      editable={!weighsEach(item.quantity, item.together)}
                       onChangeText={v => patch(item.key, 'weight', v)}
                     />
+                  </HStack>
+                  {weighsEach(item.quantity, item.together) && (
+                    <PieceWeights
+                      metal="gold"
+                      pieces={item.pieces}
+                      onChange={(index, change) => setGoldPiece(item.key, index, change)}
+                      gramShort={gramShort}
+                      labels={pieceLabels}
+                    />
+                  )}
+                  {pieceCount(item.quantity) > 1 && (pieceCount(item.quantity) > MAX_PIECE_ROWS
+                    ? (
+                      <Text fontSize={12} color="$coolGray500">
+                        {(t('orders.piecesOverMax') || 'Over {n} pieces: enter the total weight.').replace('{n}', String(MAX_PIECE_ROWS))}
+                      </Text>
+                    )
+                    : (
+                      <WeighModeLink
+                        label={item.together
+                          ? (t('orders.weighEach') || 'Weigh each piece')
+                          : (t('orders.weighTogether') || 'Weigh all together')}
+                        onPress={() => setGoldTogether(item.key, !item.together)}
+                      />
+                    ))}
+
+                  <HStack space="md">
                     {/* The wholesaler types the ROUNDED purity they charge on —
                         92 for 22K, 84 for 20K — not the metal's real fineness.
                         The hint states what that number contains, because the
@@ -855,9 +1035,6 @@ const NewOrderScreen = () => {
                       onChangeText={v => patch(item.key, 'purity', v)}
                       hint={formatPurityBreakdown(item.purity) || undefined}
                     />
-                  </HStack>
-
-                  <HStack space="md" alignItems="flex-start">
                     <FloatingLabelInput
                       label={t('orders.wastagePct') || 'Wastage (%)'}
                       required
@@ -865,6 +1042,9 @@ const NewOrderScreen = () => {
                       value={item.wastage}
                       onChangeText={v => patch(item.key, 'wastage', v)}
                     />
+                  </HStack>
+
+                  <HStack space="md" alignItems="flex-start">
                     {/* The rate and its live-rate toggle, stacked — the toggle
                         is about THIS field, and sitting full-width underneath
                         both columns it read as if it applied to the whole row. */}
@@ -990,20 +1170,61 @@ const NewOrderScreen = () => {
                       hint={t('itemPicker.fieldHint') || 'Search or type'}
                       onPress={() => setNamePickerFor(s.key)}
                     />
-                    <HStack space="md">
-                      <FloatingLabelInput
+                    {/* Quantity, then either one gross/packet/net for the line
+                        (one piece, or a lot on the scale together) or a row
+                        per piece with the line's net their sum. */}
+                    <HStack space="md" alignItems="flex-end">
+                      <QuantityStepper
                         label={t('orders.quantity') || 'Quantity'}
-                        keyboardType="number-pad"
                         value={s.quantity}
-                        onChangeText={v => patchSilver(s.key, { quantity: v })}
+                        onChange={q => setSilverQuantity(s.key, q)}
                       />
-                      <FloatingLabelInput
-                        label={`${t('orders.grossWeight') || 'Gross Wt'} (${gramShort})`}
-                        keyboardType="decimal-pad"
-                        value={s.grossWeight}
-                        onChangeText={v => patchSilver(s.key, { grossWeight: v })}
-                      />
+                      {weighsEach(s.quantity, s.together) ? (
+                        <FloatingLabelInput
+                          label={`${t('orders.totalNet') || 'Total net'} (${gramShort})`}
+                          required
+                          editable={false}
+                          value={s.netWeight}
+                          onChangeText={() => {}}
+                        />
+                      ) : (
+                        <FloatingLabelInput
+                          label={`${t('orders.grossWeight') || 'Gross Wt'} (${gramShort})`}
+                          keyboardType="decimal-pad"
+                          value={s.grossWeight}
+                          onChangeText={v => patchSilver(s.key, { grossWeight: v })}
+                        />
+                      )}
                     </HStack>
+                    {weighsEach(s.quantity, s.together) && (
+                      <VStack space="xs">
+                        <PieceWeights
+                          metal="silver"
+                          pieces={s.pieces}
+                          onChange={(index, change) => setSilverPiece(s.key, index, change)}
+                          gramShort={gramShort}
+                          labels={pieceLabels}
+                        />
+                        <Text fontSize={12} color="$coolGray500">
+                          {`${pieceLabels.gross} ${formatGrams(num(s.grossWeight), gramShort)} · ${pieceLabels.packet} ${formatGrams(num(s.packetWeight), gramShort)} · ${pieceLabels.net} ${formatGrams(num(s.netWeight), gramShort)}`}
+                        </Text>
+                      </VStack>
+                    )}
+                    {pieceCount(s.quantity) > 1 && (pieceCount(s.quantity) > MAX_PIECE_ROWS
+                      ? (
+                        <Text fontSize={12} color="$coolGray500">
+                          {(t('orders.piecesOverMax') || 'Over {n} pieces: enter the total weight.').replace('{n}', String(MAX_PIECE_ROWS))}
+                        </Text>
+                      )
+                      : (
+                        <WeighModeLink
+                          label={s.together
+                            ? (t('orders.weighEach') || 'Weigh each piece')
+                            : (t('orders.weighTogether') || 'Weigh all together')}
+                          onPress={() => setSilverTogether(s.key, !s.together)}
+                        />
+                      ))}
+                    {!weighsEach(s.quantity, s.together) && (
                     <HStack space="md" alignItems="flex-start">
                       <FloatingLabelInput
                         label={`${t('orders.packetWeight') || 'Packet Wt'} (${gramShort})`}
@@ -1032,6 +1253,7 @@ const NewOrderScreen = () => {
                           : (t('orders.netAuto') || 'Gross − Packet')}
                       />
                     </HStack>
+                    )}
                     <FloatingLabelInput
                       label={t('orders.silverRate') || 'Rate (₹/gram)'}
                       keyboardType="decimal-pad"
@@ -1178,6 +1400,31 @@ const NewOrderScreen = () => {
                     onChangeText={setPaySilver}
                   />
                 </HStack>
+
+                {/* Silver held for this retailer: a silver advance. Only when
+                    there is some, for the same reason as gold held above. */}
+                {silverHeld > 0.0005 && (
+                  <Box mt="$3">
+                    <FloatingLabelInput
+                      label={`${t('orders.silverHeld') || 'From silver held'} (${gramShort})`}
+                      keyboardType="decimal-pad"
+                      value={paySilverHeld}
+                      onChangeText={setPaySilverHeld}
+                    />
+                    <HStack justifyContent="space-between" alignItems="center" mt="$1">
+                      <Text fontSize={11} color={silverHeldOverdrawn ? '#B42318' : '$coolGray500'}>
+                        {silverHeldOverdrawn
+                          ? (t('orders.silverHeldOverdrawn') || 'That is more silver than is held for this retailer')
+                          : `${t('orders.meltAvailable') || 'Available'} ${formatGrams(silverHeld, gramShort)}`}
+                      </Text>
+                      <Pressable onPress={() => setPaySilverHeld(String(Math.min(silverHeld, silverTotals.net || silverHeld)))}>
+                        <Text fontSize={11} fontWeight="$bold" color={PURPLE}>
+                          {t('orders.meltUseAll') || 'Use all'}
+                        </Text>
+                      </Pressable>
+                    </HStack>
+                  </Box>
+                )}
               </Box>
             )}
 

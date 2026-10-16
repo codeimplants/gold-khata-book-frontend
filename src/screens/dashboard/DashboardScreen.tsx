@@ -27,6 +27,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useOldGoldMelt } from '../../hooks/useOldGoldMelt';
 import RemindButton from '../../components/customers/RemindButton';
 import SetRateModal from '../../components/common/SetRateModal';
+import LedgerSheet from '../../components/ledger/LedgerSheet';
 import { useShopRate } from '../../hooks/useShopRate';
 import { useDailyRatePrompt } from '../../hooks/useDailyRatePrompt';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
@@ -68,7 +69,7 @@ const longDate = (d: Date, language: string) => {
 };
 
 /** Which column the balances table is narrowed to. */
-type DuesFilter = 'all' | 'gold' | 'cash';
+type DuesFilter = 'all' | 'gold' | 'silver' | 'cash';
 
 /** How many of the newest entries the home screen shows before "Open day book". */
 const RECENT_LIMIT = 5;
@@ -119,6 +120,17 @@ const RateStrip = ({
   </Pressable>
 );
 
+/** Held gold, silver and cash as named figures, each only when there is some:
+ *  "Gold 22.800 gm", "Silver 20.000 gm", "Cash ₹6,74,214". */
+const heldParts = (t: any, gold: number, silver: number, cash: number): string[] => {
+  const gm = t('common.gramShort') || 'gm';
+  return [
+    gold >= WEIGHT_SETTLED_EPSILON_GM ? `${t('dashboard.dues.gold') || 'Gold'} ${formatGrams(gold, gm)}` : null,
+    silver >= WEIGHT_SETTLED_EPSILON_GM ? `${t('dashboard.dues.silver') || 'Silver'} ${formatGrams(silver, gm)}` : null,
+    cash >= CASH_SETTLED_EPSILON ? `${t('dashboard.dues.cash') || 'Cash'} ${inr(cash)}` : null,
+  ].filter(Boolean) as string[];
+};
+
 /** The two balances owed to the wholesaler, side by side, never added together. */
 const OwedSummary = ({
   t,
@@ -128,6 +140,8 @@ const OwedSummary = ({
   owingCount,
   heldGold,
   heldCash,
+  heldSilver = 0,
+  onHeldPress,
   onPress,
 }: {
   t: any;
@@ -140,6 +154,10 @@ const OwedSummary = ({
    *  credit, and cash whose rate is not fixed yet. Theirs, not owed to you. */
   heldGold: number;
   heldCash: number;
+  /** Grams of silver held for retailers, beside the gold and cash held. */
+  heldSilver?: number;
+  /** Opens whose it is: the strip names amounts, the sheet names retailers. */
+  onHeldPress?: () => void;
   onPress: () => void;
 }) => (
   <Pressable onPress={onPress} accessibilityRole="button" style={[styles.card, styles.heroCard]}>
@@ -187,16 +205,33 @@ const OwedSummary = ({
     {/* Shown beside the dues, never subtracted from them: this is the
         retailers' own money and metal sitting with the shop, and netting it
         off would hide that the shop is holding it. */}
-    {(heldGold >= WEIGHT_SETTLED_EPSILON_GM || heldCash >= CASH_SETTLED_EPSILON) && (
-      <View style={styles.heldStrip}>
-        <Text style={styles.heldStripLabel}>{t('khata.heldForRetailers') || 'Held for retailers'}</Text>
-        <Text style={[styles.heldStripValue, tabularNums]} numberOfLines={1} adjustsFontSizeToFit>
-          {[
-            heldGold >= WEIGHT_SETTLED_EPSILON_GM ? formatGrams(heldGold, t('common.gramShort') || 'gm') : null,
-            heldCash >= CASH_SETTLED_EPSILON ? inr(heldCash) : null,
-          ].filter(Boolean).join('  ·  ')}
-        </Text>
-      </View>
+    {/* What retailers have left WITH the shop: their advances, and cash
+        whose rate is not fixed yet. The owner read the bare figures as more
+        dues (2026-10-17), so each one is named, the line says what they are,
+        and a tap says whose. Its own press target: the card around it goes to
+        the retailer list. */}
+    {(heldGold >= WEIGHT_SETTLED_EPSILON_GM || heldCash >= CASH_SETTLED_EPSILON || heldSilver >= WEIGHT_SETTLED_EPSILON_GM) && (
+      <Pressable
+        onPress={onHeldPress}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.heldBox, pressed && { opacity: 0.7 }]}
+      >
+        <View style={styles.heldTop}>
+          <Text style={styles.heldStripLabel}>{t('khata.heldForRetailers') || 'Held for retailers'}</Text>
+          {/* Two lines, right-aligned: gold, silver and cash held together run
+              past one line on a phone, and shrink-to-fit does nothing on web,
+              which cut the cash off mid-figure. */}
+          <Text style={[styles.heldStripValue, { textAlign: 'right' }, tabularNums]} numberOfLines={2}>
+            {heldParts(t, heldGold, heldSilver, heldCash).join('  ·  ')}
+          </Text>
+        </View>
+        <View style={styles.heldTop}>
+          <Text style={styles.heldHint}>
+            {t('khata.heldExplain') || 'Their advances with you. Not owed to you.'}
+          </Text>
+          <Text style={styles.heldLink}>{t('khata.heldWhose') || 'See whose'} ›</Text>
+        </View>
+      </Pressable>
     )}
     <View style={styles.owedFooter}>
       <Text style={styles.owedFooterText}>
@@ -212,13 +247,17 @@ const FilterTabs = ({
   value,
   onChange,
   labels,
+  showSilver = false,
 }: {
   value: DuesFilter;
   onChange: (next: DuesFilter) => void;
   labels: Record<DuesFilter, string>;
+  /** Only once some retailer owes silver: a gold-only book keeps its three
+   *  tabs, and a fourth that always filtered to nothing would be noise. */
+  showSilver?: boolean;
 }) => (
   <View style={styles.filterRow}>
-    {(['all', 'gold', 'cash'] as DuesFilter[]).map(key => {
+    {((showSilver ? ['all', 'gold', 'silver', 'cash'] : ['all', 'gold', 'cash']) as DuesFilter[]).map(key => {
       const active = value === key;
       return (
         <Pressable
@@ -237,39 +276,50 @@ const FilterTabs = ({
 );
 
 /**
- * One retailer's balance as a ledger row: gold and cash in their own aligned
- * columns, with an em dash where nothing is owed. A "0.000 gm" would read as a
- * debt of nothing.
+ * One retailer's balance as a ledger row, shaped by the tab above it.
  *
- * Cash and gold stay separate figures. Converting grams to rupees needs a
- * rate, and the rate on the day the metal comes back is not today's.
+ * The tab says what is being looked at, and the figure column shows exactly
+ * that. It used to show Gold and Cash columns under every tab, so "Cash"
+ * listed a gold column and "Silver" hid the silver in small print under the
+ * name; the owner could not tell how the tabs and the columns were related
+ * (2026-10-17).
+ *
+ *   Gold / Silver / Cash  one column: that due, biggest first
+ *   All                   each due this retailer has, one labelled line each
+ *
+ * Every figure stays its own: gold and silver in grams, cash in rupees.
+ * Converting grams to rupees needs a rate, and the rate on the day the metal
+ * comes back is not today's. Nothing owed reads as an em dash, never "0.000 gm".
  */
 const BalanceRow = ({
   id,
   name,
-  code,
+  mode,
   gold,
   cash,
   silver = 0,
-  silverLabel,
+  labels,
   heldGold = 0,
   heldCash = 0,
+  heldSilver = 0,
   heldLabel,
   gramShort,
   onPress,
 }: {
   id: string;
   name: string;
-  code?: string;
+  /** The tab: which figure the row shows. */
+  mode: DuesFilter;
   gold: number;
   cash: number;
-  /** Silver owed, grams of silver. Under the name rather than a third column,
-   *  so a gold-only book keeps the table it had. */
+  /** Silver owed, grams of silver. */
   silver?: number;
-  silverLabel?: string;
-  /** Held for this retailer: cash not yet converted, and gold held. */
+  /** The words for each line of the All view. */
+  labels: { gold: string; silver: string; cash: string };
+  /** Held for this retailer: cash not yet converted, gold and silver held. */
   heldGold?: number;
   heldCash?: number;
+  heldSilver?: number;
   heldLabel: string;
   gramShort: string;
   onPress: () => void;
@@ -279,31 +329,51 @@ const BalanceRow = ({
       {/* Two lines, not an ellipsis: shop names in this trade run long
           ("Shree Ganesh Jewellers"), and a cut name is a guess at who owes. */}
       <Text style={styles.rowName} numberOfLines={2}>{name}</Text>
-      {!!code && <Text style={styles.rowCode} numberOfLines={1}>{code}</Text>}
-      {silver >= WEIGHT_SETTLED_EPSILON_GM && (
-        <Text style={[styles.rowHeld, { color: Brand.silver }, tabularNums]} numberOfLines={1}>
-          {silverLabel || 'Silver'} {formatGrams(silver, gramShort)}
-        </Text>
-      )}
       {/* A retailer who owes gold but has paid cash to be converted at a rate
           they will name later: the debt stands until they do, and this is
           the reminder that the cash is already here. */}
-      {(heldCash >= CASH_SETTLED_EPSILON || heldGold >= WEIGHT_SETTLED_EPSILON_GM) && (
+      {(heldCash >= CASH_SETTLED_EPSILON || heldGold >= WEIGHT_SETTLED_EPSILON_GM || heldSilver >= WEIGHT_SETTLED_EPSILON_GM) && (
         <Text style={[styles.rowHeld, tabularNums]} numberOfLines={1}>
           {heldLabel}{' '}
           {[
             heldCash >= CASH_SETTLED_EPSILON ? inr(heldCash) : null,
             heldGold >= WEIGHT_SETTLED_EPSILON_GM ? formatGrams(heldGold, gramShort) : null,
+            heldSilver >= WEIGHT_SETTLED_EPSILON_GM ? `${formatGrams(heldSilver, gramShort)} ${labels.silver.toLowerCase()}` : null,
           ].filter(Boolean).join(' · ')}
         </Text>
       )}
     </View>
-    <Text style={[styles.colGold, styles.rowFigure, { color: gold > 0 ? Brand.gold : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
-      {gold > 0 ? formatGrams(gold, gramShort) : '—'}
-    </Text>
-    <Text style={[styles.colCash, styles.rowFigure, { color: cash > 0 ? Brand.ink : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
-      {cash > 0 ? inr(cash) : '—'}
-    </Text>
+    {mode === 'all' ? (
+      <View style={styles.colOwes}>
+        {gold > 0 && (
+          <Text style={[styles.owesLine, tabularNums]} numberOfLines={1}>
+            <Text style={styles.owesLabel}>{labels.gold} </Text>
+            <Text style={[styles.rowFigure, { color: Brand.gold }]}>{formatGrams(gold, gramShort)}</Text>
+          </Text>
+        )}
+        {silver >= WEIGHT_SETTLED_EPSILON_GM && (
+          <Text style={[styles.owesLine, tabularNums]} numberOfLines={1}>
+            <Text style={styles.owesLabel}>{labels.silver} </Text>
+            <Text style={[styles.rowFigure, { color: Brand.silver }]}>{formatGrams(silver, gramShort)}</Text>
+          </Text>
+        )}
+        {cash > 0 && (
+          <Text style={[styles.owesLine, tabularNums]} numberOfLines={1}>
+            <Text style={styles.owesLabel}>{labels.cash} </Text>
+            <Text style={[styles.rowFigure, { color: Brand.ink }]}>{inr(cash)}</Text>
+          </Text>
+        )}
+      </View>
+    ) : (() => {
+      const value = mode === 'gold' ? gold : mode === 'silver' ? silver : cash;
+      const owes = mode === 'silver' ? value >= WEIGHT_SETTLED_EPSILON_GM : value > 0;
+      const color = mode === 'gold' ? Brand.gold : mode === 'silver' ? Brand.silver : Brand.ink;
+      return (
+        <Text style={[styles.colOne, styles.rowFigure, { color: owes ? color : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
+          {!owes ? '—' : mode === 'cash' ? inr(value) : formatGrams(value, gramShort)}
+        </Text>
+      );
+    })()}
     {/* Chasing a balance is the next thing anyone does with this list, so the
         reminder sits on the row rather than two taps away. */}
     <View style={styles.colRemind}>
@@ -391,6 +461,20 @@ const DashboardScreen = () => {
     dispatch(fetchMeltLots({ status: 'open' }));
   }, [dispatch]);
 
+  /** The "whose is it" list behind Held for retailers. */
+  const [heldOpen, setHeldOpen] = React.useState(false);
+  const heldByRetailer = React.useMemo(
+    () => accounts
+      .filter(a => (a.meltCredit || 0) >= WEIGHT_SETTLED_EPSILON_GM
+        || (a.silverHeld || 0) >= WEIGHT_SETTLED_EPSILON_GM
+        || (a.heldCash || 0) >= CASH_SETTLED_EPSILON)
+      // Biggest cash first, then metal: the order a shopkeeper asks about it.
+      .sort((a, b) => (b.heldCash || 0) - (a.heldCash || 0)
+        || (b.meltCredit || 0) - (a.meltCredit || 0)
+        || (b.silverHeld || 0) - (a.silverHeld || 0)),
+    [accounts],
+  );
+
   const customerById = React.useMemo(
     () => new Map<string, any>(customers.map((c: any) => [String(c.id), c])),
     [customers],
@@ -407,7 +491,7 @@ const DashboardScreen = () => {
    * sale inflated the totals here and nowhere else.
    */
   const dues = React.useMemo(() => {
-    const byRetailer = new Map<string, { id: string; name: string; code?: string; cash: number; gold: number; silver: number }>();
+    const byRetailer = new Map<string, { id: string; name: string; cash: number; gold: number; silver: number }>();
     let totalCash = 0;
     let totalGold = 0;
     let totalSilver = 0;
@@ -436,7 +520,6 @@ const DashboardScreen = () => {
         // Same fallback the orders list uses for an order whose customer record
         // is missing or has not loaded yet.
         name: customer?.name || 'Unknown',
-        code: customer?.customerCode,
         cash: due.cash,
         gold: due.gold,
         silver: due.silver,
@@ -452,12 +535,17 @@ const DashboardScreen = () => {
    */
   const visibleDues = React.useMemo(() => {
     const rows = dues.list.filter(r =>
-      duesFilter === 'cash' ? r.cash > 0 : duesFilter === 'gold' ? r.gold > 0 : true,
+      duesFilter === 'cash' ? r.cash > 0
+        : duesFilter === 'gold' ? r.gold > 0
+          : duesFilter === 'silver' ? r.silver > 0
+            : true,
     );
     return rows.sort((a, b) =>
       duesFilter === 'cash'
         ? b.cash - a.cash || b.gold - a.gold
-        : b.gold - a.gold || b.cash - a.cash,
+        : duesFilter === 'silver'
+          ? b.silver - a.silver || b.cash - a.cash
+          : b.gold - a.gold || b.cash - a.cash,
     );
   }, [dues.list, duesFilter]);
 
@@ -470,8 +558,12 @@ const DashboardScreen = () => {
    *  only added up; see OwedSummary for why it is never netted off a due. */
   const held = React.useMemo(
     () => accounts.reduce(
-      (sum, a) => ({ gold: sum.gold + (a.meltCredit || 0), cash: sum.cash + (a.heldCash || 0) }),
-      { gold: 0, cash: 0 },
+      (sum, a) => ({
+        gold: sum.gold + (a.meltCredit || 0),
+        cash: sum.cash + (a.heldCash || 0),
+        silver: sum.silver + (a.silverHeld || 0),
+      }),
+      { gold: 0, cash: 0, silver: 0 },
     ),
     [accounts],
   );
@@ -528,6 +620,8 @@ const DashboardScreen = () => {
             owingCount={dues.list.length}
             heldGold={held.gold}
             heldCash={held.cash}
+            heldSilver={held.silver}
+            onHeldPress={() => setHeldOpen(true)}
             onPress={() => navigation.navigate('Customers')}
           />
 
@@ -557,18 +651,29 @@ const DashboardScreen = () => {
               <FilterTabs
                 value={duesFilter}
                 onChange={setDuesFilter}
+                showSilver={dues.totalSilver > 0}
                 labels={{
                   all: t('dashboard.dues.all') || 'All',
                   gold: t('dashboard.dues.gold') || 'Gold',
+                  silver: t('dashboard.dues.silver') || 'Silver',
                   cash: t('dashboard.dues.cash') || 'Cash',
                 }}
               />
             </View>
 
+            {/* The column says what the tab picked: what each retailer owes
+                in that, or under All, everything they owe. */}
             <View style={styles.tableHead}>
               <Text style={[styles.colName, styles.th]}>{t('khata.colRetailer') || 'Retailer'}</Text>
-              <Text style={[styles.colGold, styles.th]}>{t('khata.colGold') || 'Gold'}</Text>
-              <Text style={[styles.colCash, styles.th]}>{t('khata.colCash') || 'Cash'}</Text>
+              <Text style={[duesFilter === 'all' ? styles.colOwesHead : styles.colOne, styles.th]}>
+                {duesFilter === 'gold'
+                  ? (t('khata.colGoldOwed') || 'Gold owed')
+                  : duesFilter === 'silver'
+                    ? (t('khata.colSilverOwed') || 'Silver owed')
+                    : duesFilter === 'cash'
+                      ? (t('khata.colCashOwed') || 'Cash owed')
+                      : (t('khata.colOwes') || 'Owes')}
+              </Text>
               <View style={styles.colRemind} />
             </View>
 
@@ -584,12 +689,17 @@ const DashboardScreen = () => {
                   key={r.id}
                   id={r.id}
                   name={r.name}
-                  code={r.code}
+                  mode={duesFilter}
                   gold={r.gold}
                   cash={r.cash}
                   silver={r.silver}
-                  silverLabel={t('khata.silver') || 'Silver'}
+                  labels={{
+                    gold: t('dashboard.dues.gold') || 'Gold',
+                    silver: t('dashboard.dues.silver') || 'Silver',
+                    cash: t('dashboard.dues.cash') || 'Cash',
+                  }}
                   heldGold={accountsById?.[r.id]?.meltCredit || 0}
+                  heldSilver={accountsById?.[r.id]?.silverHeld || 0}
                   heldCash={accountsById?.[r.id]?.heldCash || 0}
                   heldLabel={t('khata.holds') || 'Holds'}
                   gramShort={gramShort}
@@ -632,6 +742,38 @@ const DashboardScreen = () => {
         onClose={() => setLanguageSheetOpen(false)}
         anchor={languageAnchor}
       />
+
+      {/* Whose is it: each retailer with something left with the shop, and
+          what. A tap opens their account, where it is used or handed back. */}
+      <LedgerSheet
+        visible={heldOpen}
+        onClose={() => setHeldOpen(false)}
+        title={t('khata.heldForRetailers') || 'Held for retailers'}
+        subtitle={t('khata.heldSheetSub') || 'Advances they left with you, and cash waiting for a rate. Used on their dues, or handed back.'}
+        closeLabel={t('common.close') || 'Close'}
+      >
+        {heldByRetailer.map(a => (
+          <Pressable
+            key={a.customerId}
+            accessibilityRole="button"
+            onPress={() => {
+              setHeldOpen(false);
+              navigation.navigate('CustomerDetails', { customerId: a.customerId });
+            }}
+            style={({ pressed }) => [styles.heldRow, pressed && { opacity: 0.6 }]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={styles.rowName} numberOfLines={2}>
+                {customerById.get(String(a.customerId))?.name || 'Unknown'}
+              </Text>
+              <Text style={[styles.heldRowFigures, tabularNums]}>
+                {heldParts(t, a.meltCredit || 0, a.silverHeld || 0, a.heldCash || 0).join('  ·  ')}
+              </Text>
+            </View>
+            <ChevronRight size={16} color={Brand.inkFaint} />
+          </Pressable>
+        ))}
+      </LedgerSheet>
       {/* One modal, two ways in: the once-a-day prompt and the rate strip.
           Closing the prompt records that today's question was asked, so it
           does not return this evening (see useDailyRatePrompt). */}
@@ -774,6 +916,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Brand.inkMuted,
   },
+  heldBox: {
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: Brand.receivedSoft,
+    gap: 4,
+  },
+  heldTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heldHint: {
+    flexShrink: 1,
+    fontSize: 11,
+    color: Brand.received,
+    marginRight: 10,
+  },
+  heldLink: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Brand.received,
+  },
+  heldRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Brand.line,
+  },
+  heldRowFigures: {
+    marginTop: 3,
+    fontSize: 13,
+    fontWeight: '700',
+    color: Brand.received,
+  },
   heldStrip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -867,13 +1046,28 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: 8,
   },
-  colGold: {
-    width: 96,
+  // One due under the Gold, Silver or Cash tab.
+  colOne: {
+    width: 120,
     textAlign: 'right',
   },
-  colCash: {
-    width: 88,
+  // Every due under All, one labelled line each.
+  colOwes: {
+    width: 156,
+    alignItems: 'flex-end',
+    gap: 2,
+  },
+  colOwesHead: {
+    width: 156,
     textAlign: 'right',
+  },
+  owesLine: {
+    textAlign: 'right',
+  },
+  owesLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: Brand.inkMuted,
   },
   colRemind: {
     width: 40,
@@ -891,6 +1085,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Brand.ink,
   },
+  // Small muted line under a title: the melt lots count.
   rowCode: {
     fontSize: 12,
     color: Brand.inkMuted,

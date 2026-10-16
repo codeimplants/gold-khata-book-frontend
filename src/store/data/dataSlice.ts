@@ -1175,6 +1175,8 @@ export const createWholesaleOrder = createAsyncThunk(
                 quantity?: number;
                 grossWeight?: number;
                 packetWeight?: number;
+                /** A line weighed piece by piece; the server sums these. */
+                pieceWeights?: { weight: number; packetWeight?: number }[];
             }[];
             bookingRate: number;
             includeGST: boolean;
@@ -3896,11 +3898,20 @@ export interface AccountEntry {
     | 'melt-applied'
     | 'melt-paid-out'
     /** Gold left as an advance, credited at 99.50 and held. */
-    | 'gold-received';
+    | 'gold-received'
+    /** Silver left as an advance, held gram for gram; then used on a sale's
+     *  silver due, or handed back. */
+    | 'silver-received'
+    | 'silver-applied'
+    | 'silver-returned';
     /** Rupees moved. Positive adds to what is held, negative draws it down. */
     cashDelta: number;
     /** Grams of 99.50 moved, same sign convention. */
     metalDelta: number;
+    /** Grams of SILVER moved, same sign convention. Never in metalDelta. */
+    silverDelta?: number;
+    /** `cash-allocated` only: the metal the cash bought. Missing = gold. */
+    metal?: 'gold' | 'silver';
     rate?: number;
     /** On a cash-received entry, set only when it is an order's overpayment. */
     orderId?: string;
@@ -3919,6 +3930,9 @@ export interface RetailerAccount {
      *  lots and from gold advances. Named for melt on the wire; the entries
      *  say where each gram came from. */
     meltCredit: number;
+    /** Grams of SILVER held for the retailer: a silver advance, not yet used.
+     *  Its own balance, never added to meltCredit. */
+    silverHeld: number;
     entries: AccountEntry[];
 }
 
@@ -3928,6 +3942,8 @@ const mapAccountEntry = (e: any): AccountEntry => ({
     type: e?.type,
     cashDelta: Number(e?.cashDelta) || 0,
     metalDelta: Number(e?.metalDelta) || 0,
+    ...(Number(e?.silverDelta) ? { silverDelta: Number(e.silverDelta) } : {}),
+    ...(e?.metal === 'silver' ? { metal: 'silver' as const } : {}),
     ...(e?.rate != null ? { rate: Number(e.rate) } : {}),
     ...(e?.orderId ? { orderId: String(e.orderId?._id || e.orderId?.id || e.orderId) } : {}),
     ...(e?.goldWeight != null ? { goldWeight: Number(e.goldWeight) } : {}),
@@ -3941,6 +3957,7 @@ const mapRetailerAccount = (a: any): RetailerAccount => ({
     // Unrounded on purpose, matching the server: the rupee figures derived from
     // this are `weight * rate`, so quantising the grams quantises the money.
     meltCredit: Number(a?.meltCredit) || 0,
+    silverHeld: Number(a?.silverHeld) || 0,
     entries: Array.isArray(a?.entries) ? a.entries.map(mapAccountEntry) : [],
 });
 
@@ -4164,7 +4181,13 @@ export const applyMeltCredit = createAsyncThunk(
 export const allocateCash = createAsyncThunk(
     'data/allocateCash',
     async (
-        payload: { customerId: string; orderId: string; amount: number; goldRate: number; date?: string; notes?: string },
+        payload: {
+            customerId: string; orderId: string; amount: number; goldRate: number;
+            /** Which due the cash buys down; `goldRate` is then that metal's
+             *  rate. Missing = gold, as every allocation before silver. */
+            metal?: 'gold' | 'silver';
+            date?: string; notes?: string;
+        },
         { rejectWithValue },
     ) => {
         try {
@@ -4174,6 +4197,7 @@ export const allocateCash = createAsyncThunk(
                     orderId: payload.orderId,
                     amount: payload.amount,
                     goldRate: payload.goldRate,
+                    ...(payload.metal === 'silver' ? { metal: 'silver' } : {}),
                     ...(payload.date ? { date: payload.date } : {}),
                     ...(payload.notes ? { notes: payload.notes } : {}),
                 },
@@ -4187,6 +4211,113 @@ export const allocateCash = createAsyncThunk(
             return rejectWithValue(
                 err?.response?.data?.message || err?.message || 'Could not apply the credit',
             );
+        }
+    },
+);
+
+/**
+ * Silver in, held as an advance: grams of silver, counted gram for gram as a
+ * silver sale is. Used later on a sale's silver due (`applySilverHeld`).
+ */
+export const receiveSilverAdvance = createAsyncThunk(
+    'data/receiveSilverAdvance',
+    async (
+        payload: { customerId: string; weight: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/silver`,
+                {
+                    weight: payload.weight,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(err?.response?.data?.message || err?.message || 'Could not record the silver');
+        }
+    },
+);
+
+/** Silver held drawn down onto a sale's silver due. The server checks the
+ *  weight against what is held again; the screen's copy can be stale. */
+export const applySilverHeld = createAsyncThunk(
+    'data/applySilverHeld',
+    async (
+        payload: { customerId: string; orderId: string; weight: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/silver/apply`,
+                {
+                    orderId: payload.orderId,
+                    weight: payload.weight,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return {
+                account: { ...mapRetailerAccount(raw?.account), customerId: payload.customerId },
+                order: raw?.order ? mapBackendOrder(raw.order) : null,
+            };
+        } catch (err: any) {
+            return rejectWithValue(err?.response?.data?.message || err?.message || 'Could not use the silver held');
+        }
+    },
+);
+
+/** Silver held handed back to the retailer. */
+export const returnSilverHeld = createAsyncThunk(
+    'data/returnSilverHeld',
+    async (
+        payload: { customerId: string; weight: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(
+                `/api/retailer-account/${payload.customerId}/silver/return`,
+                {
+                    weight: payload.weight,
+                    ...(payload.date ? { date: payload.date } : {}),
+                    ...(payload.notes ? { notes: payload.notes } : {}),
+                },
+            );
+            const raw = response.data?.data ?? response.data;
+            return { ...mapRetailerAccount(raw), customerId: payload.customerId };
+        } catch (err: any) {
+            return rejectWithValue(err?.response?.data?.message || err?.message || 'Could not return the silver');
+        }
+    },
+);
+
+/**
+ * Edits a silver receipt: its cash, the silver rate that cash bought at, and
+ * the silver handed over. Its own call because the gold edit sends gold's
+ * shape and knows nothing of `silverWeight`.
+ */
+export const updateSilverPayment = createAsyncThunk(
+    'data/updateSilverPayment',
+    async (
+        payload: { orderId: string; paymentId: string; amount: number; silverRate: number; silverWeight: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.put<any>(`/api/orders/${payload.orderId}/payments/${payload.paymentId}`, {
+                amount: payload.amount,
+                goldRate: payload.silverRate,
+                silverWeight: payload.silverWeight,
+                ...(payload.date ? { date: payload.date } : {}),
+                ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
+            });
+            const raw = response.data?.data ?? response.data;
+            return raw ? mapBackendOrder(raw) : null;
+        } catch (err: any) {
+            return rejectWithValue(err?.response?.data?.message || err?.message || 'Could not update the silver receipt');
         }
     },
 );
@@ -4712,6 +4843,31 @@ const dataSlice = createSlice({
 
         builder.addCase(payOutMelt.fulfilled, (state, action) => {
             storeAccount(state, action.payload);
+        });
+
+        builder.addCase(receiveSilverAdvance.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(returnSilverHeld.fulfilled, (state, action) => {
+            storeAccount(state, action.payload);
+        });
+
+        builder.addCase(applySilverHeld.fulfilled, (state, action) => {
+            const { account, order } = action.payload;
+            storeAccount(state, account);
+            if (order?.id) {
+                const idx = state.orders.findIndex(o => o.id === order.id);
+                if (idx !== -1) state.orders[idx] = order;
+                else state.orders.unshift(order);
+            }
+        });
+
+        builder.addCase(updateSilverPayment.fulfilled, (state, action) => {
+            const order: any = action.payload;
+            if (!order?.id) return;
+            const idx = state.orders.findIndex(o => o.id === order.id);
+            if (idx !== -1) state.orders[idx] = order;
         });
 
         builder.addCase(updateShopPreferences.fulfilled, (state, action) => {

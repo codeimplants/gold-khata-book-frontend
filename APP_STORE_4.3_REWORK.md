@@ -16,9 +16,9 @@ should exist only in a chat, a temp folder or someone's memory.
 | | |
 | --- | --- |
 | **Phase** | Done: the owner reports build 3 live on iOS (2026-10-16). New work since: **silver** (section 12), on `main` in both repos, **not committed yet**, waiting on the owner's local test |
-| **Next action** | **Silver (2026-10-16):** the owner tests it on the local stack (section 7, web on http://localhost:8082 because SoneBill's dev server holds 8081), and decides on the new tile item picker. Then commit both repos, deploy the backend before any app build (an older backend rejects silver lines and `silverRate`), then ship the app.<br><br>Earlier, for build 3 (kept for the record), owner, in this order:<br>1. **Deploy the backend to prod**: `bash scripts/deploy.sh --env prod --yes` in the backend repo, then `--inspect` must show prod on `5ab4119`. Dev is DONE (2026-10-06: `5ab4119`, health check 200, `GET /retailer-account` 200; prod answered 404, the control). A Claude session is blocked from deploying prod, so the owner runs it.<br>2. Redeploy the web app (`npm run deploy`) so the public privacy and terms pages match `en.ts`.<br>3. Run the production demo seed (section 9, item 5), `--dry-run` first; then sign in on a phone with 1234567890 / 123456 and check the Khata tab shows the sample retailers.<br>4. On the Mac: `git pull`, then `scripts/release-ios.sh --bump`. The project now records build **2** (already in App Store Connect), so `--bump` makes **3**; confirm 3 is unused. Commit and push the bumped `project.pbxproj` afterwards.<br>5. Real-device checks from `CLAUDE.md` (7.3), including an iPad.<br>6. In App Store Connect: category (Finance, or Business if SoneBill is in Finance), the 9 iPhone and 6 iPad screenshots (numbered 01 to 09), the copy, privacy labels and age rating; then submit with the reply in `store-assets/listing/LISTING.md`. |
+| **Next action** | **2026-10-17 (evening):** everything is live. Backend `5038572` on dev and prod; web deployed to prod from the commit that carries this line. Next: native builds, so phones get silver too (the live iOS build 3 has no silver screens but works against this backend); and decide whether the store listing copy ("Wholesale gold ledger" in `store-assets/listing/LISTING.md`) should mention silver, which is an App Store Connect / Play Console change.<br><br>**Silver (2026-10-16):** the owner tests it on the local stack (section 7, web on http://localhost:8082 because SoneBill's dev server holds 8081), and decides on the new tile item picker. Then commit both repos, deploy the backend before any app build (an older backend rejects silver lines and `silverRate`), then ship the app.<br><br>Earlier, for build 3 (kept for the record), owner, in this order:<br>1. **Deploy the backend to prod**: `bash scripts/deploy.sh --env prod --yes` in the backend repo, then `--inspect` must show prod on `5ab4119`. Dev is DONE (2026-10-06: `5ab4119`, health check 200, `GET /retailer-account` 200; prod answered 404, the control). A Claude session is blocked from deploying prod, so the owner runs it.<br>2. Redeploy the web app (`npm run deploy`) so the public privacy and terms pages match `en.ts`.<br>3. Run the production demo seed (section 9, item 5), `--dry-run` first; then sign in on a phone with 1234567890 / 123456 and check the Khata tab shows the sample retailers.<br>4. On the Mac: `git pull`, then `scripts/release-ios.sh --bump`. The project now records build **2** (already in App Store Connect), so `--bump` makes **3**; confirm 3 is unused. Commit and push the bumped `project.pbxproj` afterwards.<br>5. Real-device checks from `CLAUDE.md` (7.3), including an iPad.<br>6. In App Store Connect: category (Finance, or Business if SoneBill is in Finance), the 9 iPhone and 6 iPad screenshots (numbered 01 to 09), the copy, privacy labels and age rating; then submit with the reply in `store-assets/listing/LISTING.md`. |
 | **Blocked on owner** | Steps 1 to 6 above: deploys, the production seed, the Mac build and App Store Connect |
-| **Last updated** | 2026-10-16 |
+| **Last updated** | 2026-10-17 |
 
 ---
 
@@ -591,6 +591,12 @@ fails quietly) and the gold advance save fails with an error.
 
 Newest first. One entry per working session: what changed and what comes next.
 
+- **2026-10-17 (evening).** The owner tested locally and asked to ship. Backend `5038572` (silver held, silver overpayments, receipt edits and completion on edit, piece weights) deployed to dev then prod: health 200 on both; prod probe shows the new silver route, the App Review account's 17 orders loading with gold totals unchanged, and `silverHeld` on accounts. There is still no preprod for this backend. Web: the app commit carrying this entry, deployed to prod (Firebase hosting is prod only).
+- **2026-10-17.** Silver shipped: both repos committed and pushed (`d5c7f4d` backend, `e6fd6a3` app); backend deployed to dev and prod (both on `d5c7f4d`, health 200; prod read-only probe fine); web deployed to prod (bundle checked). There is no preprod for this backend. The four silver gaps then done (section 12), plus the gold-and-silver copy sweep. `verify:silver` extended (advance, use, return, cash fixed onto silver, overpaid silver, edited receipt); all verify scripts pass; tsc clean; jest 49/49. Walked through in the browser. Not committed yet: the owner tests first.
+  - Later the same day, at the owner's request: retailer codes (C-1, C-2) taken off every screen and the statement PDF's file name (search by code still works; the picker shows the address when a retailer has no phone, so two same-named rows stay distinguishable). The Khata home's balances table now follows its tab: Gold / Silver / Cash show one "... owed" column, All shows every due on a labelled line. Before, every tab showed the same Gold and Cash columns, which the owner could not read.
+  - "Held for retailers" on the Khata card names each figure (Gold / Silver / Cash), says it is the retailers' advances and not owed to the shop, and "See whose" opens a list of the retailers holding each, tapping through to their account. The owner had read the bare figures as more dues.
+  - Quantity stepper (− / +) on gold and silver lines, and weighing piece by piece: above one piece (up to 50) each piece gets a compact row (gold: a weight grid; silver: gross, packet, net), the line's weights are their sums, and "Weigh all together" switches back to one total for a lot. Lines carry `pieceWeights`; the server recomputes the totals from them (order.model.ts) and the sale screen shows each piece. `verify:silver` checks it (the gold worked example split 5.200 + 5.165 still prices at 10.000 fine).
+
 - **2026-10-16.** Silver, at the owner's request (section 12), and a tile layout for the item picker.
   - Backend: silver lines on orders, a separate silver account (grams of silver), silver receipts (`settles: 'silver'`), `silverRate` on the shop rate, `defaultMetal` on the shop. `npm run verify:pricing`, `verify:order`, `verify:dues` and the new `verify:silver` all pass against the local API on the demo book.
   - App: Gold | Silver tabs on New sale (gold form unchanged), Settings switch "Start sales on Silver", silver rate in Today's Rate, silver dues on the Khata home, retailer list, statement (screen, WhatsApp, PDF), sale detail ("Receive silver") and Day Book. Strings in four languages. `tsc` clean, jest maths tests pass (49).
@@ -713,7 +719,22 @@ of silver, never added to gold:
 - `ShopRate.silverRate` beside `goldRate`; either can be set alone.
   `ShopDetail.defaultMetal` is the Settings switch.
 
-**Not done yet (tell the owner before building):** silver advances and silver
-held for a retailer (the retailer account holds gold and cash only); an
-overpaid silver receipt is not turned into held credit the way gold's is;
-printed bills show silver lines but their payment table has one weight column.
+**Added on 2026-10-17** (the four gaps listed the day before):
+
+- Silver held for a retailer: `RetailerAccount.silverHeld`, from entries with a
+  `silverDelta` (`silver-received`, `silver-applied`, `silver-returned`).
+  Routes `POST /retailer-account/:id/silver`, `/silver/apply`,
+  `/silver/return`; `cash/allocate` takes `metal: "silver"` to fix held cash
+  onto a silver due. In the app: a Silver advance tab in Receive on account;
+  Use / Return on the statement and Use / Fix for silver on the sale; "From
+  silver held" on New sale; day book lines; silver in every "held" total.
+- An overpaid silver sale is credited to held cash at the silver lines' rate,
+  once (`creditedExcessSilverWeight`), exactly as gold's surplus is.
+- Bills print what each receipt was: cash, "Paid for silver", and gold or
+  silver handed over in grams (A4 and thermal). A metal-only receipt printed
+  as "- Rs 0" before; and a settled sale's stored zero balance is now trusted,
+  so a bill paid in metal no longer shows a balance due.
+- Silver receipts can be edited (the silver sheet, in edit mode). An edit that
+  clears every account now completes the sale, gold included.
+- Copy: the tagline, login points, About, Terms and the New entry menu say
+  gold and silver.

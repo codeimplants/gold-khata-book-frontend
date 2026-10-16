@@ -39,6 +39,13 @@ const describe = (entry: DayBookEntry, t: any, gm: string): string => {
     case 'melt':
       return t('khata.meltCredit') || 'Melt credit';
     case 'fix-rate':
+      // Fixed onto silver, at a silver rate: said so, since a rate alone
+      // reads as gold's.
+      if (entry.settles === 'silver') {
+        return entry.rate
+          ? (t('khata.silverRateFixedAt') || 'Silver rate fixed at {rate}').replace('{rate}', `${inr(entry.rate)}/${gm}`)
+          : (t('khata.silverRateFixed') || 'Silver rate fixed');
+      }
       return entry.rate
         ? (t('khata.rateFixedAt') || 'Rate fixed at {rate}').replace('{rate}', `${inr(entry.rate)}/${gm}`)
         : (t('khata.rateFixed') || 'Rate fixed');
@@ -50,6 +57,12 @@ const describe = (entry: DayBookEntry, t: any, gm: string): string => {
       return t('khata.cashBack') || 'Cash returned';
     case 'gold-back':
       return t('khata.goldBack') || 'Gold returned';
+    case 'silver-advance':
+      return t('khata.silverAdvance') || 'Silver advance';
+    case 'silver-used':
+      return t('khata.silverUsed') || 'Silver held used';
+    case 'silver-back':
+      return t('khata.silverBack') || 'Silver returned';
     default:
       return entry.kind === 'sale' ? (t('khata.sale') || 'Sale') : (t('khata.receipt') || 'Received');
   }

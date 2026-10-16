@@ -34,6 +34,19 @@ export const pn = (value?: string | number): number => {
  * So prefer the stored figure and fall back to the cash subtraction only when
  * there isn't one — a final invoice has no locked weight left to honour.
  */
+/** Metal handed over across payments, one total per metal, for a bill that
+ *  prints the payments combined. */
+export const metalTotals = (payments: { metal?: string; metalGrams?: string }[]) =>
+  (['gold', 'silver'] as const)
+    .map(metal => ({
+      metal,
+      grams: payments
+        .filter(p => (p.metal === 'silver' ? 'silver' : 'gold') === metal)
+        .reduce((sum, p) => sum + pn(p.metalGrams), 0),
+    }))
+    .filter(m => m.grams > 0.0005)
+    .map(m => ({ metal: m.metal, grams: m.grams.toFixed(3) }));
+
 export const advanceBalanceDue = (
   values: {
     grandTotal?: string | number;
@@ -41,8 +54,14 @@ export const advanceBalanceDue = (
   },
   totalPaid: number,
 ): number => {
-  const stored = pn(values.paymentSummary?.estimatedBalance);
-  if (stored > 0) return stored;
+  // A stored zero is an answer too: the server zeroes the balance when every
+  // account is clear, including by metal handed over. Falling back on zero
+  // printed "grand total - cash" under a sale paid in gold or silver, so a
+  // settled bill read as owing the part that was paid in metal.
+  const raw = values.paymentSummary?.estimatedBalance;
+  if (raw != null && String(raw).trim() !== '' && Number.isFinite(Number(raw))) {
+    return Math.max(0, pn(raw));
+  }
   return Math.max(0, pn(values.grandTotal) - totalPaid);
 };
 
@@ -928,13 +947,32 @@ export const buildBillLines = (
         amount: `- ${fc(totalPaid)}`,
         negative: true,
       });
+      // Metal handed over, gold and silver kept apart: it settled grams,
+      // not rupees, so it has no place in the rupee total above.
+      metalTotals(payments).forEach(m => {
+        lines.push({ label: tl(lang, m.metal === 'silver' ? 'silverReceived' : 'goldReceived'), amount: `- ${m.grams} gm`, negative: true });
+      });
     } else {
       payments.forEach(p => {
-        lines.push({
-          label: `${tl(lang, 'advancePayment')} (${p.date})`,
-          amount: `- ${fc(p.amount)}`,
-          negative: true,
-        });
+        const silver = p.metal === 'silver';
+        // Cash, when there was any. A silver receipt says so: its cash bought
+        // silver, not gold.
+        if (pn(p.amount) > 0 || !(pn(p.metalGrams) > 0)) {
+          lines.push({
+            label: `${tl(lang, silver ? 'silverPayment' : 'advancePayment')} (${p.date})`,
+            amount: `- ${fc(p.amount)}`,
+            negative: true,
+          });
+        }
+        // Metal handed over prints as metal. On its own it used to print as
+        // "- Rs 0", a receipt of nothing.
+        if (pn(p.metalGrams) > 0) {
+          lines.push({
+            label: `${tl(lang, silver ? 'silverReceived' : 'goldReceived')} (${p.date})`,
+            amount: `- ${pn(p.metalGrams).toFixed(3)} gm`,
+            negative: true,
+          });
+        }
       });
     }
 

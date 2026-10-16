@@ -161,7 +161,7 @@ export default {
     appName: 'Gold Khata Book',
     version: 'આવૃત્તિ',
     aboutTitle: 'Gold Khata Book વિશે',
-    aboutDescription: 'Gold Khata Book સોનાના જથ્થાબંધ વેપારીઓનું ખાતું છે. તે દરેક રિટેલરનો હિસાબ શુદ્ધ સોના અને રોકડમાં રાખે છે, અને વેચાણ, જમા, ગાળણ લોટ અને સ્ટેટમેન્ટ એક જ જગ્યાએ.',
+    aboutDescription: 'Gold Khata Book સોના અને ચાંદીના જથ્થાબંધ વેપારીઓનું ખાતું છે. તે દરેક રિટેલરનો હિસાબ શુદ્ધ સોના, ચાંદી અને રોકડમાં રાખે છે, અને વેચાણ, જમા, ગાળણ લોટ અને સ્ટેટમેન્ટ એક જ જગ્યાએ.',
     featuresTitle: 'મુખ્ય વિશેષતાઓ',
     features: [
       'સરળ ઇન્વૉઇસ જનરેશન',
@@ -285,7 +285,7 @@ export default {
       },
       {
         title: '૨. નિઃશુલ્ક ઉપયોગ નીતિ',
-        content: 'આ ઍપ હાલ સોનાના જથ્થાબંધ વેપારીઓને રિટેલરો સાથેનો હિસાબ રાખવામાં મદદ કરવા માટે મફત ઉપલબ્ધ છે. મફત ઉપયોગ અમારી ઇન્ફ્રાસ્ટ્રક્ચર, સર્વર અને ડેટાબેઝ ક્ષમતાની મર્યાદાઓને આધીન છે. વપરાશકર્તાઓ અને ડેટા વધે ત્યારે, અમે પેઇડ પ્લાન, ન્યૂનતમ ફી અથવા ફ્રી વપરાશકર્તાઓ માટે ચોક્કસ ફીચર્સ મર્યાદિત કરવાનો અધિકાર અમારી પાસે સુરક્ષિત રાખીએ છીએ.',
+        content: 'આ ઍપ હાલ સોના અને ચાંદીના જથ્થાબંધ વેપારીઓને રિટેલરો સાથેનો હિસાબ રાખવામાં મદદ કરવા માટે મફત ઉપલબ્ધ છે. મફત ઉપયોગ અમારી ઇન્ફ્રાસ્ટ્રક્ચર, સર્વર અને ડેટાબેઝ ક્ષમતાની મર્યાદાઓને આધીન છે. વપરાશકર્તાઓ અને ડેટા વધે ત્યારે, અમે પેઇડ પ્લાન, ન્યૂનતમ ફી અથવા ફ્રી વપરાશકર્તાઓ માટે ચોક્કસ ફીચર્સ મર્યાદિત કરવાનો અધિકાર અમારી પાસે સુરક્ષિત રાખીએ છીએ.',
       },
       {
         title: '૩. ડેટા માલિકી',
@@ -726,6 +726,15 @@ export default {
   },
 
   orders: {
+    pieceWord: 'નંગ',
+    totalWeightGrams: 'કુલ વજન (ગ્રામ)',
+    totalNet: 'કુલ ચોખ્ખું',
+    piecesOverMax: '{n} થી વધુ નંગ: કુલ વજન લખો.',
+    weighEach: 'દરેક નંગ અલગ તોલો',
+    weighTogether: 'બધું સાથે તોલો',
+    eachPiece: 'દરેક નંગ',
+    silverHeld: 'રાખેલી ચાંદીમાંથી',
+    silverHeldOverdrawn: 'આ આ રિટેલર માટે રાખેલી ચાંદી કરતાં વધુ છે',
     goldWord: 'સોનું',
     silverWord: 'ચાંદી',
     silverAbbr: 'ચાંદી',
@@ -1134,6 +1143,7 @@ export default {
     },
 
     dues: {
+      silver: 'ચાંદી',
       totalCash: 'કુલ રોકડ બાકી',
       totalGold: 'કુલ સોનું બાકી',
       listTitle: 'રિટેલર બાકી યાદી',
@@ -1165,6 +1175,7 @@ export default {
   },
 
   newEntry: {
+    receiveAny: 'સોનું, ચાંદી અથવા રોકડ જમા કરો',
     title: 'નવી એન્ટ્રી',
     subtitle: 'તમે શું નોંધવા માંગો છો?',
     sale: 'નવું વેચાણ',
@@ -1205,6 +1216,40 @@ export default {
     clear: 'સાફ કરો',
   },
   account: {
+    returnGrams: '{grams} પાછું આપો',
+    noteSilverAdvance: 'ચાંદી એડવાન્સ',
+    silverHeldFor: '{name} માટે રાખેલી ચાંદી',
+    tabSilver: 'ચાંદી એડવાન્સ',
+    silverWeight: 'ચાંદીનું વજન',
+    silverHint: 'ગ્રામ સામે ગ્રામ રખાય છે. તેમના ચાંદીના બાકી પર વપરાય છે, અથવા પાછી અપાય છે.',
+    notePlaceholderSilver: 'દા.ત. લગડી, લગ્નના ઓર્ડર માટે',
+    keepSilver: 'ચાંદી ખાતામાં રાખો',
+    returnSilverTitle: 'રાખેલી ચાંદી પાછી આપવી?',
+    useSilverTitle: 'રાખેલી ચાંદી વાપરવી?',
+    silverToReturn: 'પાછી આપવાની ચાંદી',
+    silverToUse: 'વાપરવાની ચાંદી',
+    returnSilverConfirm: 'ચાંદી પાછી આપો',
+    useSilverConfirm: 'રાખેલી ચાંદી વાપરો',
+    fixSilverTitle: 'ચાંદીનો ભાવ નક્કી કરો',
+    fixSilverHint: 'સૌથી જૂનું વેચાણ પહેલા. આનાથી ખરીદાયેલા ગ્રામ જેટલું તેમનું ચાંદીનું બાકી ઘટશે.',
+    nothingToFixSilver: 'કોઈ વેચાણ પર ચાંદી બાકી નથી.',
+    silverRateFixedToast: 'ભાવ નક્કી થયો. તેમના ચાંદીના બાકીમાંથી {grams} ઘટ્યું.',
+    useSilverFailed: 'રાખેલી ચાંદી વાપરી શકાઈ નહીં',
+    silverUsedToast: 'રાખેલી ચાંદી તેમના બાકી સામે વપરાઈ',
+    returnSilverFailed: 'ચાંદી પાછી આપી શકાઈ નહીં',
+    silverReturnedToast: 'ચાંદી પાછી આપી',
+    fixGold: 'સોના પર નક્કી કરો',
+    fixSilver: 'ચાંદી પર નક્કી કરો',
+    silverHeldHint: 'રાખેલી ચાંદી',
+    silverAdvanceHint: 'ચાંદી એડવાન્સ · આગામી વેચાણ માટે',
+    returnShort: 'પાછું આપો',
+    fixSilverSubtitle: '{name} માટે {cash} રાખ્યા · {silver} ચાંદી બાકી',
+    useSilverSubtitle: '{name} માટે {held} રાખી · {due} ચાંદી બાકી',
+    returnSilverSubtitle: '{name} માટે {held} રાખી',
+    orForSilver: 'અથવા ચાંદીના બાકી પર નક્કી કરો',
+    useSilverSubtitleSale: '{held} રાખી · આ વેચાણ પર {due} બાકી',
+    fixSilverSubtitleSale: '{cash} રાખ્યા · આ વેચાણ પર {silver} ચાંદી બાકી',
+    fixSilverHintSale: 'આનાથી ખરીદાયેલા ગ્રામ જેટલું આ વેચાણનું ચાંદીનું બાકી ઘટશે.',
     receive: 'જમા લો',
     receiveTitle: 'ખાતામાં જમા',
     receiveSubtitle: 'કોઈ વેચાણ સામે નહીં. વપરાય ત્યાં સુધી {name} માટે જમા રહેશે.',
@@ -1219,7 +1264,7 @@ export default {
     noteRateLater: 'ભાવ પછી નક્કી થશે',
     noteAdvance: 'એડવાન્સ',
     noteGoldAdvance: 'સોનું એડવાન્સ',
-    cashHintDue: 'ભાવ નક્કી થાય ત્યાં સુધી તેમનું સોનાનું બાકી એમ જ રહેશે. તેઓ કહે ત્યારે, તેમણે પસંદ કરેલા ભાવે તેમના ખાતામાંથી નક્કી કરો.',
+    cashHintDue: 'ભાવ નક્કી થાય ત્યાં સુધી તેમનું બાકી એમ જ રહેશે. તેઓ કહે ત્યારે, તેમણે પસંદ કરેલા ભાવે તેમના ખાતામાંથી નક્કી કરો.',
     cashHintAdvance: 'એડવાન્સ. તેઓ ખરીદે ત્યારે વેચાણ પર ભાવ નક્કી કરો, તે તેમના બાકીમાંથી ઓછું થશે.',
     goldHint: 'તેમના વેચાણ પર ગ્રામના બદલે ગ્રામ વપરાશે, પહેલા સૌથી જૂનું બાકી, અથવા આગળના વેચાણ પર.',
     creditPreview: '99.50 માં {grams} જમા થશે',
@@ -1282,8 +1327,8 @@ export default {
   },
 
   welcome: {
-    tagline: 'જથ્થાબંધ સોનાનું ખાતું',
-    point1: 'દરેક રિટેલરનું શુદ્ધ સોનું અને રોકડ બાકી',
+    tagline: 'જથ્થાબંધ સોના-ચાંદીનું ખાતું',
+    point1: 'દરેક રિટેલરનું સોનું, ચાંદી અને રોકડ બાકી',
     point2: 'વેચાણ અને જમાનો રોજમેળ',
     point3: 'વૉટ્સઍપ પર સ્ટેટમેન્ટ અને રિમાઇન્ડર',
     signIn: 'તમારા મોબાઇલ નંબરથી સાઇન ઇન કરો',
@@ -1326,6 +1371,18 @@ export default {
   },
 
   khata: {
+    heldExplain: 'રિટેલરોની એડવાન્સ, તમારી પાસે. આ બાકી નથી.',
+    heldWhose: 'કોનું છે જુઓ',
+    heldSheetSub: 'તેમણે તમારી પાસે મૂકેલી એડવાન્સ, અને ભાવ નક્કી થવાની રાહ જોતી રોકડ. તેમના બાકી પર વપરાય છે, અથવા પાછી અપાય છે.',
+    colOwes: 'બાકી',
+    colGoldOwed: 'સોનું બાકી',
+    colSilverOwed: 'ચાંદી બાકી',
+    colCashOwed: 'રોકડ બાકી',
+    silverRateFixedAt: 'ચાંદીનો ભાવ {rate} પર નક્કી',
+    silverRateFixed: 'ચાંદીનો ભાવ નક્કી',
+    silverAdvance: 'ચાંદી એડવાન્સ',
+    silverUsed: 'રાખેલી ચાંદી વપરાઈ',
+    silverBack: 'ચાંદી પાછી આપી',
     silver: 'ચાંદી',
     silverOwed: 'બાકી ચાંદી',
     owedToYou: 'તમારે લેવાના',
@@ -1618,7 +1675,7 @@ export default {
   },
 
   auth: {
-    tagline: 'જથ્થાબંધ સોનાનું ખાતું',
+    tagline: 'જથ્થાબંધ સોના-ચાંદીનું ખાતું',
     enterPhone: 'ફોન નંબર દાખલ કરો',
     otpInfo: 'અમે તમને OTP મોકલીશું',
     phonePlaceholder: 'ફોન નંબર દાખલ કરો',
@@ -1670,6 +1727,9 @@ export default {
   },
 
   bill: {
+    goldReceived: 'સોનું મળ્યું',
+    silverReceived: 'ચાંદી મળી',
+    silverPayment: 'ચાંદી માટે ચુકવણી',
     invoice: 'ઇન્વૉઇસ',
     cashMemo: 'કૅશ મેમો',
     billTo: 'રિટેલર',
@@ -1758,6 +1818,7 @@ export default {
   // મેલ્ટ માટે લીધેલું જૂનું સોનું — en.ts ની ટિપ્પણી જુઓ.
   // રિટેલરનું ખાતું — en.ts ની ટિપ્પણી જુઓ.
   statement: {
+    silverHeld: 'રાખેલી ચાંદી',
     silverWord: 'ચાંદી',
     title: 'ખાતા વિવરણ',
     asOn: 'બાકી તારીખ',
@@ -1785,6 +1846,11 @@ export default {
     applied: 'ક્રેડિટ આ વેચાણ પર લાગ્યું',
   },
   silver: {
+    updateFailed: 'ચાંદીની જમા બદલી શકાઈ નહીં',
+    updated: 'ચાંદીની જમા બદલાઈ',
+    editTitle: 'ચાંદીની જમા બદલો',
+    owedBefore: 'આ જમા પહેલાં {grams} ચાંદી બાકી',
+    saveEdit: 'ફેરફાર સાચવો',
     receiveTitle: 'ચાંદી જમા કરો',
     owedOnSale: 'આ વેચાણ પર {grams} ચાંદી બાકી',
     cashLabel: 'રોકડ',

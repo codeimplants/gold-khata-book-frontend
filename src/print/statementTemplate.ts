@@ -37,6 +37,8 @@ export const buildStatementHTML = (
       nothingDue: string;
     /** Appended to a silver weight so it cannot be read as gold. */
     silver?: string;
+    /** The credit row for silver held. */
+    silverHeld?: string;
     };
   },
 ): string => {
@@ -79,6 +81,9 @@ export const buildStatementHTML = (
       : '',
     statement.meltCredit >= WEIGHT_SETTLED_EPSILON_GM
       ? `<tr><td colspan="2">${esc(L.meltCredit)}</td><td class="num credit">${esc(formatGrams(statement.meltCredit, ctx.gramShort))}</td></tr>`
+      : '',
+    statement.silverHeld >= WEIGHT_SETTLED_EPSILON_GM
+      ? `<tr><td colspan="2">${esc(L.silverHeld || 'Silver held')}</td><td class="num credit">${esc(`${formatGrams(statement.silverHeld, ctx.gramShort)} ${L.silver || 'silver'}`)}</td></tr>`
       : '',
   ].filter(Boolean).join('');
 

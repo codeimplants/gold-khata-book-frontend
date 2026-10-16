@@ -73,7 +73,10 @@ export default function NewEntrySheet({ visible, onClose, onAddRetailer }: Props
       key: 'receive',
       icon: ArrowDownLeft,
       tone: 'in',
-      label: t('newEntry.receive') || 'Receive gold or cash',
+      // Its own key: this opens the retailer's account, where gold, silver
+      // and cash are all received. The sale screen's 'newEntry.receive' button
+      // is the gold-or-cash receipt only.
+      label: t('newEntry.receiveAny') || 'Receive gold, silver or cash',
       hint: t('newEntry.receiveHint') || 'Record what a retailer paid against a sale',
       onPress: go(() => navigation.navigate('SelectCustomer', { next: 'CustomerDetails' })),
     },

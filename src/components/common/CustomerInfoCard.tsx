@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, HStack, VStack, Text, Pressable, Icon } from '@gluestack-ui/themed';
 import { User, Phone, RefreshCw } from 'lucide-react-native';
 import { useTranslation } from '../../hooks/useTranslation';
-import CustomerCodeBadge from '../customers/CustomerCodeBadge';
 import { retailerSubtitle } from '../../utils/retailerName';
 
 interface CustomerInfoCardProps {
@@ -38,12 +37,9 @@ const CustomerInfoCard = ({ customer, onChangeCustomer, readOnly }: CustomerInfo
             <Icon as={User} size="md" color="#0E4D3C" />
           </Box>
           <VStack flexShrink={1}>
-            <HStack alignItems="center" space="xs">
-              <Text fontWeight="$bold" color="$coolGray900" fontSize={16} flexShrink={1} numberOfLines={1}>
-                {customer.name}
-              </Text>
-              <CustomerCodeBadge code={customer.customerCode} />
-            </HStack>
+            <Text fontWeight="$bold" color="$coolGray900" fontSize={16} flexShrink={1} numberOfLines={1}>
+              {customer.name}
+            </Text>
             {/* The owner, but only when the title above is the SHOP — printing
                 "Ramesh Patel" directly under "Ramesh Patel" tells the reader
                 nothing, and that is exactly what a retailer with no shop name

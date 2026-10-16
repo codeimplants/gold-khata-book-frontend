@@ -10,7 +10,7 @@
 // modelHasNonAscii() rather than by a setting, so an English shop keeps instant text
 // printing and a Marathi shop gets a correct receipt without anyone choosing.
 import { JewelleryFormValues, PrintContext } from '../../types';
-import { MobileLang, advanceBalanceDue, fc, fw, gstLabel, pn, tl } from '../templates/shared';
+import { MobileLang, advanceBalanceDue, fc, fw, gstLabel, metalTotals, pn, tl } from '../templates/shared';
 import { formatOtherChargesLabel, getBillTotals } from '../../utils/calculations';
 import { getSharedMakingBasis } from '../../utils/formatter';
 import { getFullImageUrl } from '../../utils/imageUtils';
@@ -138,6 +138,10 @@ export function buildReceiptModel(
     lines.push({ kind: 'row', left: tl(lang, 'total'), right: fc(values.grandTotal), bold: true });
     const totalPaid = payments.reduce((sum, p) => sum + pn(p.amount), 0);
     lines.push({ kind: 'row', left: tl(lang, 'advancePayment'), right: `-${fc(totalPaid)}` });
+    // Metal handed over, per metal, in grams: it settled weight, not rupees.
+    metalTotals(payments).forEach(m => {
+      lines.push({ kind: 'row', left: tl(lang, m.metal === 'silver' ? 'silverReceived' : 'goldReceived'), right: `-${m.grams} gm` });
+    });
     const balanceDue = advanceBalanceDue(values, totalPaid);
     lines.push({ kind: 'row', left: tl(lang, 'balanceDue'), right: fc(balanceDue), bold: true });
   } else {
