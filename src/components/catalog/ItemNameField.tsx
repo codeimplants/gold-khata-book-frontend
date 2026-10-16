@@ -3,9 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Search } from 'lucide-react-native';
 
 /** The same box as FloatingLabelInput, so a sale line reads as one form. */
-const FILL = '#F7FAF8';
-const REST_BORDER = '#DCEBE4';
-const ACCENT = '#145F4A';
+const FILL = '#F6F9FB';
+const REST_BORDER = '#DAE5EF';
+const ACCENT = '#1D3A75';
 const DANGER = '#DC2626';
 
 /**
@@ -70,10 +70,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     backgroundColor: FILL,
   },
-  labelRest: { top: -9, fontSize: 12, color: '#6B665B' },
+  labelRest: { top: -9, fontSize: 12, color: '#5C6372' },
   labelUp: { top: -9, fontSize: 12, color: ACCENT },
   star: { color: DANGER },
   row: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  value: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600', color: '#1D1B16' },
-  placeholder: { color: '#A39E92', fontWeight: '500' },
+  value: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600', color: '#171B23' },
+  placeholder: { color: '#9399A6', fontWeight: '500' },
 });

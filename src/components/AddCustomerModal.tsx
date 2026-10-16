@@ -368,7 +368,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
                       alignItems="center" justifyContent="center"
                       accessibilityLabel={t('customers.pickFromContacts') || 'Pick from contacts'}
                     >
-                      <Icon as={Contact} size="sm" color="#0E4D3C" />
+                      <Icon as={Contact} size="sm" color="#132859" />
                     </Pressable>
                   )}
                 </Input>
@@ -381,7 +381,7 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
             {/* Flat primary button, as everywhere in the Ledger design. It
                 was a gradient (SoneBill's style). */}
             <Pressable onPress={handleAddCustomer} style={{ marginTop: 24 }}>
-              <Box h={50} rounded="$md" bg="#0E4D3C" alignItems="center" justifyContent="center">
+              <Box h={50} rounded="$md" bg="#132859" alignItems="center" justifyContent="center">
                 <Text color="$white" fontWeight="$bold" fontSize={16}>
                   {t("customers.addAndCreateOrder") || "Add retailer & record a sale"}
                 </Text>

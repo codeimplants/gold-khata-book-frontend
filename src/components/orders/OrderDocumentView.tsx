@@ -220,7 +220,7 @@ const OrderDocumentView = ({
                 resizeMode="contain"
               />
             )}
-            <Text fontSize="$2xl" fontWeight="$black" color="#0E4D3C">
+            <Text fontSize="$2xl" fontWeight="$black" color="#132859">
               {shop.shopName || shop.name || 'Gold Khata Book'}
             </Text>
             {!!shop.address && (
@@ -493,10 +493,10 @@ const OrderDocumentView = ({
         <Divider my="$1" bg="$coolGray100" />
 
         <HStack justifyContent="space-between" alignItems="center">
-          <Text fontSize="$lg" fontWeight="$black" color="#0E4D3C">
+          <Text fontSize="$lg" fontWeight="$black" color="#132859">
             {t('invoicePreview.grandTotal') || 'Grand Total'}
           </Text>
-          <Text fontSize="$lg" fontWeight="$black" color="#0E4D3C">
+          <Text fontSize="$lg" fontWeight="$black" color="#132859">
             {formatCurrencyValue(derived.grandTotal)}
           </Text>
         </HStack>

@@ -20,7 +20,7 @@ body,
 body {
   margin: 0;
   font-family: var(--gkb-font);
-  background: #F2F4EF;
+  background: #F1F4F7;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -47,7 +47,7 @@ select {
 input::placeholder,
 textarea::placeholder {
   font-family: var(--gkb-font) !important;
-  color: #A39E92;
+  color: #9399A6;
 }
 
 /* Remove default focus ring and border changes */
@@ -87,6 +87,6 @@ button,
 
 @media (max-width: 767px) {
   body {
-    background: #F2F4EF;
+    background: #F1F4F7;
   }
 }

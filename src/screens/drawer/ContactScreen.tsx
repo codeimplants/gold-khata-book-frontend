@@ -148,7 +148,7 @@ const ContactScreen = () => {
             title={t("contact.email")}
             value={supportEmail}
             icon={Mail}
-            colors={["#0E4D3C", "#0A3A2D"]}
+            colors={["#132859", "#0C1C42"]}
             gid="emailGrad"
             onPress={() => Linking.openURL(`mailto:${supportEmail}`)}
           />
@@ -157,7 +157,7 @@ const ContactScreen = () => {
             title={t("contact.phone")}
             value={supportPhone}
             icon={Phone}
-            colors={["#5FA88E", "#10B981"]}
+            colors={["#5A84AE", "#10B981"]}
             gid="phoneGrad"
             onPress={() => Linking.openURL(`tel:${supportPhone}`)}
           />

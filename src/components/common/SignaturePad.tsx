@@ -298,7 +298,7 @@ const SignaturePad = React.forwardRef<SignaturePadHandle, SignaturePadProps>(
               <Path
                 key={`${si}-${gi}`}
                 d={seg.d}
-                stroke="#1D1B16"
+                stroke="#171B23"
                 strokeWidth={seg.w}
                 fill="none"
                 strokeLinecap="round"

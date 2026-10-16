@@ -833,7 +833,7 @@ export default function CustomerDetailsScreen() {
                   highlighted border. */}
               <VStack space="xs">
                 <Text fontWeight="$semibold">{t('customers.ownerName') || 'Owner Name'}</Text>
-                <Input rounded="$xl" borderWidth={2} borderColor="#145F4A" bg="$white">
+                <Input rounded="$xl" borderWidth={2} borderColor="#1D3A75" bg="$white">
                   <InputField
                     placeholder={t('customers.placeholders.ownerName') || 'e.g. Ramesh Patel'}
                     value={form.ownerName}
@@ -899,7 +899,7 @@ export default function CustomerDetailsScreen() {
             </VStack>
 
             <Pressable onPress={handleUpdate} style={{ marginTop: 18 }}>
-              <Box bg="#0E4D3C" rounded="$xl" py="$3" alignItems="center">
+              <Box bg="#132859" rounded="$xl" py="$3" alignItems="center">
                 <Text color="$white" fontWeight="$bold" fontSize={16}>
                   {t('customers.detailsScreen.saveChanges') || 'Save Changes'}
                 </Text>

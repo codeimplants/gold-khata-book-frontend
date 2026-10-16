@@ -57,7 +57,7 @@ const BiometricLockScreen = () => {
 
         {/* Lock icon */}
         <View style={styles.iconContainer}>
-          <Fingerprint size={48} color="#145F4A" strokeWidth={1.5} />
+          <Fingerprint size={48} color="#1D3A75" strokeWidth={1.5} />
         </View>
 
         {/* Status */}
@@ -71,7 +71,7 @@ const BiometricLockScreen = () => {
         </Text>
 
         {status === 'prompting' && (
-          <ActivityIndicator color="#145F4A" size="large" style={styles.indicator} />
+          <ActivityIndicator color="#1D3A75" size="large" style={styles.indicator} />
         )}
 
         {status === 'failed' && (
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F4EF',
+    backgroundColor: '#F1F4F7',
     paddingHorizontal: 32,
   },
   logoBox: {
@@ -111,7 +111,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#1D1B16',
+    color: '#171B23',
   },
   iconContainer: {
     marginTop: 48,
@@ -119,20 +119,20 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#E7F0EC',
+    backgroundColor: '#E4ECF3',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1D1B16',
+    color: '#171B23',
     textAlign: 'center',
   },
   subtitle: {
     marginTop: 8,
     fontSize: 14,
-    color: '#6B665B',
+    color: '#5C6372',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -141,11 +141,11 @@ const styles = StyleSheet.create({
   },
   retryButton: {
     marginTop: 32,
-    backgroundColor: '#145F4A',
+    backgroundColor: '#1D3A75',
     paddingHorizontal: 40,
     paddingVertical: 14,
     borderRadius: 12,
-    shadowColor: '#145F4A',
+    shadowColor: '#1D3A75',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,

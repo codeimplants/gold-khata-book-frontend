@@ -200,7 +200,7 @@ export default function SelectCustomerScreen() {
       {/* Search */}
       <Box px="$4" mt="$4" style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}>
         <HStack bg={Brand.card} rounded="$md" px="$3" py="$1" alignItems="center" borderWidth={1} borderColor={Brand.line}>
-          <Icon as={Search} color="#6B665B" />
+          <Icon as={Search} color="#5C6372" />
           <Input variant="rounded" flex={1} ml="$2" borderWidth={0}>
             <InputField
               placeholder={t('customers.searchWithCode') || 'Search by name, phone or code'}
@@ -413,7 +413,7 @@ export default function SelectCustomerScreen() {
                     />
                     {!LAYOUT.isWeb && (
                       <Pressable onPress={() => setStep('contacts')} pr="$3" pl="$2" alignItems="center" justifyContent="center">
-                        <Icon as={Contact} size="sm" color="#0E4D3C" />
+                        <Icon as={Contact} size="sm" color="#132859" />
                       </Pressable>
                     )}
                   </Input>

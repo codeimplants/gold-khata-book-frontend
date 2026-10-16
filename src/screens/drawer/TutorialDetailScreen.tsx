@@ -21,7 +21,7 @@ import {
   youtubeWatchUrl,
 } from '../../tutorials/catalog';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 /**
  * Plays one tutorial. Which one is decided by the route param alone — the video
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E8ECE5',
+    borderColor: '#E6EAF0',
     padding: 16,
   },
   notice: {
@@ -234,7 +234,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE2D8',
+    borderColor: '#DAE0E8',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',

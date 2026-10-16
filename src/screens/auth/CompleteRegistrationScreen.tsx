@@ -185,7 +185,7 @@ const CompleteRegistrationScreen = () => {
                         onChangeText={(v) => { set("ownerName", capitalizeWords(v)); setFieldErrors((e) => ({ ...e, ownerName: undefined })); }}
                         maxLength={INPUT_LIMITS.ownerName}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.ownerName} limit={INPUT_LIMITS.ownerName} />
@@ -200,7 +200,7 @@ const CompleteRegistrationScreen = () => {
                         onChangeText={(v) => { set("shopName", capitalizeWords(v)); setFieldErrors((e) => ({ ...e, shopName: undefined })); }}
                         maxLength={INPUT_LIMITS.shopName}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.shopName} limit={INPUT_LIMITS.shopName} />
@@ -216,7 +216,7 @@ const CompleteRegistrationScreen = () => {
                         maxLength={INPUT_LIMITS.addressLine}
                         returnKeyType="done"
                         onSubmitEditing={Keyboard.dismiss}
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.address} limit={INPUT_LIMITS.addressLine} />

@@ -5,7 +5,8 @@ import { ArrowLeft } from 'lucide-react-native';
 import { BannerHeightContext } from '../../navigation/MainTabs';
 import { LAYOUT, useContentContainerStyle } from '../../constants/layout';
 import { Brand } from '../../theme/brand';
-import { KeriMotif } from './Motifs';
+import { ChandbaliMotif } from './Motifs';
+import TwilightBand from './TwilightBand';
 
 type Props = {
   title: string;
@@ -26,10 +27,13 @@ type Props = {
  * rainbow was a large part of why App Review saw this app as SoneBill
  * repackaged (guideline 4.3(a), APP_STORE_4.3_REWORK.md).
  *
- * The Ledger header is the same on every tab. It is solid emerald with a
- * left-aligned title and a subtitle, a faint gold keri (paisley) on the right
+ * The Ledger header is the same on every tab. It is the twilight band
+ * (sapphire into peacock, the app's one gradient, see src/theme/brand.ts) with
+ * a left-aligned title and a subtitle, a faint gold chandbali on the right
  * (components/ledger/Motifs), and a thin gold rule along the bottom, like the
  * binding edge of a khata book. Tabs differ by their content, not by colour.
+ * It was solid emerald with a keri until the owner chose Twilight on
+ * 2026-10-16.
  *
  * The rule is plain on purpose. A chain of gold beads replaced it for an
  * afternoon on 2026-10-06 and the owner did not like it.
@@ -48,10 +52,10 @@ export default function LedgerHeader({ title, subtitle, right, onBack }: Props) 
   const topPad = LAYOUT.isWeb ? 0 : bannerHeight > 0 ? 0 : insets.top;
 
   return (
-    <View style={[styles.band, { paddingTop: topPad }]}>
+    <TwilightBand style={[styles.band, { paddingTop: topPad }]}>
       <StatusBar barStyle="light-content" backgroundColor={Brand.primaryDark} />
       {/* Behind everything, cropped by the band. */}
-      <KeriMotif size={132} rotate={-18} style={styles.keri} />
+      <ChandbaliMotif size={108} rotate={-10} style={styles.motif} />
       <View style={[styles.row, contentStyle]}>
         {onBack ? (
           <Pressable
@@ -77,7 +81,7 @@ export default function LedgerHeader({ title, subtitle, right, onBack }: Props) 
         {right ? <View style={styles.actions}>{right}</View> : null}
       </View>
       <View style={styles.rule} />
-    </View>
+    </TwilightBand>
   );
 }
 
@@ -113,13 +117,14 @@ export const LedgerHeaderAction = React.forwardRef<View, {
 
 const styles = StyleSheet.create({
   band: {
+    // Shows only until the gradient draws.
     backgroundColor: Brand.primary,
     overflow: 'hidden',
   },
-  keri: {
+  motif: {
     position: 'absolute',
-    right: -18,
-    bottom: -46,
+    right: -12,
+    bottom: -34,
   },
   row: {
     minHeight: 64,
@@ -144,7 +149,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   subtitle: {
-    color: '#C3DDD2',
+    color: '#C3D3E2',
     fontSize: 13,
     marginTop: 2,
   },

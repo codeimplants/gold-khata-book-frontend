@@ -232,8 +232,8 @@ import PublicDocumentPage, { getPublicRoute } from './src/web/publicRoutes';
 // Gold Khata Book's brand applied to the kit's default update card. The violet is the
 // dashboard header's own gradient, so the sheet reads as part of this app rather
 // than as generic chrome — which is what these props exist for.
-const UPDATE_ACCENT = '#0E4D3C';
-const UPDATE_HERO = ['#0E4D3C', '#145F4A'];
+const UPDATE_ACCENT = '#132859';
+const UPDATE_HERO = ['#132859', '#1D3A75'];
 
 /**
  * The browser tab title on the web build.
@@ -891,7 +891,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     minHeight: '100%',
-    backgroundColor: '#E8ECE5', // Light gray background for the "outside" area
+    backgroundColor: '#E6EAF0', // Light gray background for the "outside" area
   },
   webFrame: {
     flex: 1,
@@ -900,5 +900,5 @@ const styles = StyleSheet.create({
   },
   // Plain app-background fill behind the blocking update card, so the modal has
   // something to sit on once the navigator is no longer rendered.
-  blockingBackdrop: { flex: 1, backgroundColor: '#E8ECE5' },
+  blockingBackdrop: { flex: 1, backgroundColor: '#E6EAF0' },
 });

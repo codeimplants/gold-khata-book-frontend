@@ -13,7 +13,7 @@ type Props = {
   label?: string;
 };
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 /**
  * "New here? Watch a short video" — for empty states.

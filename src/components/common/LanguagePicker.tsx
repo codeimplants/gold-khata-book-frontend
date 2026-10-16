@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 import { Box, HStack, Text, Pressable } from '@gluestack-ui/themed';
 import type { MobileLang } from '../../print/templates/shared';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 /** Every language the app ships, in the order the Language screen lists them. */
 export const PRINT_LANGUAGES: Array<{ code: MobileLang; label: string }> = [
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
         height: 44,
         borderRadius: 10,
         borderWidth: 1,
-        borderColor: '#DCE2D8',
+        borderColor: '#DAE0E8',
         backgroundColor: '#FFFFFF',
         // Horizontal padding stays small: four chips share the row, and on a
         // narrow phone the Gujarati label is the first thing to get clipped.
@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     },
     langChipSelected: {
         borderColor: PURPLE,
-        backgroundColor: '#E7F0EC',
+        backgroundColor: '#E4ECF3',
     },
 });
 

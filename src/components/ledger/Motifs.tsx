@@ -5,81 +5,76 @@ import { Brand } from '../../theme/brand';
 
 /**
  * The jewellery in the Ledger design: a few flat gold motifs from the trade a
- * wholesaler works in, used sparingly on a plain emerald-and-pearl ground.
+ * wholesaler works in, used sparingly on the twilight band and a pearl ground.
  *
- *   KeriMotif     a keri (paisley) drawn as filigree, the shape of the mango
- *                 necklace, faint on the green band and the login cover.
- *   GemBullet     a cut stone that marks a card's heading.
- *   GoldFrame     a fine gold rule inside the one card a screen is about.
+ *   ChandbaliMotif  a chandbali, the crescent-moon earring, in gold line,
+ *                   faint on the twilight band and the login cover.
+ *   GemBullet       a cut stone that marks a card's heading.
+ *   GoldFrame       a fine gold rule inside the one card a screen is about.
+ *
+ * The chandbali replaced a keri (paisley) on 2026-10-16, with the Twilight
+ * palette the owner chose (src/theme/brand.ts). The keri was drawn for the
+ * emerald band.
  *
  * A bead chain under the headers and a beaded rim on the "+" button were tried
  * on 2026-10-06 and removed the same day: the owner did not like them. The
- * headers keep their plain gold rule, the "+" its plain gold coin.
+ * headers keep their plain gold rule, and the "+" carries no ornament.
  *
  * Deliberately NOT SoneBill's motifs. SoneBill's design-lab work (approved
  * 2026-09-25/26) puts a jaali lattice and a mandala watermark on warm ivory,
  * under a purple-to-pink gradient. App Review rejected this app as a SoneBill
  * copy under 4.3(a) (APP_STORE_4.3_REWORK.md), so: no lattice, no mandala, no
- * gradients, no ivory. Everything here is flat gold line or fill.
+ * ivory. Everything here is flat gold line or fill.
  */
 
 /** An SVG transform applied about the point (x, y) rather than the origin. */
 const about = (x: number, y: number, t: string) => `translate(${x} ${y}) ${t} translate(${-x} ${-y})`;
 
-// The keri, in a 120 x 160 box: a teardrop whose tip curls up and to the right.
-const KERI = 'M60 152 C26 152 8 126 8 96 C8 60 34 34 64 22 C80 15 92 8 98 2 C104 14 100 30 90 40 C110 60 114 92 104 118 C96 140 80 152 60 152 Z';
-
 /**
- * A keri (paisley) in filigree: the outline, a beaded edge, an inner keri and
- * a small flower at its heart. Line work only, so it reads as a watermark at
- * low opacity and never as a picture competing with the figures.
+ * A chandbali in a 100 x 100 box: a stud, a small dome, the crescent with a
+ * cut stone in it, and three drops. Line work only, so it reads as a watermark
+ * at low opacity and never as a picture competing with the figures.
  */
-export const KeriMotif = ({
+export const ChandbaliMotif = ({
   size = 120,
   color = Brand.goldLeaf,
-  opacity = 0.16,
+  opacity = 0.28,
   rotate = 0,
   style,
 }: {
-  /** Height in points; the width follows at 3:4. */
+  /** Width and height in points. */
   size?: number;
   color?: string;
   opacity?: number;
   /** Degrees, around its own centre. */
   rotate?: number;
   style?: StyleProp<ViewStyle>;
-}) => {
-  const width = (size * 120) / 160;
-  return (
-    <View style={[{ width, height: size }, style]} pointerEvents="none">
-      <Svg width={width} height={size} viewBox="0 0 120 160" opacity={opacity}>
-        <G transform={about(60, 90, `rotate(${rotate})`)}>
-          {/* The beaded edge, just outside the outline. */}
-          <G transform={about(60, 92, 'scale(1.07)')}>
-            <Path d={KERI} fill="none" stroke={color} strokeWidth={3.2} strokeLinecap="round" strokeDasharray="0.01 7.5" />
-          </G>
-          <Path d={KERI} fill="none" stroke={color} strokeWidth={2.2} />
-          {/* The inner keri, and a third inside it. */}
-          <G transform={about(60, 100, 'scale(0.66)')}>
-            <Path d={KERI} fill="none" stroke={color} strokeWidth={2.6} />
-          </G>
-          <G transform={about(60, 106, 'scale(0.38)')}>
-            <Path d={KERI} fill="none" stroke={color} strokeWidth={3.6} />
-          </G>
-          {/* A six-petal flower at the heart. */}
-          {[0, 60, 120, 180, 240, 300].map(a => (
-            <G key={a} transform={about(58, 108, `rotate(${a})`)}>
-              <Path d="M58 108 C54 101 55 95 58 92 C61 95 62 101 58 108 Z" fill={color} />
-            </G>
-          ))}
-          <Circle cx={58} cy={108} r={2.6} fill={color} />
-          {/* The curl of the tip. */}
-          <Path d="M98 2 C88 6 84 16 90 22 C94 26 100 22 98 17" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" />
-        </G>
-      </Svg>
-    </View>
-  );
-};
+}) => (
+  <View style={[{ width: size, height: size }, style]} pointerEvents="none">
+    <Svg width={size} height={size} viewBox="0 0 100 100" opacity={opacity}>
+      <G
+        transform={about(50, 50, `rotate(${rotate})`)}
+        fill="none"
+        stroke={color}
+        strokeWidth={2.4}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {/* The stud, and the hook down to the dome. */}
+        <Circle cx={50} cy={12} r={6} />
+        <Path d="M50 18 V28" />
+        <Path d="M26 48 C30 34 40 28 50 28 S70 34 74 48" />
+        {/* The crescent, horns up, with a cut stone at its lowest point. */}
+        <Path d="M16 38 C16 62 31 80 50 80 S84 62 84 38 C77 52 65 60 50 60 S23 52 16 38 Z" />
+        <Path d="M50 63 L55 70 L50 77 L45 70 Z" />
+        {/* Three drops below. */}
+        <Path d="M50 82 C46.5 87 46.5 91 50 92 C53.5 91 53.5 87 50 82 Z" />
+        <Path d="M36 79 C32.5 84 32.5 88 36 89 C39.5 88 39.5 84 36 79 Z" />
+        <Path d="M64 79 C60.5 84 60.5 88 64 89 C67.5 88 67.5 84 64 79 Z" />
+      </G>
+    </Svg>
+  </View>
+);
 
 /** A small cut stone, set before a card's heading. */
 export const GemBullet = ({ size = 8, style }: { size?: number; style?: StyleProp<ViewStyle> }) => (

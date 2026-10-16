@@ -195,8 +195,8 @@ const SetRateModal = ({
             <Pressable onPress={onSave} disabled={!canSave} style={{ marginTop: 20 }}>
               <Box height={52} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
                 {canSave
-                  ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={12} />
-                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
+                  ? <GradientSurface colors={['#132859', '#0C1C42']} borderRadius={12} />
+                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DAE0E8" />}
                 <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
                   {saving ? (t('common.saving') || 'Saving…') : (t('rate.save') || 'Set today’s rate')}
                 </Text>

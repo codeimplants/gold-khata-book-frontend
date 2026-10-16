@@ -4,7 +4,7 @@ import { Box, HStack, Pressable, Text, VStack } from '@gluestack-ui/themed';
 
 import { useTranslation } from '../../hooks/useTranslation';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 export interface PrintDetailsTab {
   /** Stable identity, so the selection survives a re-render. */
@@ -97,7 +97,7 @@ const styles = StyleSheet.create({
   /** A track the tabs sit in, so the selected one reads as raised rather than
    *  as the only one present. */
   strip: {
-    backgroundColor: '#E8ECE5',
+    backgroundColor: '#E6EAF0',
     borderRadius: 12,
     padding: 3,
   },

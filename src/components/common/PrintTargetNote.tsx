@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTranslation } from '../../hooks/useTranslation';
 import ConfirmModal from '../ConfirmModal';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 interface PrintTargetNoteProps {
     mt?: string;

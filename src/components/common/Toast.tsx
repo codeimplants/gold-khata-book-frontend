@@ -71,7 +71,7 @@ const STYLES: Record<ToastType, { colors: [string, string]; Icon: typeof CheckCi
   success: { colors: ['#10B981', '#34D399'], Icon: CheckCircle2 },
   error: { colors: ['#F43F5E', '#C6A25A'], Icon: XCircle },
   warning: { colors: ['#B08A3A', '#C6A25A'], Icon: TriangleAlert },
-  info: { colors: ['#145F4A', '#61CDEA'], Icon: Info },
+  info: { colors: ['#1D3A75', '#61CDEA'], Icon: Info },
 };
 
 function ToastCard({ item }: { item: ToastItem }) {

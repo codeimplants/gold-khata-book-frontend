@@ -102,7 +102,7 @@ type RouteProps = NativeStackScreenProps<
   'OrderDetails'
 >['route'];
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 function getItemLabel(item: any, fallback: string): string {
   if (!item) return fallback;
@@ -1517,8 +1517,8 @@ export default function OrderDetailsScreen() {
                 <Svg height="100%" width="100%">
                   <Defs>
                     <LinearGradient id="orderProgressGrad" x1="0" y1="0" x2="1" y2="0">
-                      <Stop offset="0" stopColor="#145F4A" />
-                      <Stop offset="1" stopColor="#0E4D3C" />
+                      <Stop offset="0" stopColor="#1D3A75" />
+                      <Stop offset="1" stopColor="#132859" />
                     </LinearGradient>
                   </Defs>
                   <Rect
@@ -1539,23 +1539,23 @@ export default function OrderDetailsScreen() {
               <HStack space="sm">
                 <Box
                   flex={1}
-                  bg="#F3F8F5"
+                  bg="#F2F6F9"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#C3DDD2"
+                  borderColor="#C3D3E2"
                   alignItems="center"
                 >
                   <Text
                     fontSize={10}
-                    color="#0E4D3C"
+                    color="#132859"
                     fontWeight="$bold"
                     textTransform="uppercase"
                     mb="$1"
                   >
                     {t('orders.details.weightPaid') || 'Weight Paid'}
                   </Text>
-                  <Text fontWeight="$black" color="#0E4D3C" fontSize="$sm">
+                  <Text fontWeight="$black" color="#132859" fontSize="$sm">
                     {isCompleted
                       ? (orderTotalWeight || 0).toFixed(3)
                       : (weightPaid || 0).toFixed(3)} gm
@@ -1564,11 +1564,11 @@ export default function OrderDetailsScreen() {
 
                 <Box
                   flex={1}
-                  bg="#F2F4EF"
+                  bg="#F1F4F7"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#E8ECE5"
+                  borderColor="#E6EAF0"
                   alignItems="center"
                 >
                   <Text
@@ -1587,11 +1587,11 @@ export default function OrderDetailsScreen() {
 
                 <Box
                   flex={1}
-                  bg="#F2F4EF"
+                  bg="#F1F4F7"
                   p="$3"
                   rounded="$xl"
                   borderWidth={1}
-                  borderColor="#E8ECE5"
+                  borderColor="#E6EAF0"
                   alignItems="center"
                 >
                   <Text
@@ -1805,12 +1805,12 @@ export default function OrderDetailsScreen() {
                       flexDirection="row"
                       alignItems="center"
                     >
-                      <Plus size={16} color="#3A372F" />
+                      <Plus size={16} color="#353B48" />
                       <Text
                         ml="$2"
                         fontSize="$sm"
                         fontWeight="$medium"
-                        color="#3A372F"
+                        color="#353B48"
                       >
                         {t('orders.details.addPayment') || 'Add Payment'}
                       </Text>
@@ -1824,22 +1824,22 @@ export default function OrderDetailsScreen() {
                     shopkeeper looks to understand how the order got settled. */}
                 {hasExchange && (order?.exchangeWeightCovered ?? 0) > 0 && (
                   <HStack
-                    bg="#E7F0EC"
+                    bg="#E4ECF3"
                     p="$3"
                     rounded="$xl"
                     mb="$3"
                     alignItems="center"
                     justifyContent="space-between"
                     borderWidth={1}
-                    borderColor="#C3DDD2"
+                    borderColor="#C3D3E2"
                   >
                     <HStack alignItems="center" space="sm" flex={1}>
-                      <Icon as={Scale} size="sm" color="#0A3A2D" />
+                      <Icon as={Scale} size="sm" color="#0C1C42" />
                       <VStack flex={1}>
-                        <Text fontWeight="$bold" fontSize="$sm" color="#0A3A2D">
+                        <Text fontWeight="$bold" fontSize="$sm" color="#0C1C42">
                           {t('orders.details.oldOrnamentSettled') || 'Old ornament'}
                         </Text>
-                        <Text fontSize="$xs" color="#0A3A2D">
+                        <Text fontSize="$xs" color="#0C1C42">
                           {Number(order?.exchangeWeightCovered || 0).toFixed(3)} gm
                           {' · '}
                           ₹{exchangeValue.toLocaleString('en-IN')}
@@ -1890,7 +1890,7 @@ export default function OrderDetailsScreen() {
                             >
                               <HStack
                                 space="md"
-                                bg="#F2F4EF"
+                                bg="#F1F4F7"
                                 p="$4"
                                 rounded="$xl"
                                 alignItems="center"
@@ -1898,15 +1898,15 @@ export default function OrderDetailsScreen() {
                                 <Box
                                   width={32}
                                   height={32}
-                                  bg="#F3F8F5"
+                                  bg="#F2F6F9"
                                   rounded="$full"
                                   alignItems="center"
                                   justifyContent="center"
                                   borderWidth={1}
-                                  borderColor="#C3DDD2"
+                                  borderColor="#C3D3E2"
                                 >
                                   <Text
-                                    color="#0E4D3C"
+                                    color="#132859"
                                     fontWeight="$bold"
                                     fontSize="$xs"
                                   >
@@ -2052,7 +2052,7 @@ export default function OrderDetailsScreen() {
               <Box bg="$white" p="$4" rounded="$2xl" mb="$4" style={styles.card} borderWidth={1} borderColor="$coolGray100">
                 <HStack justifyContent="space-between" alignItems="center">
                   <HStack space="md" alignItems="center">
-                    <Box bg="rgba(14, 77, 60, 0.1)" p="$2.5" rounded="$xl">
+                    <Box bg="rgba(19, 40, 89, 0.1)" p="$2.5" rounded="$xl">
                       <History size={20} color={PURPLE} />
                     </Box>
                     <VStack>

@@ -23,7 +23,7 @@ import {
   type Tutorial,
 } from '../../tutorials/catalog';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 
 /**
  * The video tutorial library.
@@ -211,21 +211,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#E8ECE5',
+    borderColor: '#E6EAF0',
     padding: 16,
   },
   iconBox: {
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#F3F8F5',
+    backgroundColor: '#F2F6F9',
     alignItems: 'center',
     justifyContent: 'center',
   },
   sectionTitle: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#A39E92',
+    color: '#9399A6',
     letterSpacing: 0.6,
     marginTop: 4,
   },
@@ -233,7 +233,7 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE2D8',
+    borderColor: '#DAE0E8',
     backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',

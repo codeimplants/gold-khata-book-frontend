@@ -131,7 +131,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={styles.langEnglish}>{lang.label}</Text>
                   )}
                 </View>
-                {selected && <Check size={16} color="#145F4A" />}
+                {selected && <Check size={16} color="#1D3A75" />}
               </RNPressable>
             );
           })}
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#DCE2D8',
+    borderColor: '#DAE0E8',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
@@ -309,14 +309,14 @@ const styles = StyleSheet.create({
   },
   dropdownLabel: {
     fontSize: 12,
-    color: '#A39E92',
+    color: '#9399A6',
     paddingHorizontal: 12,
     paddingTop: 10,
     paddingBottom: 6,
   },
   dropdownDivider: {
     height: 1,
-    backgroundColor: '#E8ECE5',
+    backgroundColor: '#E6EAF0',
   },
   langItem: {
     flexDirection: 'row',
@@ -328,19 +328,19 @@ const styles = StyleSheet.create({
   },
   langItemBorder: {
     borderTopWidth: 1,
-    borderTopColor: '#F2F4EF',
+    borderTopColor: '#F1F4F7',
   },
   langItemPressed: {
-    backgroundColor: '#F2F4EF',
+    backgroundColor: '#F1F4F7',
   },
   langNative: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#1D1B16',
+    color: '#171B23',
   },
   langEnglish: {
     fontSize: 11,
-    color: '#A39E92',
+    color: '#9399A6',
     marginTop: 1,
   },
   termsRow: {
@@ -352,11 +352,11 @@ const styles = StyleSheet.create({
   },
   termsText: {
     fontSize: 11,
-    color: '#A39E92',
+    color: '#9399A6',
   },
   termsLink: {
     fontSize: 11,
-    color: '#145F4A',
+    color: '#1D3A75',
     textDecorationLine: 'underline',
   },
   legalModalOverlay: {
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
   legalModalTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1D1B16',
+    color: '#171B23',
     flex: 1,
   },
   legalModalClose: {
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
   },
   legalModalCloseText: {
     fontSize: 18,
-    color: '#6B665B',
+    color: '#5C6372',
   },
   legalModalScroll: {
     flexGrow: 0,
@@ -400,17 +400,17 @@ const styles = StyleSheet.create({
   legalSectionTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#1D1B16',
+    color: '#171B23',
     marginBottom: 6,
   },
   legalSectionContent: {
     fontSize: 13,
-    color: '#545047',
+    color: '#4B5262',
     lineHeight: 20,
   },
   legalLastUpdated: {
     fontSize: 12,
-    color: '#A39E92',
+    color: '#9399A6',
     textAlign: 'center',
     marginTop: 8,
   },

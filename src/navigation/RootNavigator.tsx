@@ -57,7 +57,7 @@ const RootNavigator = () => {
   if (!hydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#145F4A" />
+        <ActivityIndicator size="large" color="#1D3A75" />
       </View>
     );
   }

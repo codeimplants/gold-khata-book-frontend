@@ -43,8 +43,8 @@ import { SavedPrinter } from "../../print/thermal/transport";
 import * as escpos from "../../print/thermal/escpos";
 import { LAYOUT } from "../../constants/layout";
 
-const PURPLE = "#0E4D3C";
-const ROW_BORDER = "#DCE2D8";
+const PURPLE = "#132859";
+const ROW_BORDER = "#DAE0E8";
 
 const buildTestPrintBytes = (): number[] =>
   escpos.concat(
@@ -235,11 +235,11 @@ const ThermalPrinterSetupScreen = () => {
               bg="$white"
               rounded="$2xl"
               borderWidth={1}
-              borderColor="#C3DDD2"
+              borderColor="#C3D3E2"
               style={{ padding: 16, marginBottom: 16 }}
             >
               <HStack alignItems="center" space="md">
-                <Center rounded="$full" bg="#E7F0EC" style={{ width: 44, height: 44 }}>
+                <Center rounded="$full" bg="#E4ECF3" style={{ width: 44, height: 44 }}>
                   <Icon as={Check} size="lg" color="#1F9D82" />
                 </Center>
                 <VStack flex={1} style={{ gap: 2 }}>

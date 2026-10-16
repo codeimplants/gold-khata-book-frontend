@@ -20,8 +20,14 @@
 //    neutrals: paper output is printed in black and grey on white.
 // Left alone: reds (errors, deletes, dues), success greens, informational blues,
 // WhatsApp's brand greens, and white or black.
+//
+// Since 2026-10-16 every result also goes through twilight.js, the owner's
+// move from ledger green to the Twilight palette (sapphire into peacock, cool
+// pearl). The green and ivory targets below are kept as the record of the
+// first pass; what lands in the files is their Twilight equivalent.
 const fs = require('fs');
 const path = require('path');
+const { twilightHex, twilightRgb } = require('./twilight');
 
 const ROOT = path.resolve(__dirname, '../..');
 const TARGETS = ['src', 'App.tsx'];
@@ -113,10 +119,11 @@ for (const file of files()) {
     const to = hexMap[m.toUpperCase()];
     if (!to) return m;
     n++;
-    return to;
+    return twilightHex(to, { print: isPrint }) || to;
   });
   next = next.replace(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/g, (m, r, g, b) => {
-    const to = RGB[`${r},${g},${b}`];
+    const first = RGB[`${r},${g},${b}`];
+    const to = first && (twilightRgb(first) || first);
     if (!to) return m;
     n++;
     return m.replace(/\d+\s*,\s*\d+\s*,\s*\d+/, to.replace(/,/g, ', '));

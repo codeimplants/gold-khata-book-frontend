@@ -16,7 +16,7 @@ interface ContactsStepProps {
 
 /** Fixed so the list can skip measuring — the whole point of getItemLayout. */
 const ROW_HEIGHT = 62;
-const ACCENT = '#0E4D3C';
+const ACCENT = '#132859';
 
 /**
  * Avatar colours. A phone book is a wall of near-identical rows, and a colour
@@ -25,8 +25,8 @@ const ACCENT = '#0E4D3C';
  * id so a given person keeps their colour between openings and between sessions.
  */
 const AVATAR_COLORS = [
-  '#0E4D3C', '#0EA5E9', '#10B981', '#B08A3A',
-  '#145F4A', '#145F4A', '#145F4A', '#F43F5E',
+  '#132859', '#0EA5E9', '#10B981', '#B08A3A',
+  '#1D3A75', '#1D3A75', '#1D3A75', '#F43F5E',
 ];
 
 const avatarColor = (key: string): string => {
@@ -70,7 +70,7 @@ const ContactRowItem = memo(({ item, taken, onPress, takenLabel }: RowProps) => 
       <Center
         style={[
           styles.avatar,
-          { backgroundColor: taken ? '#C9D2C5' : avatarColor(item.id) },
+          { backgroundColor: taken ? '#C5CEDA' : avatarColor(item.id) },
         ]}
       >
         {initialOf(item) ? (
@@ -296,7 +296,7 @@ const ContactsStep = ({ onPickContact, onAddManually }: ContactsStepProps) => {
 };
 
 const styles = StyleSheet.create({
-  divider: { height: 1, backgroundColor: '#E8ECE5' },
+  divider: { height: 1, backgroundColor: '#E6EAF0' },
   limitedBanner: {
     backgroundColor: '#F5ECD7',
     borderRadius: 10,
@@ -312,9 +312,9 @@ const styles = StyleSheet.create({
   /* Tinted rather than grey so the field reads as part of the app's accent
      rather than a disabled input. */
   searchBar: {
-    backgroundColor: 'rgba(14, 77, 60, 0.08)',
+    backgroundColor: 'rgba(19, 40, 89, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(14, 77, 60, 0.18)',
+    borderColor: 'rgba(19, 40, 89, 0.18)',
   },
   addAvatar: {
     width: 38,
@@ -322,13 +322,13 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: '#93C4B1',
+    borderColor: '#93B0CB',
   },
   primerIcon: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(14, 77, 60, 0.12)',
+    backgroundColor: 'rgba(19, 40, 89, 0.12)',
   },
   deniedIcon: {
     width: 64,

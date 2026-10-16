@@ -29,7 +29,7 @@ import { priceLine, totalFine995, cashValueOfFine995, isLinePriceable } from '..
 import { formatCurrencyValue } from '../../utils/formatter';
 import { formatGrams } from '../../utils/dues';
 
-const PURPLE = '#0E4D3C';
+const PURPLE = '#132859';
 const AMBER = '#87661F';
 
 /** A line as it is being typed — strings, because a half-typed "9." is not a number. */
@@ -522,7 +522,7 @@ const NewOrderScreen = () => {
               </Text>
               <HStack alignItems="center" space="xs">
                 <Icon as={Calendar} size="xs" color="$coolGray600" />
-                <Text fontSize={14} fontWeight="$bold" color="#1D1B16">
+                <Text fontSize={14} fontWeight="$bold" color="#171B23">
                   {orderDate === new Date().toISOString().split('T')[0]
                     ? (t('common.today') || 'Today')
                     : new Date(orderDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -533,7 +533,7 @@ const NewOrderScreen = () => {
 
           {/* Items live in one card with a count and their own Add action, so
               a long order reads as a list rather than a stack of loose cards. */}
-          <Box bg="$white" rounded="$2xl" p="$4" mb="$4" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
+          <Box bg="$white" rounded="$2xl" p="$4" mb="$4" borderWidth={1} borderColor="#DAE0E8" style={styles.card}>
             <HStack alignItems="center" justifyContent="space-between" mb="$1">
               <Text fontWeight="$bold" fontSize={16}>
                 {t('orders.itemsHeading') || 'Items'} ({items.length})
@@ -545,13 +545,13 @@ const NewOrderScreen = () => {
                 <Box
                   px="$4" py="$2.5" rounded="$lg"
                   overflow="hidden"
-                  bg={canAddItem ? 'transparent' : '#DCEBE4'}
+                  bg={canAddItem ? 'transparent' : '#DAE5EF'}
                 >
                   {/* Live, it carries the app's violet-to-pink action gradient;
                       spent, a flat tint — a dimmed gradient still reads as
                       pressable, which is the thing the gate is trying to say. */}
                   {canAddItem && (
-                    <GradientSurface colors={['#145F4A', '#145F4A']} borderRadius={8} />
+                    <GradientSurface colors={['#1D3A75', '#1D3A75']} borderRadius={8} />
                   )}
                   <HStack alignItems="center" space="xs">
                     <Icon as={Plus} size="xs" color={canAddItem ? '$white' : '#FFFFFF'} />
@@ -570,7 +570,7 @@ const NewOrderScreen = () => {
             </Text>
 
             {items.length === 0 && (
-              <Box borderWidth={1} borderColor="#DCE2D8" borderStyle="dashed" rounded="$xl" py="$8" alignItems="center">
+              <Box borderWidth={1} borderColor="#DAE0E8" borderStyle="dashed" rounded="$xl" py="$8" alignItems="center">
                 <Text color="$coolGray500" fontWeight="$medium">
                   {t('orders.noItemsYet') || 'No items added yet'}
                 </Text>
@@ -588,12 +588,12 @@ const NewOrderScreen = () => {
             return (
               <Box
                 key={item.key}
-                bg="#F2F4EF"
+                bg="#F1F4F7"
                 p="$3.5"
                 rounded="$xl"
                 mb={index === items.length - 1 ? '$0' : '$3'}
                 borderWidth={1}
-                borderColor="#E8ECE5"
+                borderColor="#E6EAF0"
               >
                 {/* Header doubles as the collapse control. A finished row shows
                     its name and figures on one line, so a five-item order stays
@@ -601,7 +601,7 @@ const NewOrderScreen = () => {
                 <Pressable onPress={() => setExpandedKey(expanded ? null : item.key)}>
                   <HStack alignItems="center" justifyContent="space-between" mb={expanded ? '$3' : '$0'}>
                     <HStack alignItems="center" space="xs" flex={1}>
-                      <Text fontWeight="$bold" color={done && !expanded ? '#1D1B16' : PURPLE}>
+                      <Text fontWeight="$bold" color={done && !expanded ? '#171B23' : PURPLE}>
                         {done && !expanded
                           ? item.itemName.trim()
                           : `${t('orders.item') || 'Item'} ${index + 1}`}
@@ -701,7 +701,7 @@ const NewOrderScreen = () => {
                           <HStack alignItems="center" space="sm">
                             <Box
                               w={18} h={18} rounded="$sm" borderWidth={1.5}
-                              borderColor={item.useLiveRate ? PURPLE : '#C9D2C5'}
+                              borderColor={item.useLiveRate ? PURPLE : '#C5CEDA'}
                               bg={item.useLiveRate ? PURPLE : 'transparent'}
                               alignItems="center" justifyContent="center"
                             >
@@ -749,7 +749,7 @@ const NewOrderScreen = () => {
           </Box>
 
           {/* Payment — and the thing that decides the order type */}
-          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#DCE2D8" style={styles.card}>
+          <Box bg="$white" p="$4" rounded="$2xl" borderWidth={1} borderColor="#DAE0E8" style={styles.card}>
             <Text fontWeight="$bold" mb="$3">{t('orders.paymentNow') || 'Paying now'}</Text>
             <HStack space="md">
               <FloatingLabelInput
@@ -836,7 +836,7 @@ const NewOrderScreen = () => {
               <HStack alignItems="center" space="sm">
                 <Box
                   w={18} h={18} rounded="$sm" borderWidth={1.5}
-                  borderColor={includeGST ? PURPLE : '#C9D2C5'}
+                  borderColor={includeGST ? PURPLE : '#C5CEDA'}
                   bg={includeGST ? PURPLE : 'transparent'}
                   alignItems="center" justifyContent="center"
                 >
@@ -849,10 +849,10 @@ const NewOrderScreen = () => {
             </Pressable>
 
             {totals.fine > 0 && (
-              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#E8ECE5">
+              <Box mt="$3" pt="$3" borderTopWidth={1} borderColor="#E6EAF0">
                 <HStack justifyContent="space-between">
                   <Text fontSize={13} color="$coolGray600">{t('orders.settles') || 'Settles'}</Text>
-                  <Text fontSize={13} fontWeight="$bold" color="#1D1B16">
+                  <Text fontSize={13} fontWeight="$bold" color="#171B23">
                     {formatGrams(settling.covered, gramShort)} / {formatGrams(totals.fine, gramShort)}
                   </Text>
                 </HStack>
@@ -890,7 +890,7 @@ const NewOrderScreen = () => {
 
         {/* Total + save, pinned so the figure is visible while typing above it */}
         <Box
-          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#DCE2D8"
+          bg="$white" px="$4" pt="$3" borderTopWidth={1} borderColor="#DAE0E8"
           style={{ paddingBottom: insets.bottom + 12 }}
         >
           {/* One capped wrapper around BOTH the totals and the button. Capping
@@ -917,8 +917,8 @@ const NewOrderScreen = () => {
           <Pressable onPress={onSave} disabled={!canSave}>
             <Box height={54} rounded="$2xl" overflow="hidden" justifyContent="center" alignItems="center">
               {canSave
-                ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={16} />
-                : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
+                ? <GradientSurface colors={['#132859', '#0C1C42']} borderRadius={16} />
+                : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DAE0E8" />}
               <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
                 {saving
                   ? (t('common.saving') || 'Saving…')

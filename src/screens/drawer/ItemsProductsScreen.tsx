@@ -62,11 +62,11 @@ import { INPUT_LIMITS, validateText } from "../../constants/inputLimits";
 import CharCounter from "../../components/common/CharCounter";
 import ItemPicker from "../../components/catalog/ItemPicker";
 
-const PURPLE = "#0E4D3C";
-const PINK = "#0A3A2D";
-const BORDER = "#DCE2D8";
-const BG = "#F2F4EF";
-const ICON_TINT = "#E7F0EC";
+const PURPLE = "#132859";
+const PINK = "#0C1C42";
+const BORDER = "#DAE0E8";
+const BG = "#F1F4F7";
+const ICON_TINT = "#E4ECF3";
 
 type ItemCategory = "Gold" | "Silver" | "Others";
 type MakingChargeType = "Per Gram" | "%" | "Fix";
@@ -171,7 +171,7 @@ const GradientFullButton = ({
 
 /* ─── Stock badge (products with no numeric stockQty are "Not tracked") ─── */
 const getStockBadge = (qty?: number): { label: string; bg: string; color: string } => {
-  if (typeof qty !== "number") return { label: "Not tracked", bg: "#E8ECE5", color: "#6B665B" };
+  if (typeof qty !== "number") return { label: "Not tracked", bg: "#E6EAF0", color: "#5C6372" };
   if (qty <= 0) return { label: "Out of stock", bg: "#FEE2E2", color: "#DC2626" };
   if (qty <= 3) return { label: `Low: ${qty}`, bg: "#F5ECD7", color: "#87661F" };
   return { label: `In stock: ${qty}`, bg: "#D1FAE5", color: "#047857" };
@@ -180,7 +180,7 @@ const getStockBadge = (qty?: number): { label: string; bg: string; color: string
 /* ─── Labeled field wrapper ─── */
 const FieldLabel = ({ children }: { children: string }) => (
   <Text
-    style={{ fontSize: 13, marginBottom: 6, color: "#3A372F", fontWeight: "600" }}
+    style={{ fontSize: 13, marginBottom: 6, color: "#353B48", fontWeight: "600" }}
   >
     {children}
   </Text>
@@ -229,12 +229,12 @@ const StyledInput = ({
           autoFocus={autoFocus}
           maxLength={maxLength}
           style={{ fontSize: 15 }}
-          placeholderTextColor="#A39E92"
+          placeholderTextColor="#9399A6"
         />
       </Input>
       {onSearch ? (
         <Pressable onPress={onSearch} hitSlop={10} accessibilityLabel={searchLabel} pl="$2">
-          <Icon as={Search} size="md" color="#145F4A" />
+          <Icon as={Search} size="md" color="#1D3A75" />
         </Pressable>
       ) : null}
     </Box>
@@ -264,9 +264,9 @@ const StyledSelect = ({
   <Box h={50} w="$full" rounded="$2xl" borderWidth={1} borderColor={BORDER} bg="$white">
     <Select key={value} selectedValue={value} selectedLabel={selectedLabel} onValueChange={onValueChange}>
       <SelectTrigger variant="outline" style={{ height: 44, borderWidth: 0, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <SelectInput style={{ flex: 1, fontSize: 15, color: "#1D1B16" }} placeholder={placeholder} pointerEvents="none" />
+        <SelectInput style={{ flex: 1, fontSize: 15, color: "#171B23" }} placeholder={placeholder} pointerEvents="none" />
         <SelectIcon pointerEvents="none">
-          <Icon as={ChevronDown} size="sm" color="#6B665B" />
+          <Icon as={ChevronDown} size="sm" color="#5C6372" />
         </SelectIcon>
       </SelectTrigger>
       <SelectPortal>
@@ -518,7 +518,7 @@ const ItemsProductsScreen = () => {
               style={LAYOUT.isWeb ? LAYOUT.contentContainerStyle : {}}
             >
               <Pressable onPress={closeForm} p="$2" rounded="$lg">
-                <ArrowLeft color="#1D1B16" />
+                <ArrowLeft color="#171B23" />
               </Pressable>
               <Text fontWeight="$bold" color="$coolGray900" style={{ fontSize: 20, marginLeft: 10 }}>
                 {isEditing ? t("items.modal.editTitle") : t("items.modal.addTitle")}
@@ -721,14 +721,14 @@ const ItemsProductsScreen = () => {
           style={{ height: 52, paddingHorizontal: 14 }}
         >
           <HStack alignItems="center" space="sm" flex={1}>
-            <Icon as={Search} size="lg" color="#6B665B" />
+            <Icon as={Search} size="lg" color="#5C6372" />
             <Input flex={1} bg="transparent" borderWidth={0} p={0}>
               <InputField
                 placeholder={t("items.searchPlaceholder")}
                 value={query}
                 onChangeText={setQuery}
                 style={{ fontSize: 16 }}
-                placeholderTextColor="#A39E92"
+                placeholderTextColor="#9399A6"
               />
             </Input>
           </HStack>
@@ -756,10 +756,10 @@ const ItemsProductsScreen = () => {
                 width: 78,
                 height: 78,
                 borderRadius: 39,
-                backgroundColor: "#DCE2D8",
+                backgroundColor: "#DAE0E8",
               }}
             >
-              <Icon as={Package} size="xl" color="#6B665B" />
+              <Icon as={Package} size="xl" color="#5C6372" />
             </Center>
 
             <Text
@@ -837,7 +837,7 @@ const ItemsProductsScreen = () => {
 
                   <HStack alignItems="center" space="md">
                     <Pressable onPress={() => openEdit(it)} p="$2">
-                      <Icon as={Pencil} size="lg" color="#6B665B" />
+                      <Icon as={Pencil} size="lg" color="#5C6372" />
                     </Pressable>
                     <Pressable
                       onPress={() => confirmDelete(it.id, it.name)}

@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
   modalHeader: {
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#E8ECE5",
+    borderBottomColor: "#E6EAF0",
   },
   closeBtn: {
     padding: 4,
@@ -89,17 +89,17 @@ const styles = StyleSheet.create({
   modalImage: {
     width: "100%",
     height: 280,
-    backgroundColor: "#F2F4EF",
+    backgroundColor: "#F1F4F7",
   },
   modalPlaceholder: {
     height: 200,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F2F4EF",
+    backgroundColor: "#F1F4F7",
   },
   replaceBtn: {
     margin: 16,
-    backgroundColor: "#0E4D3C",
+    backgroundColor: "#132859",
     borderRadius: 12,
     paddingVertical: 14,
   },
@@ -127,7 +127,7 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 
 const Field = (props: React.ComponentProps<typeof InputField>) => (
   <Input bg="$coolGray100" borderWidth={0} rounded="$lg" h="$11">
-    <InputField {...props} placeholderTextColor="#A39E92" />
+    <InputField {...props} placeholderTextColor="#9399A6" />
   </Input>
 );
 
@@ -586,7 +586,7 @@ const AddShopDetailsScreen = () => {
                         onChangeText={(v) => { set("shopName", capitalizeWords(v)); setFieldErrors(e => ({ ...e, shopName: undefined })); }}
                         maxLength={INPUT_LIMITS.shopName}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.shopName} limit={INPUT_LIMITS.shopName} />
@@ -613,7 +613,7 @@ const AddShopDetailsScreen = () => {
                         onChangeText={(v) => { set("addr1", capitalizeWords(v)); setFieldErrors(e => ({ ...e, addr1: undefined })); }}
                         maxLength={INPUT_LIMITS.addressLine}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.addr1} limit={INPUT_LIMITS.addressLine} />
@@ -680,7 +680,7 @@ const AddShopDetailsScreen = () => {
                         keyboardType="phone-pad"
                         maxLength={INPUT_LIMITS.phone}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                   </VStack>
@@ -696,7 +696,7 @@ const AddShopDetailsScreen = () => {
                         autoCapitalize="none"
                         maxLength={INPUT_LIMITS.email}
                         returnKeyType="next"
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                     <CharCounter value={form.email} limit={INPUT_LIMITS.email} />
@@ -726,7 +726,7 @@ const AddShopDetailsScreen = () => {
                         maxLength={INPUT_LIMITS.gstin}
                         returnKeyType="done"
                         onSubmitEditing={Keyboard.dismiss}
-                        placeholderTextColor="#A39E92"
+                        placeholderTextColor="#9399A6"
                       />
                     </Input>
                   </VStack>

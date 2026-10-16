@@ -46,18 +46,18 @@ const LanguageScreen = () => {
           bg="$white"
           rounded="$2xl"
           borderWidth={selected ? 2.5 : 1}
-          borderColor={selected ? "#0E4D3C" : "#DCE2D8"}
+          borderColor={selected ? "#132859" : "#DAE0E8"}
           hardShadow="1"
           style={{ padding: 14 }}
         >
           <HStack alignItems="center" justifyContent="space-between">
             <HStack alignItems="center" space="md">
               <Center
-                bg="#E7F0EC"
+                bg="#E4ECF3"
                 rounded="$full"
                 style={{ width: 52, height: 52 }}
               >
-                <Icon as={Globe} size="xl" color="#0E4D3C" />
+                <Icon as={Globe} size="xl" color="#132859" />
               </Center>
 
               <VStack style={{ gap: 2 }}>
@@ -81,7 +81,7 @@ const LanguageScreen = () => {
             <Center
               rounded="$full"
               style={{ width: 40, height: 40 }}
-              bg={selected ? "#0E4D3C" : "transparent"}
+              bg={selected ? "#132859" : "transparent"}
             >
               {selected && <Icon as={Check} size="lg" color="$white" />}
             </Center>
@@ -123,7 +123,7 @@ const LanguageScreen = () => {
             bg="$white"
             rounded="$2xl"
             borderWidth={1}
-            borderColor="#DCE2D8"
+            borderColor="#DAE0E8"
             hardShadow="1"
             style={{ padding: 16 }}
           >

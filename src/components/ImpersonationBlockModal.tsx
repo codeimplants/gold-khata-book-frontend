@@ -27,7 +27,7 @@ export default function ImpersonationBlockModal({ isOpen, phone, onEndSession, o
                 <View style={styles.card}>
                     <View style={styles.iconRow}>
                         <View style={styles.iconBadge}>
-                            <ShieldAlert size={28} color="#0A3A2D" />
+                            <ShieldAlert size={28} color="#0C1C42" />
                         </View>
                     </View>
 
@@ -76,31 +76,31 @@ const styles = StyleSheet.create({
         width: 56,
         height: 56,
         borderRadius: 28,
-        backgroundColor: "#E7F0EC",
+        backgroundColor: "#E4ECF3",
         alignItems: "center",
         justifyContent: "center",
     },
     title: {
         fontSize: 18,
         fontWeight: "700",
-        color: "#1D1B16",
+        color: "#171B23",
         marginBottom: 10,
         textAlign: "center",
     },
     body: {
         fontSize: 14,
-        color: "#545047",
+        color: "#4B5262",
         textAlign: "center",
         lineHeight: 22,
         marginBottom: 24,
     },
     phone: {
         fontWeight: "700",
-        color: "#1D1B16",
+        color: "#171B23",
     },
     endBtn: {
         width: "100%",
-        backgroundColor: "#0A3A2D",
+        backgroundColor: "#0C1C42",
         borderRadius: 10,
         paddingVertical: 13,
         alignItems: "center",
@@ -113,13 +113,13 @@ const styles = StyleSheet.create({
     },
     keepBtn: {
         width: "100%",
-        backgroundColor: "#E8ECE5",
+        backgroundColor: "#E6EAF0",
         borderRadius: 10,
         paddingVertical: 13,
         alignItems: "center",
     },
     keepBtnText: {
-        color: "#3A372F",
+        color: "#353B48",
         fontSize: 15,
         fontWeight: "600",
     },

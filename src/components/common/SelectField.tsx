@@ -5,7 +5,7 @@ import { ChevronDown, Check } from "lucide-react-native";
 import { Brand } from "../../theme/brand";
 import { LAYOUT } from "../../constants/layout";
 
-const BORDER = "#DCE2D8";
+const BORDER = "#DAE0E8";
 
 export interface SelectFieldOption {
   label: string;
@@ -50,10 +50,10 @@ const SelectField = ({
           justifyContent="space-between"
           opacity={readOnly ? 0.5 : 1}
         >
-          <Text fontSize={14} color={selectedLabel ? "#1D1B16" : "#A39E92"} numberOfLines={1}>
+          <Text fontSize={14} color={selectedLabel ? "#171B23" : "#9399A6"} numberOfLines={1}>
             {selectedLabel || placeholder}
           </Text>
-          <Icon as={ChevronDown} size="sm" color="#6B665B" />
+          <Icon as={ChevronDown} size="sm" color="#5C6372" />
         </Box>
       </Pressable>
 

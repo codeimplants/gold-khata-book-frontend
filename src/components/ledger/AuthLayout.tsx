@@ -12,7 +12,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check } from 'lucide-react-native';
 import { Brand } from '../../theme/brand';
-import { KeriMotif } from './Motifs';
+import { ChandbaliMotif } from './Motifs';
+import TwilightBand from './TwilightBand';
 
 type Props = {
   appName: string;
@@ -30,9 +31,12 @@ type Props = {
  * It replaced SoneBill's layout, which App Review saw as the same app (4.3(a),
  * APP_STORE_4.3_REWORK.md): a logo, name and "Jewellery Billing Made Simple"
  * stacked in the centre of a tinted gradient, over a floating white card. The
- * Ledger version opens like a khata book. A green cover panel carries the
- * name, what the app is for and a gold binding rule. The form sits on the
- * ivory page below it.
+ * Ledger version opens like a khata book. A cover panel carries the name, what
+ * the app is for and a gold binding rule. The form sits on the pearl page
+ * below it. The cover is the twilight band, the same as the header, with a
+ * large faint chandbali (green with a keri until 2026-10-16). Unlike
+ * SoneBill's tint it is a solid band with a hard gold edge, not a wash behind
+ * a floating card.
  *
  * Keyboard handling follows CLAUDE.md's pre-deploy checklist, which calls a
  * blocked login an automatic store rejection. It uses a KeyboardAvoidingView
@@ -57,9 +61,9 @@ export default function AuthLayout({ appName, tagline, points, topRight, childre
           contentContainerStyle={{ flexGrow: 1 }}
           bounces={false}
         >
-          <View style={[styles.cover, { paddingTop: insets.top + 20 }]}>
-            {/* The keri, large and faint, behind the cover's words. */}
-            <KeriMotif size={250} opacity={0.14} rotate={-14} style={styles.keri} />
+          <TwilightBand style={[styles.cover, { paddingTop: insets.top + 20 }]}>
+            {/* The chandbali, large and faint, behind the cover's words. */}
+            <ChandbaliMotif size={240} opacity={0.16} rotate={-10} style={styles.motif} />
             <View style={styles.cap}>
               {topRight ? <View style={styles.topRight}>{topRight}</View> : null}
               <Image
@@ -83,7 +87,7 @@ export default function AuthLayout({ appName, tagline, points, topRight, childre
                 </View>
               ) : null}
             </View>
-          </View>
+          </TwilightBand>
           <View style={styles.rule} />
 
           <View style={[styles.page, { paddingBottom: insets.bottom + 24 }]}>
@@ -101,15 +105,16 @@ const styles = StyleSheet.create({
     backgroundColor: Brand.paper,
   },
   cover: {
+    // Shows only until the gradient draws.
     backgroundColor: Brand.primary,
     paddingHorizontal: 24,
     paddingBottom: 28,
     overflow: 'hidden',
   },
-  keri: {
+  motif: {
     position: 'absolute',
-    right: -40,
-    bottom: -60,
+    right: -36,
+    bottom: -44,
   },
   // Caps the content at the login width on iPad and wide web, the same 424
   // that useLoginContainerStyle uses. Not that hook itself: its native style
@@ -163,7 +168,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   pointText: {
-    color: '#E7F0EC',
+    color: Brand.primarySoft,
     fontSize: 14,
     flex: 1,
   },

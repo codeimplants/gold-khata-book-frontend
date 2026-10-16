@@ -18,7 +18,7 @@ import AddCustomerModal from "../components/AddCustomerModal";
 import { MainTabParamList } from "./types";
 import { useTranslation } from "../hooks/useTranslation";
 import { LAYOUT } from "../constants/layout";
-import { Brand } from "../theme/brand";
+import { Brand, GoldScale } from "../theme/brand";
 
 export const BannerHeightContext = React.createContext(0);
 
@@ -49,10 +49,43 @@ const CENTRE_AFTER_INDEX = 1;
  * along the top edge. That was part of the look App Review rejected under
  * guideline 4.3(a) (APP_STORE_4.3_REWORK.md).
  *
- * This bar is flat and the same green for every tab. The active tab is marked
- * by colour and a short gold underline. A gold New Entry button sits in the
- * centre, so a sale, receipt or melt can be written from anywhere.
+ * This bar is flat and the same sapphire for every tab. The active tab is
+ * marked by colour and a short gold underline. A gold New Entry button sits in
+ * the centre, so a sale, receipt or melt can be written from anywhere.
  */
+
+/**
+ * New Entry, in the centre of the bar.
+ *
+ * Until 2026-10-16 this was a 50pt gold coin with a pale ring, which the owner
+ * found dated. It is now a gold pill, wider than it is tall, with a sapphire
+ * "+" and a soft shadow, and it gives a little when pressed. It stays flat and
+ * inside the bar. SoneBill's bar put the active icon in a gradient rounded
+ * square, so the bar carries no gradient at all. And on Android, the part of a
+ * button raised above its parent does not receive touches.
+ */
+function NewEntryButton({ label, onPress }: { label: string; onPress: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const springTo = (toValue: number) =>
+    Animated.spring(scale, { toValue, speed: 40, bounciness: 8, useNativeDriver: !LAYOUT.isWeb }).start();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={() => springTo(0.92)}
+      onPressOut={() => springTo(1)}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={styles.centreHit}
+    >
+      <Animated.View style={[styles.centreButton, { transform: [{ scale }] }]}>
+        <Plus size={24} color={Brand.primary} strokeWidth={2.75} />
+      </Animated.View>
+    </Pressable>
+  );
+}
+
 function LedgerTabBar({ state, navigation, onNewEntry }: BottomTabBarProps & { onNewEntry: () => void }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
@@ -107,14 +140,7 @@ function LedgerTabBar({ state, navigation, onNewEntry }: BottomTabBarProps & { o
         {state.routes.slice(0, CENTRE_AFTER_INDEX + 1).map((r, i) => renderTab(r, i))}
 
         <View style={styles.centreSlot}>
-          <Pressable
-            onPress={onNewEntry}
-            accessibilityRole="button"
-            accessibilityLabel={t('tabs.newEntry') || 'New Entry'}
-            style={({ pressed }) => [styles.centreButton, pressed && { opacity: 0.85 }]}
-          >
-            <Plus size={26} color="#FFFFFF" strokeWidth={2.5} />
-          </Pressable>
+          <NewEntryButton label={t('tabs.newEntry') || 'New Entry'} onPress={onNewEntry} />
         </View>
 
         {state.routes.slice(CENTRE_AFTER_INDEX + 1).map((r, i) => renderTab(r, i + CENTRE_AFTER_INDEX + 1))}
@@ -357,15 +383,29 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
+  centreHit: {
+    ...(Platform.OS === "web" ? { cursor: "pointer" } as any : {}),
+  },
+
+  // gold500: the pill is 3.2:1 against the white bar and the sapphire "+" is
+  // 4.4:1 on it. The lighter goldLight would leave the pill at 2.4:1.
   centreButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: Brand.goldFill,
+    width: 60,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: GoldScale.gold500,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: Brand.goldSoft,
-    ...(Platform.OS === "web" ? { cursor: "pointer" } as any : {}),
+    // A soft lift, tinted sapphire rather than grey.
+    ...(Platform.select({
+      web: { boxShadow: "0 4px 12px rgba(19, 40, 89, 0.22)" },
+      android: { elevation: 4 },
+      default: {
+        shadowColor: Brand.primary,
+        shadowOpacity: 0.22,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: 4 },
+      },
+    }) as any),
   },
 });

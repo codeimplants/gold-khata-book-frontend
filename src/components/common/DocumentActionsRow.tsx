@@ -123,14 +123,14 @@ const base = {
 // Ledger palette (src/theme/brand.ts). These were SoneBill's sky-blue Print and
 // bright-green Share, colours the 4.3(a) rework retired.
 const styles = StyleSheet.create({
-  printButton: { ...base, backgroundColor: '#0E4D3C' },
-  downloadButton: { ...base, backgroundColor: '#145F4A' },
+  printButton: { ...base, backgroundColor: '#132859' },
+  downloadButton: { ...base, backgroundColor: '#1D3A75' },
   shareButton: { ...base, backgroundColor: '#9A7425' },
   whatsAppButton: {
     ...base,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#DCE2D8',
+    borderColor: '#DAE0E8',
     // Tighter than the others: with no label to sit beside, the glyph should
     // fill the button rather than float in it.
     paddingHorizontal: 8,

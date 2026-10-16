@@ -135,11 +135,11 @@ const SortModal = ({ isOpen, onClose, sortBy, onSelect, t }: any) => {
                   <HStack justifyContent="space-between" alignItems="center">
                     <Text
                       fontWeight={sortBy === opt.key ? "$bold" : "$medium"}
-                      color={sortBy === opt.key ? "#145F4A" : "$coolGray700"}
+                      color={sortBy === opt.key ? "#1D3A75" : "$coolGray700"}
                     >
                       {opt.label}
                     </Text>
-                    {sortBy === opt.key && <Icon as={Check} color="#145F4A" size="sm" />}
+                    {sortBy === opt.key && <Icon as={Check} color="#1D3A75" size="sm" />}
                   </HStack>
                 </Pressable>
               ))}
@@ -272,7 +272,7 @@ const DeletedOrderCard = memo(({ entry, customerName, onRestore, onDeleteForever
             <Text fontWeight="$bold" fontSize={15} color="$coolGray900" numberOfLines={1} style={{ flexShrink: 1 }}>
               {label}
             </Text>
-            <Box bg="#E8ECE5" px="$2" py="$0.5" rounded="$full">
+            <Box bg="#E6EAF0" px="$2" py="$0.5" rounded="$full">
               <Text color="$coolGray600" fontSize={10}>{badge.toUpperCase()}</Text>
             </Box>
           </HStack>
@@ -302,7 +302,7 @@ const DeletedOrderCard = memo(({ entry, customerName, onRestore, onDeleteForever
             justifyContent="center"
             bg="$white"
           >
-            <RotateCcw size={13} color="#545047" />
+            <RotateCcw size={13} color="#4B5262" />
             <Text fontSize={13} fontWeight="$medium" color="$coolGray700" ml="$1">
               Restore
             </Text>
@@ -578,7 +578,7 @@ const OrdersScreen = () => {
   }, [visibleFilterTabs, activeFilter]);
 
   return (
-    <Box flex={1} bg="#F2F4EF">
+    <Box flex={1} bg="#F1F4F7">
       {/* Pushed from the Day Book header since the Day Book took this list's
           tab. Back when there is somewhere to go back to. */}
       <LedgerHeader
@@ -675,7 +675,7 @@ const OrdersScreen = () => {
                   <Center mt="$20">
                     <VStack space="md" alignItems="center">
                       <Box p="$5" bg="$coolGray100" rounded="$full">
-                        <Trash2 size={32} color="#A39E92" />
+                        <Trash2 size={32} color="#9399A6" />
                       </Box>
                       <Text color="$coolGray500" fontSize={16} fontWeight="$medium">
                         Deleted is empty
@@ -745,7 +745,7 @@ const OrdersScreen = () => {
                   rounded="$xl"
                   flexDirection="row"
                   alignItems="center"
-                  style={{ backgroundColor: '#0E4D3C' }}
+                  style={{ backgroundColor: '#132859' }}
                   onPress={handleNewOrder}
                 >
                   <Icon as={Plus} color="$white" size="sm" />
@@ -851,10 +851,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
   },
   activeFilter: {
-    backgroundColor: '#145F4A',
+    backgroundColor: '#1D3A75',
   },
   deletedFilter: {
-    backgroundColor: '#6B665B',
+    backgroundColor: '#5C6372',
   },
   filter: {
     backgroundColor: '#FFFFFF',

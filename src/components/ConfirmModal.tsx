@@ -130,15 +130,15 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                                 <HStack
                                     space="xs"
                                     alignItems="center"
-                                    bg="#E7F0EC"
+                                    bg="#E4ECF3"
                                     borderWidth={1}
-                                    borderColor="#C3DDD2"
+                                    borderColor="#C3D3E2"
                                     rounded="$full"
                                     px="$4"
                                     py="$2"
                                 >
-                                    <Icon as={Pencil} size="xs" color="#0A3A2D" />
-                                    <Text fontWeight="$bold" color="#0A3A2D" fontSize="$sm">
+                                    <Icon as={Pencil} size="xs" color="#0C1C42" />
+                                    <Text fontWeight="$bold" color="#0C1C42" fontSize="$sm">
                                         {tertiaryLabel}
                                     </Text>
                                 </HStack>
