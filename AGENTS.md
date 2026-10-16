@@ -47,6 +47,11 @@ four languages. The **keys** are still `customers.*` — those are code.
 not rupees. Cash settles that position at the day's 24K 99.50 rate; it is not a
 second unit of account.
 
+**Except silver, which is its own account** (2026-10-16): a silver line is net
+weight at a rate per gram of silver, owed as grams of silver, and never added
+to a gold figure. `utils/silverPricing.ts`, the `silver` field in `dues.ts`, and
+section 12 of `APP_STORE_4.3_REWORK.md`.
+
 ## Dues: `src/utils/dues.ts`
 
 The single definition of what a retailer owes. The dashboard, the retailer list

@@ -52,8 +52,15 @@ export interface DayBookEntry {
   /** Rupees in: a receipt's cash, cash held, or (for a transfer or payout)
    *  the rupees that moved. */
   cashIn: number;
-  /** Which account a receipt's cash cleared: buying metal down, or charges. */
-  settles?: 'metal' | 'cash';
+  /**
+   * Silver, in grams of silver, kept apart from the gold figures above: out
+   * on a sale's silver lines, in on a silver receipt (silver handed over, and
+   * the grams its cash bought). Absent on everything that is not silver.
+   */
+  silverOut?: number;
+  silverIn?: number;
+  /** Which account a receipt's cash cleared: buying metal down, charges, or silver. */
+  settles?: 'metal' | 'cash' | 'silver';
   /**
    * What a held, transfer or payout line is about:
    *   cash-held     cash kept on the account, rate not fixed
@@ -115,12 +122,18 @@ export const buildDayBook = (orders: Order[], accounts: RetailerAccount[] = []):
       goldOut: Number(order.totalWeight || 0),
       goldIn: 0,
       cashIn: 0,
+      ...(Number((order as any).totalSilverWeight) > 0
+        ? { silverOut: Number((order as any).totalSilverWeight) }
+        : {}),
     });
 
     (order.payments || []).forEach((p: any, i: number) => {
       const cashIn = Number(p?.amount || 0);
       const goldIn = Number(p?.fineWeight || 0);
-      if (cashIn <= 0 && goldIn <= 0) return;
+      // Silver handed over. Without it a receipt of silver alone, with no
+      // cash, carried nothing the day book counted and was skipped.
+      const silverIn = p?.settles === 'silver' ? Number(p?.silverWeight || 0) : 0;
+      if (cashIn <= 0 && goldIn <= 0 && silverIn <= 0) return;
       const transfer = isTransferPayment(p);
       entries.push({
         id: `${order.id}:pay:${p?._id || p?.id || i}`,
@@ -132,7 +145,8 @@ export const buildDayBook = (orders: Order[], accounts: RetailerAccount[] = []):
         goldOut: 0,
         goldIn,
         cashIn,
-        settles: p?.settles === 'cash' ? 'cash' : 'metal',
+        settles: p?.settles === 'cash' ? 'cash' : p?.settles === 'silver' ? 'silver' : 'metal',
+        ...(silverIn > 0 ? { silverIn } : {}),
         ...(transfer
           ? {
               detail: cashIn > 0 ? 'fix-rate' as const : 'gold-used' as const,
@@ -214,6 +228,9 @@ export interface DayTotals {
   goldOut: number;
   goldIn: number;
   cashIn: number;
+  /** Silver in grams of silver, beside the gold totals and never in them. */
+  silverOut: number;
+  silverIn: number;
   count: number;
 }
 
@@ -228,7 +245,9 @@ export const totalsOf = (entries: DayBookEntry[]): DayTotals =>
       goldOut: t.goldOut + (e.kind === 'sale' ? e.goldOut : 0),
       goldIn: t.goldIn + (countsAsIn(e) ? e.goldIn : 0),
       cashIn: t.cashIn + (countsAsIn(e) ? e.cashIn : 0),
+      silverOut: t.silverOut + (e.kind === 'sale' ? Number(e.silverOut || 0) : 0),
+      silverIn: t.silverIn + (countsAsIn(e) ? Number(e.silverIn || 0) : 0),
       count: t.count + 1,
     }),
-    { goldOut: 0, goldIn: 0, cashIn: 0, count: 0 },
+    { goldOut: 0, goldIn: 0, cashIn: 0, silverOut: 0, silverIn: 0, count: 0 },
   );

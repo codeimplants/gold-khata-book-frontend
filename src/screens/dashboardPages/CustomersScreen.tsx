@@ -62,7 +62,7 @@ import { Brand, tabularNums } from "../../theme/brand";
 
 // `goldDue`/`cashDue` are this retailer's two outstanding positions summed
 // across their orders — the pair a wholesaler actually needs from a list.
-const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, total: 0, lastDate: 0 };
+const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, silverDue: 0, total: 0, lastDate: 0 };
 
 /**
  * One retailer as a ledger row. Name, code and phone on the left; what they
@@ -75,7 +75,7 @@ const EMPTY_STATS = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 
 const RetailerRow = React.memo(({ customer, stats, held, onPress, onDelete, t }: any) => {
   const s = stats || EMPTY_STATS;
   const gramShort = t('common.gramShort') || 'gm';
-  const owes = s.goldDue > 0 || s.cashDue > 0;
+  const owes = s.goldDue > 0 || s.cashDue > 0 || s.silverDue > 0;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.6 }]}>
@@ -117,6 +117,12 @@ const RetailerRow = React.memo(({ customer, stats, held, onPress, onDelete, t }:
         <Text style={[styles.figureSmall, { color: s.cashDue > 0 ? Brand.ink : Brand.inkFaint }, tabularNums]} numberOfLines={1}>
           {s.cashDue > 0 ? formatCurrencyValue(s.cashDue) : '—'}
         </Text>
+        {/* Silver only when owed, so a gold-only list is unchanged. */}
+        {s.silverDue > 0 && (
+          <Text style={[styles.figureSmall, { color: Brand.silver }, tabularNums]} numberOfLines={1}>
+            {formatGrams(s.silverDue, gramShort)} {t('orders.silverAbbr') || 'Ag'}
+          </Text>
+        )}
         {/* What the shop holds for them: cash with the rate not fixed, an
             advance, gold held. Beside the dues, never netted off them. */}
         {(held?.cash >= CASH_SETTLED_EPSILON || held?.gold >= WEIGHT_SETTLED_EPSILON_GM) && (
@@ -275,11 +281,11 @@ export default function CustomersScreen() {
    * a retailer, exactly as it does everywhere else.
    */
   const statsByCustomer = useMemo(() => {
-    const map = new Map<string, { orders: number; pending: number; completed: number; goldDue: number; cashDue: number; total: number; lastDate: number }>();
+    const map = new Map<string, { orders: number; pending: number; completed: number; goldDue: number; cashDue: number; silverDue: number; total: number; lastDate: number }>();
     const entry = (id: string) => {
       let e = map.get(id);
       if (!e) {
-        e = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, total: 0, lastDate: 0 };
+        e = { orders: 0, pending: 0, completed: 0, goldDue: 0, cashDue: 0, silverDue: 0, total: 0, lastDate: 0 };
         map.set(id, e);
       }
       return e;
@@ -298,6 +304,7 @@ export default function CustomersScreen() {
       const due = orderOutstanding(o);
       e.goldDue += due.gold;
       e.cashDue += due.cash;
+      e.silverDue += due.silver;
 
       const ts = o.date ? new Date(o.date).getTime() : 0;
       if (ts > e.lastDate) e.lastDate = ts;
@@ -318,7 +325,7 @@ export default function CustomersScreen() {
       if (s.pending > 0) pending += 1;
       if (s.completed > 0) completed += 1;
       if (s.orders === 0) noOrders += 1;
-      if (s.goldDue > 0 || s.cashDue > 0) owing += 1;
+      if (s.goldDue > 0 || s.cashDue > 0 || s.silverDue > 0) owing += 1;
     });
     return { all: baseList.length, pending, completed, owing, noOrders };
   }, [baseList, statsByCustomer]);
@@ -331,7 +338,7 @@ export default function CustomersScreen() {
         const s = statsByCustomer.get(c.id) || EMPTY_STATS;
         if (activeFilter === 'pending') return s.pending > 0;
         if (activeFilter === 'completed') return s.completed > 0;
-        if (activeFilter === 'owing') return s.goldDue > 0 || s.cashDue > 0;
+        if (activeFilter === 'owing') return s.goldDue > 0 || s.cashDue > 0 || s.silverDue > 0;
         return s.orders === 0;
       });
     }

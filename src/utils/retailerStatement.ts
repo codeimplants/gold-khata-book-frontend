@@ -24,6 +24,8 @@ export interface StatementLine {
   gold: number;
   /** Rupees still owed against charges on this order. */
   cash: number;
+  /** Grams of silver still owed on this order: its own account. */
+  silver: number;
   settled: boolean;
 }
 
@@ -31,6 +33,7 @@ export interface RetailerStatement {
   lines: StatementLine[];
   totalGold: number;
   totalCash: number;
+  totalSilver: number;
   /** Rupees the wholesaler is holding for this retailer, unapplied. */
   heldCash: number;
   /** Grams of melt credit held, likewise unapplied. */
@@ -67,12 +70,14 @@ export const buildRetailerStatement = (
         date: asDate(order),
         gold: due.gold,
         cash: due.cash,
-        settled: due.gold <= 0 && due.cash <= 0,
+        silver: due.silver,
+        settled: due.gold <= 0 && due.cash <= 0 && due.silver <= 0,
       };
     });
 
   const totalGold = lines.reduce((sum, l) => sum + l.gold, 0);
   const totalCash = lines.reduce((sum, l) => sum + l.cash, 0);
+  const totalSilver = lines.reduce((sum, l) => sum + l.silver, 0);
   const heldCash = Number(account?.heldCash || 0);
   const meltCredit = Number(account?.meltCredit || 0);
 
@@ -80,11 +85,13 @@ export const buildRetailerStatement = (
     lines,
     totalGold,
     totalCash,
+    totalSilver,
     heldCash,
     meltCredit,
     isClear:
       totalGold < WEIGHT_SETTLED_EPSILON_GM &&
       totalCash < CASH_SETTLED_EPSILON &&
+      totalSilver < WEIGHT_SETTLED_EPSILON_GM &&
       heldCash < CASH_SETTLED_EPSILON &&
       meltCredit < WEIGHT_SETTLED_EPSILON_GM,
   };
@@ -128,10 +135,13 @@ export const statementToWhatsAppText = (
       credit: string;
       meltCredit: string;
       nothingDue: string;
+      /** Appended to a silver weight so it cannot be read as gold. */
+      silver?: string;
     };
   },
 ): string => {
   const { labels, gramShort } = opts;
+  const silverGrams = (g: number) => `${formatGrams(g, gramShort)} ${labels.silver || 'silver'}`;
   const out: string[] = [];
 
   out.push(opts.retailerName);
@@ -148,6 +158,7 @@ export const statementToWhatsAppText = (
     }
     const parts: string[] = [];
     if (line.gold > 0) parts.push(formatGrams(line.gold, gramShort));
+    if (line.silver > 0) parts.push(silverGrams(line.silver));
     if (line.cash > 0) parts.push(formatCurrencyValue(line.cash));
     out.push(`${line.orderNumber} · ${line.date} — ${parts.join(' + ')} ${labels.due}`);
   }
@@ -156,6 +167,7 @@ export const statementToWhatsAppText = (
 
   const totals: string[] = [];
   if (statement.totalGold > 0) totals.push(formatGrams(statement.totalGold, gramShort));
+  if (statement.totalSilver > 0) totals.push(silverGrams(statement.totalSilver));
   if (statement.totalCash > 0) totals.push(formatCurrencyValue(statement.totalCash));
   out.push(totals.length ? `${labels.totalDue}: ${totals.join(' + ')}` : labels.nothingDue);
 

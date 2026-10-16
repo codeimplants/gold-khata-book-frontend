@@ -72,6 +72,11 @@ const mapBackendOrder = (ord: any): any => ({
     // out here meant an order fetched from the server had no remainingWeight
     // until something happened to change its status.
     remainingWeight: ord.remainingWeight || 0,
+    // The SILVER account, in grams of silver. Its own figures, never added to
+    // the gold ones above; zero on every order with no silver lines.
+    totalSilverWeight: ord.totalSilverWeight || 0,
+    silverWeightPaid: ord.silverWeightPaid || 0,
+    remainingSilverWeight: ord.remainingSilverWeight || 0,
     payments: ord.payments || [],
     totalPaid: ord.totalPaid || 0,
     // The two outstanding accounts a retailer carries on an order. Metal is
@@ -338,6 +343,10 @@ export type Order = {
     remainingWeight?: number;
     /** The CASH account: rupees still owed (making, other charges, GST). */
     outstandingCash?: number;
+    /** The SILVER account, in grams of silver. Separate from the gold one. */
+    totalSilverWeight?: number;
+    silverWeightPaid?: number;
+    remainingSilverWeight?: number;
     /** Cash received against the charges account. */
     cashPaid?: number;
     /** Only 'advance' orders carry an outstanding — full payment settles on
@@ -420,6 +429,8 @@ export type ShopDetails = {
     /** Whether this wholesaler takes old ornaments for melt. Undefined on a
      *  shop that has never answered, which reads as off — see useOldGoldMelt. */
     oldGoldMelt?: boolean;
+    /** The tab a new sale opens on. Undefined means gold. */
+    defaultMetal?: 'gold' | 'silver';
 };
 
 export type MetalRates = {
@@ -1152,7 +1163,19 @@ export const createWholesaleOrder = createAsyncThunk(
             /** YYYY-MM-DD. Bills get back-dated — goods leave on one day and
              *  the paperwork catches up on another. */
             orderDate?: string;
-            items: { itemName: string; weight: number; purity: number; wastage: number; rate: number }[];
+            /** Gold lines carry purity and wastage; silver lines carry `metal:
+             *  'silver'`, quantity, gross and packet weight, and `weight` = net. */
+            items: {
+                metal?: 'gold' | 'silver';
+                itemName: string;
+                weight: number;
+                purity?: number;
+                wastage?: number;
+                rate: number;
+                quantity?: number;
+                grossWeight?: number;
+                packetWeight?: number;
+            }[];
             bookingRate: number;
             includeGST: boolean;
             gstRate?: number;
@@ -3490,6 +3513,7 @@ export const updateShopPreferences = createAsyncThunk(
             appLanguage?: Language;
             declarationLanguage?: Language;
             oldGoldMelt?: boolean;
+            defaultMetal?: 'gold' | 'silver';
         },
         { getState, rejectWithValue },
     ) => {
@@ -3556,6 +3580,42 @@ export const addMetalPaymentToOrder = createAsyncThunk(
     },
 );
 
+/**
+ * Records a payment against an order's SILVER account: cash that buys silver
+ * grams down at `silverRate`, silver handed over (grams, counted gram for
+ * gram), or both.
+ *
+ * Its own call rather than an option on the gold ones: the server files it by
+ * `settles: 'silver'`, and a silver payment that went out as `settles: 'metal'`
+ * would land on the gold account at a silver rate, which is wrong twice over.
+ */
+export const addSilverPaymentToOrder = createAsyncThunk(
+    'data/addSilverPaymentToOrder',
+    async (
+        payload: { orderId: string; amount?: number; silverRate?: number; silverWeight?: number; date?: string; notes?: string },
+        { rejectWithValue },
+    ) => {
+        try {
+            const response = await apiClient.post<any>(`/api/orders/${payload.orderId}/payments`, {
+                amount: payload.amount || 0,
+                // The payment's rate field. On a silver payment it is the
+                // silver rate per gram.
+                goldRate: payload.silverRate || 0,
+                ...(payload.silverWeight ? { silverWeight: payload.silverWeight } : {}),
+                settles: 'silver',
+                date: payload.date || new Date().toISOString(),
+                ...(payload.notes ? { notes: payload.notes } : {}),
+            });
+            const raw = response.data?.data ?? response.data;
+            return raw ? mapBackendOrder(raw) : null;
+        } catch (err: any) {
+            return rejectWithValue(
+                err?.response?.data?.message || err?.message || 'Could not record the silver payment',
+            );
+        }
+    },
+);
+
 // ─── The shop's own rate for the day ────────────────────────────────────────
 //
 // The live metal feed is the market; this is what the shopkeeper has decided to
@@ -3567,16 +3627,19 @@ export const addMetalPaymentToOrder = createAsyncThunk(
 export interface ShopRate {
     /** YYYY-MM-DD — a calendar day, not a timestamp. */
     date: string;
-    /** Rupees per gram of 99.50. */
+    /** Rupees per gram of 99.50. 0 when only silver was set for the day. */
     goldRate: number;
+    /** Rupees per gram of silver. 0 when not set for the day. */
+    silverRate: number;
     notes?: string;
 }
 
 const mapShopRate = (r: any): ShopRate | null =>
-    r && r.goldRate != null
+    r && (r.goldRate != null || r.silverRate != null)
         ? {
             date: String(r.date || ''),
             goldRate: Number(r.goldRate) || 0,
+            silverRate: Number(r.silverRate) || 0,
             ...(r.notes ? { notes: String(r.notes) } : {}),
         }
         : null;
@@ -3612,14 +3675,16 @@ export const fetchShopRate = createAsyncThunk(
 export const setShopRate = createAsyncThunk(
     'data/setShopRate',
     async (
-        payload: { goldRate: number; date?: string; notes?: string },
+        // Either or both; the one left out keeps whatever it was today.
+        payload: { goldRate?: number; silverRate?: number; date?: string; notes?: string },
         { rejectWithValue },
     ) => {
         const date = payload.date || todayKey();
         try {
             const response = await apiClient.put<any>('/api/shop-rate', {
                 date,
-                goldRate: payload.goldRate,
+                ...(payload.goldRate ? { goldRate: payload.goldRate } : {}),
+                ...(payload.silverRate ? { silverRate: payload.silverRate } : {}),
                 ...(payload.notes ? { notes: payload.notes } : {}),
             });
             const raw = response.data?.data ?? response.data;
@@ -4652,6 +4717,14 @@ const dataSlice = createSlice({
         builder.addCase(updateShopPreferences.fulfilled, (state, action) => {
             if (!state.shopDetails) return;
             state.shopDetails = { ...state.shopDetails, ...action.payload };
+        });
+
+        builder.addCase(addSilverPaymentToOrder.fulfilled, (state, action) => {
+            const order: any = action.payload;
+            if (!order?.id) return;
+            const idx = state.orders.findIndex(o => o.id === order.id);
+            if (idx !== -1) state.orders[idx] = order;
+            else state.orders.unshift(order);
         });
 
         builder.addCase(addMetalPaymentToOrder.fulfilled, (state, action) => {

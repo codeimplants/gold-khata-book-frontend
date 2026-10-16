@@ -112,6 +112,7 @@ export default function EntryRow({
   ].filter(Boolean).join(' · ');
 
   const gold = entry.kind === 'sale' ? entry.goldOut : entry.goldIn;
+  const silver = Number(entry.kind === 'sale' ? entry.silverOut : entry.silverIn) || 0;
 
   return (
     <Pressable
@@ -129,6 +130,12 @@ export default function EntryRow({
       <View style={styles.figures}>
         {gold > 0 && (
           <Text style={[styles.figure, { color: look.figure }, tabularNums]}>{formatGrams(gold, gm)}</Text>
+        )}
+        {/* Silver in its own figure, marked, so it is never read as gold. */}
+        {silver > 0 && (
+          <Text style={[styles.figure, { color: Brand.silver }, tabularNums]}>
+            {formatGrams(silver, gm)} {t('orders.silverAbbr') || 'Ag'}
+          </Text>
         )}
         {entry.kind !== 'sale' && entry.cashIn > 0 && (
           <Text style={[styles.figure, { color: look.figure }, tabularNums]}>{inr(entry.cashIn)}</Text>

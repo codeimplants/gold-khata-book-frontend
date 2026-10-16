@@ -38,6 +38,10 @@ export const Brand = {
   goldFill: '#9A7425',
   goldLight: '#C6A25A',
   goldSoft: '#F5ECD7',
+  // Silver's figures, beside gold's. A cool slate rather than a light grey,
+  // so a silver due reads as text (6.0:1 on white), not as disabled.
+  silver: '#5B6573',
+  silverSoft: '#EEF0F3',
   goldTint: '#FBF6EA',
   /** Bright metallic gold for the keri on the emerald band. Decoration only. */
   goldLeaf: '#D9B96A',

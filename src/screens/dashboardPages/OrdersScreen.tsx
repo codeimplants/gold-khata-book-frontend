@@ -212,6 +212,11 @@ const OrderItemCard = memo(({ order, customerName, onPress, onDelete, t }: any) 
                     {formatGrams(due.gold, gm)}
                   </Text>
                 )}
+                {due.silver > 0 && (
+                  <Text fontSize={14} fontWeight="$bold" color={Brand.silver} style={tabularNums}>
+                    {formatGrams(due.silver, gm)} {t('orders.silverAbbr') || 'Ag'}
+                  </Text>
+                )}
                 {due.cash > 0 && (
                   <Text fontSize={13} fontWeight="$semibold" color={Brand.ink} style={tabularNums}>
                     {formatCurrencyValue(due.cash)}
@@ -220,7 +225,10 @@ const OrderItemCard = memo(({ order, customerName, onPress, onDelete, t }: any) 
               </>
             ) : (
               <Text fontSize={13} fontWeight="$semibold" color={Brand.inkMuted} style={tabularNums}>
-                {formatGrams(totalWeight, gm)}
+                {/* A silver-only sale has no gold weight to show. */}
+                {totalWeight > 0 || !(Number(order.totalSilverWeight) > 0)
+                  ? formatGrams(totalWeight, gm)
+                  : `${formatGrams(Number(order.totalSilverWeight), gm)} ${t('orders.silverAbbr') || 'Ag'}`}
               </Text>
             )}
           </VStack>

@@ -483,6 +483,8 @@ export default {
     logout: 'लॉगआउट',
 
     menu: {
+      silverDefault: 'बिक्री चांदी से शुरू करें',
+      silverDefaultSub: 'चांदी के थोक व्यापारियों के लिए: नई बिक्री चांदी टैब पर खुलेगी',
       shop: 'दुकान विवरण जोड़ें',
       shopSub: 'अपनी दुकान सेट करें',
       shopEdit: 'दुकान विवरण संपादित करें',
@@ -725,6 +727,25 @@ export default {
   },
 
   orders: {
+    goldWord: 'सोना',
+    silverWord: 'चांदी',
+    silverAbbr: 'चांदी',
+    towardsGold: 'सोने के लिए',
+    towardsSilver: 'चांदी के लिए',
+    silverSettles: 'चांदी में चुकता',
+    totalSilver: 'चांदी नेट',
+    quantity: 'नग',
+    grossWeight: 'कुल वजन',
+    packetWeight: 'पैकेट वजन',
+    netWeight: 'शुद्ध वजन',
+    netTyped: 'आपने लिखा',
+    netAuto: 'कुल − पैकेट',
+    silverRate: 'दर (₹/ग्राम)',
+    totalAmount: 'कुल राशि',
+    pcsShort: 'नग',
+    netShort: 'नेट',
+    grossShort: 'कुल',
+    packetShort: 'पैकेट',
     title: 'बिक्री',
     total: 'बिक्री',
     newOrder: 'नई बिक्री',
@@ -839,6 +860,8 @@ export default {
     },
 
     details: {
+      inSilver: 'चांदी में',
+      silverReceived: 'चांदी प्राप्त',
       billTo: 'बिल प्राप्तकर्ता',
       walkInCustomer: 'रिटेलर',
       dateLabel: 'तारीख',
@@ -1131,6 +1154,13 @@ export default {
     retailerHint: 'एक ज्वेलरी दुकान जिसे आप माल देते हैं',
   },
   itemPicker: {
+    recent: 'हाल ही में',
+    categories: 'श्रेणियाँ',
+    oneItem: '1 आइटम',
+    nItems: '{n} आइटम',
+    allCategories: 'सभी श्रेणियाँ',
+    addHere: 'अपना जोड़ें',
+    searchIn: '{name} में खोजें या जोड़ें',
     title: 'आइटम का नाम',
     fieldHint: 'खोजें या लिखें',
     search: 'अपने कैटलॉग या गहनों की सूची में खोजें',
@@ -1243,6 +1273,8 @@ export default {
   },
 
   dayBook: {
+    silverOut: 'चांदी गई',
+    silverIn: 'चांदी आई',
     entries: 'एंट्री',
     sales: 'बिक्री',
     receipts: 'जमा',
@@ -1271,6 +1303,8 @@ export default {
   },
 
   khata: {
+    silver: 'चांदी',
+    silverOwed: 'बकाया चांदी',
     owedToYou: 'आपको मिलना है',
     fineGold: 'शुद्ध सोना (99.50)',
     cash: 'नकद',
@@ -1721,6 +1755,7 @@ export default {
   // मेल्ट के लिए लिया गया पुराना सोना — en.ts की टिप्पणी देखें।
   // रिटेलर का खाता — en.ts की टिप्पणी देखें।
   statement: {
+    silverWord: 'चांदी',
     title: 'खाता विवरण',
     asOn: 'बकाया दिनांक',
     orderCol: 'बिक्री',
@@ -1746,7 +1781,25 @@ export default {
     use: 'क्रेडिट लगाएं',
     applied: 'क्रेडिट इस बिक्री पर लग गया',
   },
+  silver: {
+    receiveTitle: 'चांदी प्राप्त करें',
+    owedOnSale: 'इस बिक्री पर {grams} चांदी बकाया',
+    cashLabel: 'नकद',
+    rateLabel: 'चांदी का दर, प्रति ग्राम',
+    metalLabel: 'दी गई चांदी',
+    needsRate: 'नकद किस दर पर चांदी खरीदे, वह दर लिखें।',
+    moreThanDue: 'यह बकाया से {grams} ज़्यादा है।',
+    clearsDue: 'चांदी का बकाया चुक जाता है।',
+    leavesDue: '{grams} चांदी बकाया रहेगी।',
+    receiveConfirm: 'जमा दर्ज करें',
+    failed: 'चांदी की जमा दर्ज नहीं हो सकी',
+    received: 'चांदी की जमा दर्ज हुई',
+  },
   rate: {
+    goldRateField: 'सोने का दर',
+    silverRate: 'चांदी का दर',
+    silverUnitNote: 'प्रति ग्राम चांदी',
+    silverShort: 'चांदी',
     title: 'आज का रेट',
     liveIs: 'लाइव रेट',
     yourRate: 'आपका रेट',

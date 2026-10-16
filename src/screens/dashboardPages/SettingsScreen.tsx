@@ -30,6 +30,7 @@ import {
   Flame,
   TrendingUp,
   Package,
+  Layers,
 } from "lucide-react-native";
 import { AppReview } from "@codeimplants/app-review";
 
@@ -41,7 +42,7 @@ import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { logout } from "../../store/auth/authSlice";
 import { fetchShopDetails, updateShopPreferences } from "../../store/data/dataSlice";
 import SetRateModal from "../../components/common/SetRateModal";
-import { useShopRate } from "../../hooks/useShopRate";
+import { useShopRate, useSilverRate } from "../../hooks/useShopRate";
 import { formatCurrencyValue } from "../../utils/formatter";
 import { toast } from "../../components/common/Toast";
 import { setBiometricLockEnabled } from "../../store/security/securitySlice";
@@ -136,6 +137,8 @@ const SettingsScreen = () => {
   /** Today's rate, so the row can say which one is in force rather than just
    *  offering to change something unnamed. */
   const shopRate = useShopRate();
+  const silverRate = useSilverRate();
+  const [isTogglingMetal, setIsTogglingMetal] = React.useState(false);
   const [rateModalOpen, setRateModalOpen] = React.useState(false);
   // Centres and caps content on iPad; no-op on phones.
   const contentStyle = useContentContainerStyle();
@@ -226,9 +229,25 @@ const SettingsScreen = () => {
     }
   };
 
-  const rateSubtitle = shopRate.isOverride
+  // A silver wholesaler opens every sale on Silver instead of switching tabs
+  // each time. Stored on the shop, like melt, so every device agrees.
+  const toggleSilverDefault = async (next: boolean) => {
+    setIsTogglingMetal(true);
+    const action = await dispatch(updateShopPreferences({ defaultMetal: next ? "silver" : "gold" }) as any);
+    setIsTogglingMetal(false);
+    if (!updateShopPreferences.fulfilled.match(action)) {
+      toast.error(String(action.payload || t("settings.menu.meltFailed") || "Could not save the setting"));
+    }
+  };
+
+  const goldRateText = shopRate.isOverride
     ? `${t("rate.usingYours") || "Your rate for today"} · ${formatCurrencyValue(shopRate.rate)} / ${t("common.gramShort") || "gm"} (${t("rate.fineness") || "99.50"})`
     : (t("rate.usingLiveShort") || "Using the live rate");
+  // Silver's rate is named only once the shop has set one; until then the
+  // subtitle stays as it was for a shop that deals only in gold.
+  const rateSubtitle = silverRate.isOverride
+    ? `${goldRateText} · ${t("rate.silverShort") || "Silver"} ${formatCurrencyValue(silverRate.rate)} / ${t("common.gramShort") || "gm"}`
+    : goldRateText;
 
   return (
     <View style={styles.screen}>
@@ -276,6 +295,14 @@ const SettingsScreen = () => {
             subtitle={rateSubtitle}
             icon={TrendingUp}
             onPress={() => setRateModalOpen(true)}
+          />
+          <ToggleRow
+            title={t("settings.menu.silverDefault") || "Start sales on Silver"}
+            subtitle={t("settings.menu.silverDefaultSub") || "For silver wholesalers: a new sale opens on the Silver tab"}
+            icon={Layers}
+            value={shopDetails?.defaultMetal === "silver"}
+            disabled={isTogglingMetal || !hasShopDetails || isGuest}
+            onValueChange={toggleSilverDefault}
             last={!meltEnabled && !(meltFlagEnabled && !isGuest)}
           />
           {meltEnabled && (

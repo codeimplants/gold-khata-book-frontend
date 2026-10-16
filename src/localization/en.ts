@@ -495,6 +495,8 @@ export default {
     logout: 'Logout',
 
     menu: {
+      silverDefault: 'Start sales on Silver',
+      silverDefaultSub: 'For silver wholesalers: a new sale opens on the Silver tab',
       shop: 'Add Shop Details',
       shopSub: 'Setup your shop',
       shopEdit: 'Edit Shop Details',
@@ -742,6 +744,25 @@ export default {
   },
 
   orders: {
+    goldWord: 'Gold',
+    silverWord: 'Silver',
+    silverAbbr: 'silver',
+    towardsGold: 'Towards gold',
+    towardsSilver: 'Towards silver',
+    silverSettles: 'Silver settles',
+    totalSilver: 'SILVER NET',
+    quantity: 'Quantity',
+    grossWeight: 'Gross Wt',
+    packetWeight: 'Packet Wt',
+    netWeight: 'Net Wt',
+    netTyped: 'Typed by you',
+    netAuto: 'Gross − Packet',
+    silverRate: 'Rate (₹/gram)',
+    totalAmount: 'Total amount',
+    pcsShort: 'pcs',
+    netShort: 'Net',
+    grossShort: 'Gross',
+    packetShort: 'Pkt',
     title: 'Sales',
     total: 'sales',
     newOrder: 'New sale',
@@ -869,6 +890,8 @@ export default {
     },
 
     details: {
+      inSilver: 'in silver',
+      silverReceived: 'Silver received',
       billTo: 'Bill To',
       walkInCustomer: 'Retailer',
       dateLabel: 'Date',
@@ -1195,6 +1218,13 @@ export default {
     retailerHint: 'A jewellery shop you supply',
   },
   itemPicker: {
+    recent: 'Recent',
+    categories: 'Categories',
+    oneItem: '1 item',
+    nItems: '{n} items',
+    allCategories: 'All categories',
+    addHere: 'Add your own',
+    searchIn: 'Search or add in {name}',
     title: 'Item name',
     fieldHint: 'Search or type',
     search: 'Search your catalogue or the ornament list',
@@ -1307,6 +1337,8 @@ export default {
   },
 
   dayBook: {
+    silverOut: 'Silver out',
+    silverIn: 'Silver in',
     entries: 'entries',
     sales: 'Sales',
     receipts: 'Receipts',
@@ -1335,6 +1367,8 @@ export default {
   },
 
   khata: {
+    silver: 'Silver',
+    silverOwed: 'Silver owed',
     owedToYou: 'Owed to you',
     fineGold: 'Fine gold (99.50)',
     cash: 'Cash',
@@ -1784,6 +1818,7 @@ export default {
   /* The retailer's account, sent to them — the WhatsApp text and the PDF
      share these labels so the two copies cannot drift apart. */
   statement: {
+    silverWord: 'silver',
     title: 'Account Statement',
     asOn: 'Balance as on',
     orderCol: 'Sale',
@@ -1816,7 +1851,25 @@ export default {
   /* The rate the shop is dealing at today. Set from the once-a-day prompt,
      the dashboard card or Settings; a day with none uses the live feed and
      every screen says so rather than leaving it to be inferred. */
+  silver: {
+    receiveTitle: 'Receive silver',
+    owedOnSale: '{grams} of silver owed on this sale',
+    cashLabel: 'Cash',
+    rateLabel: 'Silver rate, per gram',
+    metalLabel: 'Silver handed over',
+    needsRate: 'Enter the rate the cash buys silver at.',
+    moreThanDue: 'That is {grams} more than is owed.',
+    clearsDue: 'Clears the silver due.',
+    leavesDue: '{grams} of silver stays owed.',
+    receiveConfirm: 'Record receipt',
+    failed: 'Could not record the silver receipt',
+    received: 'Silver receipt recorded',
+  },
   rate: {
+    goldRateField: 'Gold rate',
+    silverRate: 'Silver rate',
+    silverUnitNote: 'Per gram of silver',
+    silverShort: 'Silver',
     title: 'Today’s Rate',
     liveIs: 'Live rate',
     yourRate: 'Your rate',

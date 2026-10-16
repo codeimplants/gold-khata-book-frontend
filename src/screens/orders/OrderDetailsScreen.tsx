@@ -50,6 +50,7 @@ import {
   fetchShopDetails,
   fetchCustomers,
   addPaymentToAdvanceOrder,
+  addSilverPaymentToOrder,
   fetchRetailerAccount,
   applyMeltCredit,
   allocateCash,
@@ -76,12 +77,13 @@ import PrintTargetNote from '../../components/common/PrintTargetNote';
 import DatePickerModal from '../../components/common/DatePickerModal';
 import FixRateSheet from '../../components/account/FixRateSheet';
 import UseGoldSheet from '../../components/account/UseGoldSheet';
+import ReceiveSilverSheet from '../../components/account/ReceiveSilverSheet';
 import { buildPdfFileName, generateInvoicePDF, sharePDF, downloadPDFToDevice } from '../../utils/pdfService';
 import Share from 'react-native-share';
 import { formatGrams, orderOutstanding, CASH_SETTLED_EPSILON, WEIGHT_SETTLED_EPSILON_GM } from '../../utils/dues';
 import LedgerHeader from '../../components/ledger/LedgerHeader';
 import { Brand, tabularNums } from '../../theme/brand';
-import { useShopRate } from '../../hooks/useShopRate';
+import { useShopRate, useSilverRate } from '../../hooks/useShopRate';
 import { openWhatsApp, formatWhatsAppPhone } from '../../utils/whatsappUtils';
 import { downloadInvoiceA4Pdf } from '../../utils/invoicePdfWeb';
 import { prepareShopForPrint, prepareBillForPrint, getFullImageUrl } from '../../utils/imageUtils';
@@ -131,9 +133,14 @@ function getItemLabel(item: any, fallback: string): string {
  * fallback for a payment read before the hook has run over it.
  */
 const paymentLegs = (p: any) => {
+  // A receipt against the SILVER account: its grams are silver, never gold,
+  // and whoever reads this has to be told which.
+  const isSilver = p?.settles === 'silver';
   const cashGrams = Number(p?.weightCovered ?? p?.weight_covered ?? 0) || 0;
-  const metalGrams = Number(p?.fineWeight ?? p?.goldWeight ?? 0) || 0;
-  return { cashGrams, metalGrams, totalGrams: cashGrams + metalGrams };
+  const metalGrams = isSilver
+    ? Number(p?.silverWeight ?? 0) || 0
+    : Number(p?.fineWeight ?? p?.goldWeight ?? 0) || 0;
+  return { cashGrams, metalGrams, totalGrams: cashGrams + metalGrams, isSilver };
 };
 
 export default function OrderDetailsScreen() {
@@ -183,6 +190,9 @@ export default function OrderDetailsScreen() {
   const [paymentDate, setPaymentDate] = React.useState(new Date());
   const [showDatePicker, setShowDatePicker] = React.useState(false);
   const [paymentLoading, setPaymentLoading] = React.useState(false);
+  /** The silver receipt sheet; see ReceiveSilverSheet. */
+  const [showSilverSheet, setShowSilverSheet] = React.useState(false);
+  const silverRate = useSilverRate();
   const [showPuritySelector, setShowPuritySelector] = React.useState(false);
 
   // New states for payment management
@@ -355,13 +365,16 @@ export default function OrderDetailsScreen() {
         return {
           id: it.id || it._id || String(index),
           itemName: it.itemName || it.name || 'Item',
-          metalType: it.itemType || it.productType || 'Gold',
+          // A wholesale silver line says so in `metal`, so the printed bill
+          // names it silver rather than defaulting every line to gold.
+          metalType: it.metal === 'silver' ? 'Silver' : (it.itemType || it.productType || 'Gold'),
           purity: it.purity || '',
-          pcs: String(it.pieces || it.pcs || 1),
+          pcs: String(it.quantity || it.pieces || it.pcs || 1),
           grossWt: String(
             Number(it.grossWeight || it.grossWt || it.weight || 0).toFixed(3),
           ),
-          lessWt: String(Number(it.lessWeight || it.lessWt || 0).toFixed(3)),
+          // Silver's packet weight is the less-weight between gross and net.
+          lessWt: String(Number(it.lessWeight || it.lessWt || it.packetWeight || 0).toFixed(3)),
           netWt: String(
             Number(it.netWeight || it.netWt || it.weight || 0).toFixed(3),
           ),
@@ -855,6 +868,29 @@ export default function OrderDetailsScreen() {
   const meltToApply = Math.min(creditMeltAvailable, remainingWeight);
 
   const owesMetal = order?.status === 'pending' && remainingWeight > WEIGHT_SETTLED_EPSILON_GM;
+
+  /**
+   * Silver on this sale. `silverOnly` hides the gold figures and the gold
+   * receipt, which on a sale with no gold lines would offer to buy gold grams
+   * nobody sold.
+   */
+  const hasSilverLines = ((order as any)?.items || []).some((it: any) => it?.metal === 'silver');
+  const silverOnly = hasSilverLines && ((order as any)?.items || []).every((it: any) => it?.metal === 'silver');
+
+  const onReceiveSilver = async (p: { amount: number; silverRate: number; silverWeight: number }) => {
+    if (!order) return null;
+    const action = await dispatch(addSilverPaymentToOrder({
+      orderId: order.id,
+      amount: p.amount,
+      silverRate: p.silverRate,
+      silverWeight: p.silverWeight,
+    }) as any);
+    if (!addSilverPaymentToOrder.fulfilled.match(action)) {
+      return String(action.payload || t('silver.failed') || 'Could not record the silver receipt');
+    }
+    toast.success(t('silver.received') || 'Silver receipt recorded');
+    return null;
+  };
   const canUseGold = owesMetal && meltToApply > WEIGHT_SETTLED_EPSILON_GM;
   const canFixRate = owesMetal && creditCashAvailable >= CASH_SETTLED_EPSILON;
   const canUseCredit = canUseGold || canFixRate;
@@ -1303,7 +1339,9 @@ export default function OrderDetailsScreen() {
                 <Text fontSize={12} fontWeight="$bold" color={Brand.inkMuted} textTransform="uppercase" letterSpacing={0.8}>
                   {open ? (t('sale.owedOnSale') || 'Owed on this sale') : (t('sale.settled') || 'This sale is settled')}
                 </Text>
-                {open && (
+                {/* Gold and cash as before, unless this is a silver-only sale,
+                    where both would read as an empty dash above the silver. */}
+                {open && !silverOnly && (
                   <HStack mt="$3" alignItems="stretch">
                     <VStack flex={1}>
                       <Text fontSize={13} color={Brand.inkMuted}>{t('khata.fineGold') || 'Fine gold (99.50)'}</Text>
@@ -1320,7 +1358,36 @@ export default function OrderDetailsScreen() {
                     </VStack>
                   </HStack>
                 )}
-                {open && (
+                {open && hasSilverLines && (
+                  <VStack mt="$3">
+                    <Text fontSize={13} color={Brand.inkMuted}>{t('khata.silver') || 'Silver'}</Text>
+                    <Text fontSize={24} fontWeight="$bold" color={due.silver > 0 ? Brand.silver : Brand.inkFaint} style={tabularNums}>
+                      {due.silver > 0 ? formatGrams(due.silver, gm) : '—'}
+                    </Text>
+                  </VStack>
+                )}
+                {open && due.silver > 0 && (
+                  <Pressable
+                    mt="$4"
+                    h={46}
+                    rounded="$md"
+                    bg={silverOnly ? Brand.primary : Brand.card}
+                    borderWidth={silverOnly ? 0 : 1}
+                    borderColor={Brand.primary}
+                    flexDirection="row"
+                    alignItems="center"
+                    justifyContent="center"
+                    onPress={() => setShowSilverSheet(true)}
+                  >
+                    <Plus size={18} color={silverOnly ? '#FFFFFF' : Brand.primary} />
+                    <Text ml="$2" color={silverOnly ? '$white' : Brand.primary} fontWeight="$bold" fontSize={15}>
+                      {t('silver.receiveTitle') || 'Receive silver'}
+                    </Text>
+                  </Pressable>
+                )}
+                {/* The gold receipt only when there is gold or cash to receive:
+                    on a silver-only sale it would buy gold grams nobody sold. */}
+                {open && (due.gold > 0 || due.cash > 0 || !hasSilverLines) && (
                   <Pressable
                     mt="$4"
                     h={46}
@@ -1493,8 +1560,10 @@ export default function OrderDetailsScreen() {
             </Box>
           )}
 
-          {/* Payment & Weight Progress Card */}
-          {order.type === 'advance' && !isCompleted && (
+          {/* Payment & Weight Progress Card. Gold grams only, so not on a
+              silver-only sale: the card above already says what silver is
+              owed, and this one would read "0.000 gm" of gold throughout. */}
+          {order.type === 'advance' && !isCompleted && !silverOnly && (
             <Box bg="$white" p="$5" rounded="$2xl" mb="$4" style={styles.card}>
               <Text
                 fontSize="$xs"
@@ -1612,8 +1681,9 @@ export default function OrderDetailsScreen() {
             </Box>
           )}
 
-          {/* Outstanding Balance with Making Charges */}
-          {order.type === 'advance' && !isCompleted && (
+          {/* Outstanding Balance with Making Charges. Gold's, for the same
+              reason as the card above. */}
+          {order.type === 'advance' && !isCompleted && !silverOnly && (
             <Box
               bg="#FBF6EA"
               p="$5"
@@ -1790,6 +1860,9 @@ export default function OrderDetailsScreen() {
                   {order.status === 'pending' && (
                     <Pressable
                       onPress={() => {
+                        // A silver-only sale has nothing for the gold
+                        // receipt to settle.
+                        if (silverOnly) { setShowSilverSheet(true); return; }
                         setIsEditingPayment(false);
                         setPaymentDate(new Date());
                         setPaymentAmount('');
@@ -1937,10 +2010,11 @@ export default function OrderDetailsScreen() {
                                   </HStack>
                                   <Text fontSize={13} color="$coolGray600" mt="$1" fontWeight="$medium">
                                     {(() => {
-                                      const { cashGrams, metalGrams } = paymentLegs(p);
+                                      const { cashGrams, metalGrams, isSilver } = paymentLegs(p);
                                       const parts: string[] = [];
+                                      const silverTag = isSilver ? ` ${t('statement.silverWord') || 'silver'}` : '';
                                       if (cashGrams > 0) {
-                                        parts.push(`${cashGrams.toFixed(3)} gm @ ₹${(p.goldRate || 0).toLocaleString()}/gm`);
+                                        parts.push(`${cashGrams.toFixed(3)} gm${silverTag} @ ₹${(p.goldRate || 0).toLocaleString()}/gm`);
                                       }
                                       if (metalGrams > 0) {
                                         // When the weight is already the
@@ -1948,8 +2022,10 @@ export default function OrderDetailsScreen() {
                                         // line has left to add.
                                         parts.push(
                                           (p.amount || 0) > 0
-                                            ? `+ ${metalGrams.toFixed(3)} gm ${t('orders.details.inGold') || 'in gold'}`
-                                            : (t('orders.details.goldReceived') || 'Gold received'),
+                                            ? `+ ${metalGrams.toFixed(3)} gm ${isSilver ? (t('orders.details.inSilver') || 'in silver') : (t('orders.details.inGold') || 'in gold')}`
+                                            : isSilver
+                                              ? (t('orders.details.silverReceived') || 'Silver received')
+                                              : (t('orders.details.goldReceived') || 'Gold received'),
                                         );
                                       }
                                       return parts.length > 0
@@ -2082,6 +2158,15 @@ export default function OrderDetailsScreen() {
           .replace('{held}', formatGrams(creditMeltAvailable, t('common.gramShort') || 'gm'))
           .replace('{due}', formatGrams(remainingWeight, t('common.gramShort') || 'gm'))}
         onConfirm={onUseGoldHeld}
+        t={t}
+      />
+
+      <ReceiveSilverSheet
+        visible={showSilverSheet}
+        onClose={() => setShowSilverSheet(false)}
+        silverDue={Number((order as any)?.remainingSilverWeight || 0)}
+        defaultRate={silverRate.rate}
+        onConfirm={onReceiveSilver}
         t={t}
       />
 

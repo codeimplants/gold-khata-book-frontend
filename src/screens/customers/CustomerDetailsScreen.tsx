@@ -314,6 +314,7 @@ export default function CustomerDetailsScreen() {
     credit: t('statement.credit') || 'Credit with us',
     meltCredit: t('statement.meltCredit') || 'Melt credit',
     nothingDue: t('statement.nothingDue') || 'Nothing due',
+    silver: t('statement.silverWord') || 'silver',
   }), [t]);
 
   const retailerLabel = customer ? retailerDisplayName(customer.shopName, customer.name) : '';
@@ -512,7 +513,8 @@ export default function CustomerDetailsScreen() {
               {(t('statement.asOn') || 'Balance as on')} {fmtDate(Date.now(), language, { day: 'numeric', month: 'short', year: 'numeric' })}
             </RNText>
           </View>
-          {statement.totalGold > 0 || statement.totalCash > 0 ? (
+          {statement.totalGold > 0 || statement.totalCash > 0 || statement.totalSilver > 0 ? (
+            <>
             <View style={styles.balanceRow}>
               <View style={{ flex: 1 }}>
                 <RNText style={styles.balanceLabel}>{t('khata.fineGold') || 'Fine gold (99.50)'}</RNText>
@@ -528,6 +530,19 @@ export default function CustomerDetailsScreen() {
                 </RNText>
               </View>
             </View>
+            {/* Silver only once this retailer owes some; a gold-only
+                retailer's card stays as it was. */}
+            {statement.totalSilver > 0 && (
+              <View style={[styles.balanceRow, { marginTop: 10 }]}>
+                <View style={{ flex: 1 }}>
+                  <RNText style={styles.balanceLabel}>{t('khata.silver') || 'Silver'}</RNText>
+                  <RNText style={[styles.balanceValue, { color: Brand.silver }, tabularNums]} numberOfLines={1} adjustsFontSizeToFit>
+                    {formatGrams(statement.totalSilver, gramShort)}
+                  </RNText>
+                </View>
+              </View>
+            )}
+            </>
           ) : (
             <RNText style={styles.nothingDue}>{t('statement.nothingDue') || 'Nothing due'}</RNText>
           )}
@@ -688,6 +703,9 @@ export default function CustomerDetailsScreen() {
                       <>
                         {due.gold > 0 && (
                           <RNText style={[styles.saleFigure, { color: Brand.gold }, tabularNums]}>{formatGrams(due.gold, gramShort)}</RNText>
+                        )}
+                        {due.silver > 0 && (
+                          <RNText style={[styles.saleFigure, { color: Brand.silver }, tabularNums]}>{formatGrams(due.silver, gramShort)} {t('orders.silverAbbr') || 'Ag'}</RNText>
                         )}
                         {due.cash > 0 && (
                           <RNText style={[styles.saleFigure, { color: Brand.ink }, tabularNums]}>{formatCurrencyValue(due.cash)}</RNText>

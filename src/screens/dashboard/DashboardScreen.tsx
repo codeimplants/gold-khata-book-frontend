@@ -124,6 +124,7 @@ const OwedSummary = ({
   t,
   gold,
   cash,
+  silver = 0,
   owingCount,
   heldGold,
   heldCash,
@@ -132,6 +133,8 @@ const OwedSummary = ({
   t: any;
   gold: number;
   cash: number;
+  /** Silver owed, in grams of silver: a third account, shown only when set. */
+  silver?: number;
   owingCount: number;
   /** Totals of what the shop is holding FOR retailers: gold advances and melt
    *  credit, and cash whose rate is not fixed yet. Theirs, not owed to you. */
@@ -169,6 +172,18 @@ const OwedSummary = ({
         </Text>
       </View>
     </View>
+    {/* Silver owed, on its own line: a gram of silver is not a gram of gold,
+        so it never joins the gold figure above. Hidden for a gold-only book. */}
+    {silver >= WEIGHT_SETTLED_EPSILON_GM && (
+      // Slate, not the green of "Held for retailers" below: this is owed TO
+      // the shop, and in the held strip's colour it read as money held.
+      <View style={[styles.heldStrip, { backgroundColor: Brand.silverSoft }]}>
+        <Text style={[styles.heldStripLabel, { color: Brand.silver }]}>{t('khata.silverOwed') || 'Silver owed'}</Text>
+        <Text style={[styles.heldStripValue, { color: Brand.silver }, tabularNums]} numberOfLines={1} adjustsFontSizeToFit>
+          {formatGrams(silver, t('common.gramShort') || 'gm')}
+        </Text>
+      </View>
+    )}
     {/* Shown beside the dues, never subtracted from them: this is the
         retailers' own money and metal sitting with the shop, and netting it
         off would hide that the shop is holding it. */}
@@ -235,6 +250,8 @@ const BalanceRow = ({
   code,
   gold,
   cash,
+  silver = 0,
+  silverLabel,
   heldGold = 0,
   heldCash = 0,
   heldLabel,
@@ -246,6 +263,10 @@ const BalanceRow = ({
   code?: string;
   gold: number;
   cash: number;
+  /** Silver owed, grams of silver. Under the name rather than a third column,
+   *  so a gold-only book keeps the table it had. */
+  silver?: number;
+  silverLabel?: string;
   /** Held for this retailer: cash not yet converted, and gold held. */
   heldGold?: number;
   heldCash?: number;
@@ -259,6 +280,11 @@ const BalanceRow = ({
           ("Shree Ganesh Jewellers"), and a cut name is a guess at who owes. */}
       <Text style={styles.rowName} numberOfLines={2}>{name}</Text>
       {!!code && <Text style={styles.rowCode} numberOfLines={1}>{code}</Text>}
+      {silver >= WEIGHT_SETTLED_EPSILON_GM && (
+        <Text style={[styles.rowHeld, { color: Brand.silver }, tabularNums]} numberOfLines={1}>
+          {silverLabel || 'Silver'} {formatGrams(silver, gramShort)}
+        </Text>
+      )}
       {/* A retailer who owes gold but has paid cash to be converted at a rate
           they will name later: the debt stands until they do, and this is
           the reminder that the cash is already here. */}
@@ -381,9 +407,10 @@ const DashboardScreen = () => {
    * sale inflated the totals here and nowhere else.
    */
   const dues = React.useMemo(() => {
-    const byRetailer = new Map<string, { id: string; name: string; code?: string; cash: number; gold: number }>();
+    const byRetailer = new Map<string, { id: string; name: string; code?: string; cash: number; gold: number; silver: number }>();
     let totalCash = 0;
     let totalGold = 0;
+    let totalSilver = 0;
 
     orders.forEach((o: any) => {
       if (o.deletedAt) return;
@@ -392,12 +419,14 @@ const DashboardScreen = () => {
 
       totalCash += due.cash;
       totalGold += due.gold;
+      totalSilver += due.silver;
 
       const id = String(o.customerId || '');
       const existing = byRetailer.get(id);
       if (existing) {
         existing.cash += due.cash;
         existing.gold += due.gold;
+        existing.silver += due.silver;
         return;
       }
 
@@ -410,10 +439,11 @@ const DashboardScreen = () => {
         code: customer?.customerCode,
         cash: due.cash,
         gold: due.gold,
+        silver: due.silver,
       });
     });
 
-    return { totalCash, totalGold, list: [...byRetailer.values()] };
+    return { totalCash, totalGold, totalSilver, list: [...byRetailer.values()] };
   }, [orders, customerById]);
 
   /**
@@ -494,6 +524,7 @@ const DashboardScreen = () => {
             t={t}
             gold={dues.totalGold}
             cash={dues.totalCash}
+            silver={dues.totalSilver}
             owingCount={dues.list.length}
             heldGold={held.gold}
             heldCash={held.cash}
@@ -556,6 +587,8 @@ const DashboardScreen = () => {
                   code={r.code}
                   gold={r.gold}
                   cash={r.cash}
+                  silver={r.silver}
+                  silverLabel={t('khata.silver') || 'Silver'}
                   heldGold={accountsById?.[r.id]?.meltCredit || 0}
                   heldCash={accountsById?.[r.id]?.heldCash || 0}
                   heldLabel={t('khata.holds') || 'Holds'}

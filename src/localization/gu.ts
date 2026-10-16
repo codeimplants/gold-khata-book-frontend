@@ -481,6 +481,8 @@ export default {
     logout: 'લૉગ આઉટ',
 
     menu: {
+      silverDefault: 'વેચાણ ચાંદીથી શરૂ કરો',
+      silverDefaultSub: 'ચાંદીના હોલસેલરો માટે: નવું વેચાણ ચાંદી ટૅબ પર ખુલશે',
       shop: 'દુકાનની વિગતો ઉમેરો',
       shopSub: 'તમારી દુકાન સેટ કરો',
       shopEdit: 'દુકાનની વિગતો સંપાદિત કરો',
@@ -724,6 +726,25 @@ export default {
   },
 
   orders: {
+    goldWord: 'સોનું',
+    silverWord: 'ચાંદી',
+    silverAbbr: 'ચાંદી',
+    towardsGold: 'સોના માટે',
+    towardsSilver: 'ચાંદી માટે',
+    silverSettles: 'ચાંદીમાં ચૂકવણી',
+    totalSilver: 'ચાંદી નેટ',
+    quantity: 'નંગ',
+    grossWeight: 'કુલ વજન',
+    packetWeight: 'પેકેટ વજન',
+    netWeight: 'ચોખ્ખું વજન',
+    netTyped: 'તમે લખ્યું',
+    netAuto: 'કુલ − પેકેટ',
+    silverRate: 'ભાવ (₹/ગ્રામ)',
+    totalAmount: 'કુલ રકમ',
+    pcsShort: 'નંગ',
+    netShort: 'ચોખ્ખું',
+    grossShort: 'કુલ',
+    packetShort: 'પેકેટ',
     title: 'વેચાણ',
     total: 'વેચાણ',
     newOrder: 'નવું વેચાણ',
@@ -837,6 +858,8 @@ export default {
     },
 
     details: {
+      inSilver: 'ચાંદીમાં',
+      silverReceived: 'ચાંદી મળી',
       billTo: 'બિલ',
       walkInCustomer: 'રિટેલર',
       dateLabel: 'તારીખ',
@@ -1154,6 +1177,13 @@ export default {
     retailerHint: 'તમે માલ પૂરો પાડો છો તે જ્વેલરી દુકાન',
   },
   itemPicker: {
+    recent: 'તાજેતરના',
+    categories: 'પ્રકારો',
+    oneItem: '1 વસ્તુ',
+    nItems: '{n} વસ્તુઓ',
+    allCategories: 'બધા પ્રકારો',
+    addHere: 'પોતાનું ઉમેરો',
+    searchIn: '{name} માં શોધો અથવા ઉમેરો',
     title: 'આઇટમનું નામ',
     fieldHint: 'શોધો અથવા લખો',
     search: 'તમારા કેટલોગ અથવા ઘરેણાંની યાદીમાં શોધો',
@@ -1266,6 +1296,8 @@ export default {
   },
 
   dayBook: {
+    silverOut: 'ચાંદી ગઈ',
+    silverIn: 'ચાંદી આવી',
     entries: 'એન્ટ્રી',
     sales: 'વેચાણ',
     receipts: 'જમા',
@@ -1294,6 +1326,8 @@ export default {
   },
 
   khata: {
+    silver: 'ચાંદી',
+    silverOwed: 'બાકી ચાંદી',
     owedToYou: 'તમારે લેવાના',
     fineGold: 'શુદ્ધ સોનું (99.50)',
     cash: 'રોકડ',
@@ -1724,6 +1758,7 @@ export default {
   // મેલ્ટ માટે લીધેલું જૂનું સોનું — en.ts ની ટિપ્પણી જુઓ.
   // રિટેલરનું ખાતું — en.ts ની ટિપ્પણી જુઓ.
   statement: {
+    silverWord: 'ચાંદી',
     title: 'ખાતા વિવરણ',
     asOn: 'બાકી તારીખ',
     orderCol: 'વેચાણ',
@@ -1749,7 +1784,25 @@ export default {
     use: 'ક્રેડિટ વાપરો',
     applied: 'ક્રેડિટ આ વેચાણ પર લાગ્યું',
   },
+  silver: {
+    receiveTitle: 'ચાંદી જમા કરો',
+    owedOnSale: 'આ વેચાણ પર {grams} ચાંદી બાકી',
+    cashLabel: 'રોકડ',
+    rateLabel: 'ચાંદીનો ભાવ, પ્રતિ ગ્રામ',
+    metalLabel: 'આપેલી ચાંદી',
+    needsRate: 'રોકડ કયા ભાવે ચાંદી ખરીદે તે ભાવ લખો.',
+    moreThanDue: 'આ બાકી કરતાં {grams} વધુ છે.',
+    clearsDue: 'ચાંદીનું બાકી ચૂકતે થાય છે.',
+    leavesDue: '{grams} ચાંદી બાકી રહેશે.',
+    receiveConfirm: 'જમા નોંધો',
+    failed: 'ચાંદીની જમા નોંધી શકાઈ નહીં',
+    received: 'ચાંદીની જમા નોંધાઈ',
+  },
   rate: {
+    goldRateField: 'સોનાનો ભાવ',
+    silverRate: 'ચાંદીનો ભાવ',
+    silverUnitNote: 'પ્રતિ ગ્રામ ચાંદી',
+    silverShort: 'ચાંદી',
     title: 'આજનો ભાવ',
     liveIs: 'લાઇવ ભાવ',
     yourRate: 'તમારો ભાવ',

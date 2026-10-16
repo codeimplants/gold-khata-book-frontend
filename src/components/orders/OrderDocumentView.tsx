@@ -331,8 +331,11 @@ const OrderDocumentView = ({
             item,
             t('bill.makingFixed') || 'Fixed',
           );
+          const isSilverLine = item.metal === 'silver';
           const finding = inspectItemEntry({
-            itemType: item.itemType || item.metalType,
+            // A wholesale silver line says so in `metal`; without this its
+            // ~Rs.95/gm rate would be judged against gold's and flagged.
+            itemType: isSilverLine ? 'Silver' : (item.itemType || item.metalType),
             purity: item.purity,
             weight: netWeight,
             rate,
@@ -345,7 +348,16 @@ const OrderDocumentView = ({
                   {itemLabel(item, t('orders.details.itemFallback') || 'Item')}
                 </Text>
                 <Text fontSize="$2xs" color="$coolGray400" fontWeight="$medium">
-                  {[item.purity, item.pieces ? `${item.pieces} ${t('orders.details.piecesShort') || 'Pcs'}` : '']
+                  {(isSilverLine
+                    // Silver has no purity: say it is silver, and show the
+                    // weights its net was worked out from.
+                    ? [
+                      t('orders.silverWord') || 'Silver',
+                      item.quantity ? `${item.quantity} ${t('orders.details.piecesShort') || 'Pcs'}` : '',
+                      item.grossWeight ? `${t('orders.grossShort') || 'Gross'} ${formatNumber(item.grossWeight, 3)}` : '',
+                      item.packetWeight ? `${t('orders.packetShort') || 'Pkt'} ${formatNumber(item.packetWeight, 3)}` : '',
+                    ]
+                    : [item.purity, item.pieces ? `${item.pieces} ${t('orders.details.piecesShort') || 'Pcs'}` : ''])
                     .filter(Boolean)
                     .join(' • ')}
                 </Text>

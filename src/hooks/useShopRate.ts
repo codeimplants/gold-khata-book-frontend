@@ -85,3 +85,39 @@ export const useEffectiveMetalRates = (): MetalRates | null => {
     };
   }, [metalRates, rate]);
 };
+
+/**
+ * Today's SILVER rate: the shop's own when set, the live feed's otherwise.
+ *
+ * Its own hook beside `useShopRate` because the two are set independently. A
+ * shop can fix its silver rate for the day and leave gold on the market, and
+ * reading either one out of the other would quietly price one metal at the
+ * other's rate.
+ *
+ * Shares the day's fetch with `useShopRate`: both read the same record.
+ */
+export const useSilverRate = (): EffectiveRate => {
+  const dispatch = useAppDispatch();
+  const isGuest = useAppSelector(s => s.auth.isGuest);
+  const liveRate = useAppSelector(
+    s => Number(s.data.metalRates?.silver?.silverPrice || 0),
+  );
+
+  const key = todayKey();
+  const entry = useAppSelector(s => s.data.shopRates[key]);
+  const loaded = isGuest || entry !== undefined;
+
+  React.useEffect(() => {
+    if (isGuest || entry !== undefined) return;
+    dispatch(fetchShopRate({ date: key }));
+  }, [dispatch, isGuest, entry, key]);
+
+  const override = entry?.silverRate || 0;
+
+  return {
+    rate: override > 0 ? override : liveRate,
+    liveRate,
+    isOverride: override > 0,
+    loaded,
+  };
+};

@@ -74,7 +74,9 @@ export interface ItemFinding {
  * window is wide. The weight ceiling is per LINE, not per bill — a single gold
  * ornament over 300 gm is exceptional; the milligram habit lands at 2000-10000.
  * Silver runs to kilograms legitimately (utensils, bars, scrap lots), so its
- * ceiling is far higher and its rate floor far lower.
+ * ceiling is far higher and its rate floor far lower. 50 kg, not the 5 kg the
+ * retail app used: a silver WHOLESALER's single line is routinely ten 1 kg
+ * bars or a few kilos of payal, and at 5 kg every one of those read as a typo.
  */
 export const METAL_BOUNDS: Record<MetalKind, {
   rateMin: number;
@@ -82,7 +84,7 @@ export const METAL_BOUNDS: Record<MetalKind, {
   weightMax: number;
 }> = {
   Gold: { rateMin: 300, rateMax: 40000, weightMax: 300 },
-  Silver: { rateMin: 5, rateMax: 900, weightMax: 5000 },
+  Silver: { rateMin: 5, rateMax: 900, weightMax: 50000 },
 };
 
 /** The factor the milligram habit introduces, in both directions. */

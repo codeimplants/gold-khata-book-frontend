@@ -1,6 +1,7 @@
 import { BillItem, JewelleryFormValues } from '../types';
 import { GST_RATE } from '../constants/bill';
 import { formatNumber } from './formatter';
+import { silverLineValue } from './silverPricing';
 
 /**
  * Renders an optional numeric value for a text input, treating zero as "not set".
@@ -253,12 +254,23 @@ export const calculateAdvanceSettlement = (
   const list = Array.isArray(items) ? items : [];
 
   let goldValue = 0;
+  let silverValue = 0;
   let makingCharges = 0;
   let otherCharges = 0;
   let discountTotal = 0;
   let subtotal = 0;
 
   for (const it of list) {
+    // A silver line is net weight at its own rate per gram of silver (see
+    // silverPricing.ts), never at the gold settlement rate: priced as gold,
+    // 100 g of payal read as a sale worth Rs.14,67,000.
+    if (it?.metal === 'silver') {
+      const value = silverLineValue(Number(it.weight ?? 0) || 0, Number(it.rate ?? 0) || 0);
+      silverValue += value;
+      subtotal += value;
+      continue;
+    }
+
     const netWt = Number(it.netWeight ?? it.netWt ?? it.weight ?? 0) || 0;
     const grossWt = Number(it.grossWeight ?? it.grossWt ?? netWt) || 0;
 
@@ -306,6 +318,7 @@ export const calculateAdvanceSettlement = (
 
   return {
     goldValue,
+    silverValue,
     makingCharges,
     otherCharges,
     discount: discountTotal,

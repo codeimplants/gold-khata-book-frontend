@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -11,8 +11,9 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { Search, X } from 'lucide-react-native';
+import { ChevronLeft, Clock, Plus, Search, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   lookupItemType,
   normalise,
@@ -20,6 +21,7 @@ import {
   type CustomItemGroup,
   type CustomItemType,
   type LanguageCode,
+  type MetalCode,
   type ResolvedItemType,
 } from '@codeimplants/jewellery-catalog';
 
@@ -48,6 +50,27 @@ type Row =
   | { kind: 'useText'; key: string; text: string }
   | { kind: 'create'; key: string; text: string };
 
+/** The pseudo-group the shop's own saved products are browsed under. */
+const CATALOGUE = '__catalogue__';
+
+/** How many recent picks the strip at the top keeps. */
+const RECENT_MAX = 10;
+
+/**
+ * Recent picks are kept per METAL, because a silver line and a gold line are
+ * reached for differently: the shop that sells payal in silver and chains in
+ * gold should see each where it uses it. On the device, like the shop's own
+ * additions to the list (useShopTaxonomy).
+ */
+const recentKey = (metal?: MetalCode) => `@itemPicker_recent_v1:${metal || 'any'}`;
+
+const pickKey = (p: ItemPick) =>
+  p.kind === 'product' ? `p:${p.productId}` : p.kind === 'itemType' ? `t:${p.code}` : `x:${normalise(p.name)}`;
+
+const isPick = (v: any): v is ItemPick =>
+  !!v && typeof v.name === 'string' && v.name.trim().length > 0 &&
+  (v.kind === 'text' || (v.kind === 'product' && typeof v.productId === 'string') || (v.kind === 'itemType' && typeof v.code === 'string'));
+
 const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** Exact beats a leading match beats a word start beats anywhere in the word. */
@@ -66,15 +89,24 @@ const bestScore = (candidates: (string | undefined)[], needle: string) =>
   candidates.reduce((best, candidate) => Math.max(best, scoreText(candidate, needle)), 0);
 
 /**
- * The item-name field's list: the shop's own catalogue first, then the master
- * list of ornaments, then whatever was typed.
+ * The item-name field's picker: what this shop picked recently, the ornament
+ * groups as tiles, and search over the shop's own catalogue and the master
+ * list of ornaments, or whatever was typed.
+ *
+ * Browsing is two levels, the way the list is built: a group tile (Rings,
+ * Payal, Utensils) opens to its ornaments as tiles. The owner asked for tiles
+ * over the long grouped list this used to be, because a counter picks by
+ * shape and a grid of a dozen groups is one glance where the list was a
+ * scroll. Recent picks sit above them, because a wholesaler sells the same
+ * few things all day.
  *
  * The search and the shop's own additions are SoneBill's ItemTypePicker logic
  * over the same shared package (`@codeimplants/jewellery-catalog`), which is
  * what the owner asked for. The screen is this app's own: the green Ledger
- * band, underlined group tabs, flat rows. App Review rejected the app as a
- * SoneBill copy under 4.3(a), so nothing here may look like SoneBill's
- * purple-chip picker.
+ * band, flat white tiles with a hairline, gold section labels. App Review
+ * rejected the app as a SoneBill copy under 4.3(a), so nothing here may look
+ * like SoneBill's purple-chip picker, and the reference the owner sent for the
+ * tile layout was purple: the layout is taken, the colour is not.
  *
  * Read and searched in the shop's language. A Marathi shop sees "झुमका";
  * typing English letters ("jhumka") still finds it, because that is how most
@@ -84,9 +116,10 @@ const bestScore = (candidates: (string | undefined)[], needle: string) =>
 export default function ItemPicker({
   visible,
   onClose,
-  products = [],
+  products: allProducts = [],
   onPick,
   initialQuery,
+  metal,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -94,6 +127,13 @@ export default function ItemPicker({
   onPick: (pick: ItemPick) => void;
   /** What is already in the field, so reopening continues the search. */
   initialQuery?: string;
+  /**
+   * Narrows the list to ornaments made in this metal: the package tags each
+   * one (`metals`), so a silver line offers Payal, Thali and Silver Coin, not
+   * Mangalsutra. Left out, nothing is filtered, which is how the gold line
+   * has always behaved.
+   */
+  metal?: MetalCode;
 }) {
   const { t, language } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -102,8 +142,10 @@ export default function ItemPicker({
   const [pendingName, setPendingName] = useState<string | null>(null);
   /** Non-null while a group of the shop's own is being named. */
   const [newGroup, setNewGroup] = useState<string | null>(null);
-  /** Narrows to one group. Works with the search, not instead of it. */
+  /** The group tile that is open. Search works inside it, not instead of it. */
   const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const [recents, setRecents] = useState<ItemPick[]>([]);
+  const searchRef = useRef<TextInput>(null);
 
   const tx = (key: string, fallback: string, name?: string) =>
     ((t(`itemPicker.${key}`) as string) || fallback).replace('{name}', name ?? '');
@@ -116,73 +158,104 @@ export default function ItemPicker({
     setNewGroup(null);
   }, [visible, initialQuery]);
 
-  // A desktop browser gets a centred panel with wrapped group tabs (a row that
-  // scrolls sideways has no affordance with a mouse). A phone, or a browser as
-  // narrow as one, gets the full-screen list with tabs that swipe.
+  // Read each time it opens, so a pick made on another line of this sale is
+  // already at the front. An unreadable store leaves the strip empty, never
+  // the picker broken.
+  useEffect(() => {
+    if (!visible) return;
+    let live = true;
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(recentKey(metal));
+        const list = raw ? JSON.parse(raw) : [];
+        if (live) setRecents(Array.isArray(list) ? list.filter(isPick).slice(0, RECENT_MAX) : []);
+      } catch {
+        if (live) setRecents([]);
+      }
+    })();
+    return () => { live = false; };
+  }, [visible, metal]);
+
+  // A desktop browser gets a centred panel (and a chip strip that wraps, since
+  // a row that scrolls sideways has no affordance with a mouse). A phone, or a
+  // browser as narrow as one, gets the full-screen picker.
   const { width } = useWindowDimensions();
   const isWeb = Platform.OS === 'web';
   const panel = isWeb && width >= 640;
+  /** Three tiles across a phone as in the owner's reference; two on the
+   *  narrowest, where a name like "Mangalsutra" would wrap mid-word. */
+  const columns = panel ? 4 : width < 330 ? 2 : 3;
   const lang = (['en', 'hi', 'mr', 'gu'].includes(language as string) ? language : 'en') as LanguageCode;
 
-  const { groups, itemTypes } = useMemo(() => resolveTaxonomy(taxonomy, lang), [taxonomy, lang]);
+  const { groups, itemTypes } = useMemo(() => {
+    const resolved = resolveTaxonomy(taxonomy, lang);
+    if (!metal) return resolved;
+    // An ornament with no metals listed (the shop's own, and a couple in the
+    // master list) could be anything, so it stays in.
+    const types = resolved.itemTypes.filter(type => !type.metals?.length || type.metals.includes(metal));
+    // A group left with nothing in it would be an empty tile.
+    return { ...resolved, itemTypes: types, groups: resolved.groups.filter(g => types.some(type => type.group === g.code)) };
+  }, [taxonomy, lang, metal]);
 
+  /** The shop's saved products for this metal; their category is the metal.
+   *  "Others" and uncategorised products stay in, as they could be either. */
+  const products = useMemo(
+    () => (metal
+      ? allProducts.filter(p => {
+        const c = String(p.category || '').toLowerCase();
+        return !c || c === metal || c === 'others' || c === 'other';
+      })
+      : allProducts),
+    [allProducts, metal],
+  );
+
+  const countIn = (code: string) =>
+    code === CATALOGUE ? products.length : itemTypes.filter(type => type.group === code).length;
+
+  const activeName = activeGroup === CATALOGUE
+    ? tx('catalogue', 'Your catalogue')
+    : groups.find(g => g.code === activeGroup)?.name;
+
+  /** Search results. Only built while something is typed; browsing is tiles. */
   const rows = useMemo<Row[]>(() => {
     const typed = query.trim();
     const needle = normalise(typed);
-    const typeInScope = (type: ResolvedItemType) => !activeGroup || type.group === activeGroup;
+    if (!needle) return [];
 
-    if (needle) {
-      const typeHits = itemTypes
-        .filter(typeInScope)
+    const typeHits = activeGroup === CATALOGUE
+      ? []
+      : itemTypes
+        .filter(type => !activeGroup || type.group === activeGroup)
         .map(type => ({ type, score: bestScore([type.name, type.names?.en, ...type.aliases], needle) }))
         .filter(hit => hit.score > 0);
-      // Catalogue products carry no ornament type, so a group filter hides them.
-      const productHits = activeGroup
-        ? []
-        : products
-            .map(product => ({ product, score: bestScore([product.name, product.category], needle) }))
-            .filter(hit => hit.score > 0);
+    // Catalogue products carry no ornament type, so an ornament group hides them.
+    const productHits = activeGroup && activeGroup !== CATALOGUE
+      ? []
+      : products
+        .map(product => ({ product, score: bestScore([product.name, product.category], needle) }))
+        .filter(hit => hit.score > 0);
 
-      // The shop's own catalogue leads at an equal match: picking one fills the
-      // line's purity and weight, which is why it was saved.
-      const out: Row[] = [
-        ...productHits.map<Row>(hit => ({ kind: 'product', key: `p-${hit.product.id}`, product: hit.product, score: hit.score + 5 })),
-        ...typeHits.map<Row>(hit => ({ kind: 'type', key: `t-${hit.type.code}`, type: hit.type, score: hit.score })),
-      ].sort((a, b) => {
-        const sa = 'score' in a ? a.score : 0;
-        const sb = 'score' in b ? b.score : 0;
-        const la = a.kind === 'product' ? a.product.name : a.kind === 'type' ? a.type.name : '';
-        const lb = b.kind === 'product' ? b.product.name : b.kind === 'type' ? b.type.name : '';
-        return sb - sa || la.localeCompare(lb);
-      });
+    // The shop's own catalogue leads at an equal match: picking one fills the
+    // line's purity and weight, which is why it was saved.
+    const out: Row[] = [
+      ...productHits.map<Row>(hit => ({ kind: 'product', key: `p-${hit.product.id}`, product: hit.product, score: hit.score + 5 })),
+      ...typeHits.map<Row>(hit => ({ kind: 'type', key: `t-${hit.type.code}`, type: hit.type, score: hit.score })),
+    ].sort((a, b) => {
+      const sa = 'score' in a ? a.score : 0;
+      const sb = 'score' in b ? b.score : 0;
+      const la = a.kind === 'product' ? a.product.name : a.kind === 'type' ? a.type.name : '';
+      const lb = b.kind === 'product' ? b.product.name : b.kind === 'type' ? b.type.name : '';
+      return sb - sa || la.localeCompare(lb);
+    });
 
-      const exactType = out.some(r => r.kind === 'type' && normalise(r.type.name) === needle);
-      const exactProduct = out.some(r => r.kind === 'product' && normalise(r.product.name) === needle);
-      // "Use what I typed" first: the fastest way to fill a line, and it must
-      // never be below a long list of near misses.
-      const head: Row[] = exactProduct || exactType ? [] : [{ kind: 'useText', key: '__use__', text: typed }];
-      const tail: Row[] = exactType ? [] : [{ kind: 'create', key: '__create__', text: typed }];
-      return [...head, ...out, ...tail];
-    }
-
-    const out: Row[] = [];
-    if (!activeGroup && products.length) {
-      out.push({ kind: 'header', key: 'h-catalogue', label: tx('catalogue', 'Your catalogue') });
-      for (const product of [...products].sort((a, b) => a.name.localeCompare(b.name))) {
-        out.push({ kind: 'product', key: `p-${product.id}`, product, score: 0 });
-      }
-    }
-    for (const group of groups) {
-      if (activeGroup && group.code !== activeGroup) continue;
-      const inGroup = itemTypes.filter(type => type.group === group.code);
-      if (!inGroup.length) continue;
-      if (!activeGroup) out.push({ kind: 'header', key: `h-${group.code}`, label: group.name });
-      for (const type of inGroup) out.push({ kind: 'type', key: `t-${type.code}`, type, score: 0 });
-    }
-    return out;
-    // tx reads t, which follows `language`, already covered by `lang`.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, groups, itemTypes, lang, activeGroup, products]);
+    const exactType = out.some(r => r.kind === 'type' && normalise(r.type.name) === needle);
+    const exactProduct = out.some(r => r.kind === 'product' && normalise(r.product.name) === needle);
+    // "Use what I typed" first: the fastest way to fill a line, and it must
+    // never be below a long list of near misses.
+    const head: Row[] = exactProduct || exactType ? [] : [{ kind: 'useText', key: '__use__', text: typed }];
+    const tail: Row[] = exactType ? [] : [{ kind: 'create', key: '__create__', text: typed }];
+    return [...head, ...out, ...tail];
+  }, [query, itemTypes, activeGroup, products]);
 
   const finish = () => {
     setQuery('');
@@ -192,12 +265,38 @@ export default function ItemPicker({
     onClose();
   };
 
+  /** Puts a pick at the front of the recent strip, once. Best-effort: a
+   *  failed write costs the strip an entry, never the sale its line. */
+  const remember = (p: ItemPick) => {
+    const next = [p, ...recents.filter(r => pickKey(r) !== pickKey(p))].slice(0, RECENT_MAX);
+    setRecents(next);
+    AsyncStorage.setItem(recentKey(metal), JSON.stringify(next)).catch(() => {});
+  };
+
   const pick = (p: ItemPick) => {
+    remember(p);
     onPick(p);
     finish();
   };
 
   const chooseType = (type: ResolvedItemType) => pick({ kind: 'itemType', code: type.code, name: type.name });
+
+  /**
+   * A recent pick, re-resolved against today's data: an ornament shows in the
+   * shop's current language, and a saved product deleted since is used as the
+   * name it had, rather than handing the line an id that no longer exists.
+   */
+  const resolveRecent = (r: ItemPick): ItemPick => {
+    if (r.kind === 'itemType') {
+      const type = lookupItemType(r.code, taxonomy, lang);
+      return type ? { kind: 'itemType', code: type.code, name: type.name } : { kind: 'text', name: r.name };
+    }
+    if (r.kind === 'product') {
+      const product = allProducts.find(p => p.id === r.productId);
+      return product ? { kind: 'product', productId: product.id, name: product.name } : { kind: 'text', name: r.name };
+    }
+    return r;
+  };
 
   /** Hands back the ornament just added, resolved against the saved list. */
   const finishWithNewType = (entry: CustomItemType, group?: CustomItemGroup) => {
@@ -228,27 +327,6 @@ export default function ItemPicker({
     finishWithNewType(entry, { code: entry.group, name: groupName });
   };
 
-  const groupTabs = (
-    <>
-      {[{ code: null as string | null, name: tx('all', 'All') }, ...groups].map(group => {
-        const on = activeGroup === group.code;
-        return (
-          <Pressable
-            key={group.code ?? '__all__'}
-            // Tapping the active tab clears it, so a filter is never a trap.
-            onPress={() => setActiveGroup(on || group.code === null ? null : group.code)}
-            style={styles.tab}
-            accessibilityRole="button"
-            accessibilityState={{ selected: on }}
-          >
-            <Text style={[styles.tabText, on && styles.tabTextOn]}>{group.name}</Text>
-            <View style={[styles.tabLine, on && styles.tabLineOn]} />
-          </Pressable>
-        );
-      })}
-    </>
-  );
-
   const renderRow = ({ item }: { item: Row }) => {
     if (item.kind === 'header') return <Text style={styles.header}>{item.label}</Text>;
 
@@ -265,9 +343,11 @@ export default function ItemPicker({
       return (
         <Pressable
           style={styles.action}
-          // With a group already chosen, asking which group to file it under
-          // is a question the shop has just answered.
-          onPress={() => (activeGroup ? createOwn(activeGroup, item.text) : setPendingName(item.text))}
+          // Inside an ornament group, asking which group to file it under is
+          // a question the shop has just answered.
+          onPress={() => (activeGroup && activeGroup !== CATALOGUE
+            ? createOwn(activeGroup, item.text)
+            : setPendingName(item.text))}
         >
           <Text style={styles.actionText}>{tx('saveOwn', '+ Add “{name}” to the list', item.text)}</Text>
           <Text style={styles.actionHint}>{tx('saveOwnSub', 'Not in the list. It is saved as your own ornament.')}</Text>
@@ -301,6 +381,148 @@ export default function ItemPicker({
       </Pressable>
     );
   };
+
+  /** One tile of the grid. Width is a share of the row, so the grid holds on
+   *  every screen without measuring it first. */
+  const Tile = ({ title, sub, onPress, badge, add }: {
+    title: string;
+    sub?: string;
+    onPress: () => void;
+    badge?: string;
+    add?: boolean;
+  }) => (
+    <View style={{ width: `${100 / columns}%`, padding: 4 }}>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.tile, add && styles.tileAdd, pressed && styles.tilePressed]}
+      >
+        {add && <Plus size={18} color={Brand.primary} />}
+        <Text style={[styles.tileTitle, add && styles.tileTitleAdd]} numberOfLines={2}>{title}</Text>
+        {!!sub && <Text style={styles.tileSub} numberOfLines={1}>{sub}</Text>}
+        {!!badge && <Text style={[styles.badge, styles.tileBadge]}>{badge}</Text>}
+      </Pressable>
+    </View>
+  );
+
+  const itemsLabel = (n: number) =>
+    n === 1
+      ? tx('oneItem', '1 item')
+      : ((t('itemPicker.nItems') as string) || '{n} items').replace('{n}', String(n));
+
+  const recentStrip = recents.length > 0 && !activeGroup && (
+    <View>
+      <View style={styles.labelRow}>
+        <Clock size={13} color={Brand.goldDark} />
+        <Text style={styles.label}>{tx('recent', 'Recent')}</Text>
+      </View>
+      {panel ? (
+        <View style={styles.chipsWrap}>
+          {recents.map(r => {
+            const shown = resolveRecent(r);
+            return (
+              <Pressable key={pickKey(r)} onPress={() => pick(shown)} style={({ pressed }) => [styles.chip, pressed && styles.tilePressed]}>
+                <Text style={styles.chipText} numberOfLines={1}>{shown.name}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipsRow} keyboardShouldPersistTaps="handled">
+          {recents.map(r => {
+            const shown = resolveRecent(r);
+            return (
+              <Pressable key={pickKey(r)} onPress={() => pick(shown)} style={({ pressed }) => [styles.chip, pressed && styles.tilePressed]}>
+                <Text style={styles.chipText} numberOfLines={1}>{shown.name}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      )}
+    </View>
+  );
+
+  /** Nothing typed: the recent strip, then group tiles, or one group's ornaments. */
+  const browse = (
+    <ScrollView
+      keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{ paddingBottom: (panel ? 16 : insets.bottom) + 24 }}
+    >
+      {recentStrip}
+
+      {activeGroup ? (
+        <>
+          <Pressable style={styles.crumb} onPress={() => setActiveGroup(null)} accessibilityRole="button">
+            <ChevronLeft size={18} color={Brand.primary} />
+            <Text style={styles.crumbBack}>{tx('allCategories', 'All categories')}</Text>
+            <Text style={styles.crumbSep}>/</Text>
+            <Text style={styles.crumbHere} numberOfLines={1}>{activeName}</Text>
+          </Pressable>
+          <View style={styles.grid}>
+            {activeGroup === CATALOGUE
+              ? [...products]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(product => (
+                  <Tile
+                    key={`p-${product.id}`}
+                    title={product.name}
+                    sub={[product.purity, product.category].filter(Boolean).join(' · ') || undefined}
+                    onPress={() => pick({ kind: 'product', productId: product.id, name: product.name })}
+                  />
+                ))
+              : itemTypes
+                .filter(type => type.group === activeGroup)
+                .map(type => {
+                  const english = type.names?.en && lang !== 'en' && type.names.en !== type.name ? type.names.en : undefined;
+                  return (
+                    <Tile
+                      key={`t-${type.code}`}
+                      title={type.name}
+                      sub={english}
+                      badge={type.custom ? tx('yours', 'Yours') : undefined}
+                      onPress={() => chooseType(type)}
+                    />
+                  );
+                })}
+            {/* Adding an ornament of the shop's own is typing its name: the
+                search box below the band already offers "+ Add" for a name
+                the list does not have, filed under this group. */}
+            {activeGroup !== CATALOGUE && (
+              <Tile
+                add
+                title={tx('addHere', 'Add your own')}
+                onPress={() => searchRef.current?.focus()}
+              />
+            )}
+          </View>
+        </>
+      ) : (
+        <>
+          <View style={styles.labelRow}>
+            <Text style={styles.label}>{tx('categories', 'Categories')}</Text>
+          </View>
+          <View style={styles.grid}>
+            {products.length > 0 && (
+              <Tile
+                title={tx('catalogue', 'Your catalogue')}
+                sub={itemsLabel(products.length)}
+                onPress={() => setActiveGroup(CATALOGUE)}
+              />
+            )}
+            {groups.map(group => (
+              <Tile
+                key={group.code}
+                title={group.name}
+                sub={itemsLabel(countIn(group.code))}
+                badge={group.custom ? tx('yours', 'Yours') : undefined}
+                onPress={() => setActiveGroup(group.code)}
+              />
+            ))}
+          </View>
+        </>
+      )}
+    </ScrollView>
+  );
 
   const body = (
     <>
@@ -365,9 +587,14 @@ export default function ItemPicker({
           <View style={styles.searchBox}>
             <Search size={18} color={Brand.inkFaint} />
             <TextInput
+              ref={searchRef}
               value={query}
               onChangeText={setQuery}
-              placeholder={tx('search', 'Search your catalogue or the ornament list')}
+              // Inside a group the box says so, since that is where a typed
+              // name is searched and where "+ Add" would file it.
+              placeholder={activeGroup && activeName
+                ? tx('searchIn', 'Search or add in {name}', activeName)
+                : tx('search', 'Search your catalogue or the ornament list')}
               placeholderTextColor={Brand.inkFaint}
               style={styles.searchInput}
               autoCorrect={false}
@@ -384,25 +611,26 @@ export default function ItemPicker({
             )}
           </View>
 
-          {/* Wrapped on web, scrolled on a phone: a sideways-scrolling row has
-              no affordance with a mouse. */}
-          <View style={styles.tabsBar}>
-            {panel ? (
-              <View style={styles.tabsWrap}>{groupTabs}</View>
-            ) : (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsRow} keyboardShouldPersistTaps="handled">
-                {groupTabs}
-              </ScrollView>
-            )}
-          </View>
-
-          <FlatList
-            data={rows}
-            keyExtractor={r => r.key}
-            renderItem={renderRow}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ paddingBottom: (panel ? 16 : insets.bottom) + 24 }}
-          />
+          {query.trim() ? (
+            <>
+              {/* Searching inside a group: say which, and how to leave it. */}
+              {!!activeGroup && (
+                <Pressable style={styles.crumb} onPress={() => setActiveGroup(null)} accessibilityRole="button">
+                  <ChevronLeft size={18} color={Brand.primary} />
+                  <Text style={styles.crumbBack}>{tx('allCategories', 'All categories')}</Text>
+                  <Text style={styles.crumbSep}>/</Text>
+                  <Text style={styles.crumbHere} numberOfLines={1}>{activeName}</Text>
+                </Pressable>
+              )}
+              <FlatList
+                data={rows}
+                keyExtractor={r => r.key}
+                renderItem={renderRow}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: (panel ? 16 : insets.bottom) + 24 }}
+              />
+            </>
+          ) : browse}
         </>
       )}
     </>
@@ -482,14 +710,68 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   searchInput: { flex: 1, minWidth: 0, fontSize: 16, color: Brand.ink, paddingVertical: 0 },
-  tabsBar: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: Brand.line },
-  tabsRow: { paddingHorizontal: 12, flexDirection: 'row' },
-  tabsWrap: { paddingHorizontal: 12, flexDirection: 'row', flexWrap: 'wrap' },
-  tab: { paddingHorizontal: 8, paddingTop: 8 },
-  tabText: { fontSize: 14, color: Brand.inkMuted, fontWeight: '600' },
-  tabTextOn: { color: Brand.primary },
-  tabLine: { height: 2, marginTop: 6, borderRadius: 1, backgroundColor: 'transparent' },
-  tabLineOn: { backgroundColor: Brand.goldFill },
+  // Section labels: small gold capitals, the same as the old list's headers.
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: Brand.goldDark,
+  },
+  // Recent picks: outlined green pills on the pearl ground. Not filled, and
+  // never violet (see the component note).
+  chipsRow: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
+  chipsWrap: { paddingHorizontal: 16, flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 4 },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: Brand.primary,
+    backgroundColor: Brand.primaryTint,
+    maxWidth: 220,
+  },
+  chipText: { fontSize: 14, fontWeight: '600', color: Brand.primary },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 12 },
+  tile: {
+    // Fills its cell, so a row whose neighbour wraps to two lines ("Articles
+    // & Gifting") still reads as one row of equal tiles.
+    flexGrow: 1,
+    minHeight: 78,
+    paddingHorizontal: 8,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: Brand.line,
+    backgroundColor: Brand.card,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileAdd: { borderStyle: 'dashed', borderColor: Brand.primary, backgroundColor: 'transparent' },
+  tilePressed: { opacity: 0.6 },
+  tileTitle: { fontSize: 15, fontWeight: '600', color: Brand.ink, textAlign: 'center' },
+  tileTitleAdd: { color: Brand.primary, fontSize: 13, marginTop: 4 },
+  tileSub: { fontSize: 11, color: Brand.inkMuted, marginTop: 4, textAlign: 'center' },
+  tileBadge: { marginLeft: 0, marginTop: 6 },
+  crumb: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 8,
+  },
+  crumbBack: { fontSize: 14, fontWeight: '600', color: Brand.primary },
+  crumbSep: { fontSize: 14, color: Brand.inkFaint, marginHorizontal: 2 },
+  crumbHere: { flexShrink: 1, fontSize: 14, fontWeight: '700', color: Brand.ink },
   header: {
     paddingHorizontal: 16,
     paddingTop: 18,

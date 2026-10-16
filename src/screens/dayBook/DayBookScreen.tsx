@@ -176,6 +176,18 @@ export default function DayBookScreen() {
                     <Text style={{ color: Brand.received }}>{formatGrams(s.totals.goldIn, gm)}</Text>
                   </Text>
                 )}
+                {s.totals.silverOut > 0 && (
+                  <Text style={[styles.dayTotal, tabularNums]}>
+                    <Text style={styles.dayTotalLabel}>{t('dayBook.silverOut') || 'Silver out'} </Text>
+                    <Text style={{ color: Brand.silver }}>{formatGrams(s.totals.silverOut, gm)}</Text>
+                  </Text>
+                )}
+                {s.totals.silverIn > 0 && (
+                  <Text style={[styles.dayTotal, tabularNums]}>
+                    <Text style={styles.dayTotalLabel}>{t('dayBook.silverIn') || 'Silver in'} </Text>
+                    <Text style={{ color: Brand.received }}>{formatGrams(s.totals.silverIn, gm)}</Text>
+                  </Text>
+                )}
                 {s.totals.cashIn > 0 && (
                   <Text style={[styles.dayTotal, tabularNums]}>
                     <Text style={styles.dayTotalLabel}>{t('dayBook.cashIn') || 'Cash in'} </Text>

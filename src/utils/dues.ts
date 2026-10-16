@@ -26,6 +26,11 @@ export interface Outstanding {
   gold: number;
   /** Rupees still owed against charges. */
   cash: number;
+  /**
+   * Grams of SILVER still owed: a third account, beside gold and never added
+   * to it. Zero for a retailer who has only ever bought gold.
+   */
+  silver: number;
 }
 
 /**
@@ -56,29 +61,31 @@ export const CASH_SETTLED_EPSILON = 0.5;
  * 'advance' because orders written before the field existed were all advances.
  */
 export const orderOutstanding = (order: Order): Outstanding => {
-  if (order.status !== 'pending') return { gold: 0, cash: 0 };
-  if ((order.paymentMode ?? 'advance') !== 'advance') return { gold: 0, cash: 0 };
+  if (order.status !== 'pending') return { gold: 0, cash: 0, silver: 0 };
+  if ((order.paymentMode ?? 'advance') !== 'advance') return { gold: 0, cash: 0, silver: 0 };
 
   const gold = Number(order.remainingWeight || 0);
   const cash = Number(order.outstandingCash || 0);
+  const silver = Number(order.remainingSilverWeight || 0);
 
   return {
     gold: gold >= WEIGHT_SETTLED_EPSILON_GM ? gold : 0,
     cash: cash >= CASH_SETTLED_EPSILON ? cash : 0,
+    silver: silver >= WEIGHT_SETTLED_EPSILON_GM ? silver : 0,
   };
 };
 
-/** True when either account has something left on it. */
-export const hasOutstanding = (o: Outstanding): boolean => o.gold > 0 || o.cash > 0;
+/** True when any account has something left on it. */
+export const hasOutstanding = (o: Outstanding): boolean => o.gold > 0 || o.cash > 0 || o.silver > 0;
 
 /** Both accounts summed across a set of orders. */
 export const sumOutstanding = (orders: Order[]): Outstanding =>
   orders.reduce<Outstanding>(
     (total, order) => {
       const due = orderOutstanding(order);
-      return { gold: total.gold + due.gold, cash: total.cash + due.cash };
+      return { gold: total.gold + due.gold, cash: total.cash + due.cash, silver: total.silver + due.silver };
     },
-    { gold: 0, cash: 0 },
+    { gold: 0, cash: 0, silver: 0 },
   );
 
 /** "3.250 gm" — weights print to 3dp everywhere in this app. */

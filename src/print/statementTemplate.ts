@@ -35,6 +35,8 @@ export const buildStatementHTML = (
       credit: string;
       meltCredit: string;
       nothingDue: string;
+    /** Appended to a silver weight so it cannot be read as gold. */
+    silver?: string;
     };
   },
 ): string => {
@@ -51,6 +53,7 @@ export const buildStatementHTML = (
         ? `<span class="ok">${esc(L.settled)}</span>`
         : [
           line.gold > 0 ? esc(formatGrams(line.gold, ctx.gramShort)) : '',
+          line.silver > 0 ? esc(`${formatGrams(line.silver, ctx.gramShort)} ${L.silver || 'silver'}`) : '',
           line.cash > 0 ? esc(formatCurrencyValue(line.cash)) : '',
         ].filter(Boolean).join(' + ');
       return `<tr>
@@ -63,6 +66,7 @@ export const buildStatementHTML = (
 
   const totalParts = [
     statement.totalGold > 0 ? esc(formatGrams(statement.totalGold, ctx.gramShort)) : '',
+    statement.totalSilver > 0 ? esc(`${formatGrams(statement.totalSilver, ctx.gramShort)} ${L.silver || 'silver'}`) : '',
     statement.totalCash > 0 ? esc(formatCurrencyValue(statement.totalCash)) : '',
   ].filter(Boolean);
 

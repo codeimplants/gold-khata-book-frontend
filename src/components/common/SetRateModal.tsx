@@ -13,6 +13,7 @@ import FloatingLabelInput, { type FloatingLabelInputHandle } from './FloatingLab
 import { toast } from './Toast';
 import { formatCurrencyValue } from '../../utils/formatter';
 import { LAYOUT } from '../../constants/layout';
+import { useSilverRate } from '../../hooks/useShopRate';
 
 const num = (v: string) => Number(String(v ?? '').trim()) || 0;
 
@@ -41,6 +42,13 @@ const SetRateModal = ({
   const bottomInset = useSheetBottomInset(24);
 
   const [value, setValue] = React.useState('');
+  /**
+   * Today's silver rate, set beside gold's. Read here rather than passed in, so
+   * the dashboard and Settings, which both open this sheet, cannot get it out
+   * of step with what the sale screen uses.
+   */
+  const silver = useSilverRate();
+  const [silverValue, setSilverValue] = React.useState('');
   const [saving, setSaving] = React.useState(false);
   const inputRef = React.useRef<FloatingLabelInputHandle>(null);
 
@@ -64,15 +72,25 @@ const SetRateModal = ({
   React.useEffect(() => {
     if (!isOpen) return;
     setValue(currentOverride ? String(currentOverride) : (liveRate ? String(liveRate) : ''));
+    setSilverValue(silver.rate ? String(silver.rate) : '');
+    // silver.rate is left out on purpose: a re-seed while the sheet is open
+    // would overwrite what the user is typing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, currentOverride, liveRate]);
 
   const entered = num(value);
-  const canSave = entered > 0 && !saving;
+  const enteredSilver = num(silverValue);
+  // Either rate on its own is a valid answer; a silver-only wholesaler may
+  // never set a gold rate.
+  const canSave = (entered > 0 || enteredSilver > 0) && !saving;
 
   const onSave = async () => {
     if (!canSave) return;
     setSaving(true);
-    const action = await dispatch(setShopRate({ goldRate: entered }) as any);
+    const action = await dispatch(setShopRate({
+      ...(entered > 0 ? { goldRate: entered } : {}),
+      ...(enteredSilver > 0 ? { silverRate: enteredSilver } : {}),
+    }) as any);
     setSaving(false);
     if (setShopRate.fulfilled.match(action)) {
       toast.success(t('rate.saved') || 'Today’s rate saved');
@@ -86,7 +104,7 @@ const SetRateModal = ({
     setSaving(true);
     // Only worth a request when there is something to clear; otherwise this is
     // just "leave things as they are".
-    if (currentOverride) await dispatch(clearShopRate(undefined) as any);
+    if (currentOverride || silver.isOverride) await dispatch(clearShopRate(undefined) as any);
     setSaving(false);
     onClose();
   };
@@ -176,7 +194,9 @@ const SetRateModal = ({
             <FloatingLabelInput
               ref={inputRef}
               containerStyle={{ flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch' }}
-              label={`${t('rate.yourRate') || 'Your rate'} (${t('rate.perGram') || '₹/gram'})`}
+              // "Gold rate" rather than "Your rate" now that silver's field sits
+              // under it: with two rates in one sheet, "yours" names neither.
+              label={`${t('rate.goldRateField') || 'Gold rate'} (${t('rate.perGram') || '₹/gram'})`}
               keyboardType="decimal-pad"
               value={value}
               onChangeText={setValue}
@@ -190,6 +210,21 @@ const SetRateModal = ({
             </Text>
             <Text fontSize={11} color="$coolGray400" mt="$0.5" ml="$1">
               {t('rate.hint') || 'Used for every order raised today'}
+            </Text>
+
+            {/* Silver, set on its own. It fills the rate on every silver line
+                today, the way the gold rate fills gold lines. */}
+            <FloatingLabelInput
+              containerStyle={{ flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch', marginTop: 16 }}
+              label={`${t('rate.silverRate') || 'Silver rate'} (${t('rate.perGram') || '₹/gram'})`}
+              keyboardType="decimal-pad"
+              value={silverValue}
+              onChangeText={setSilverValue}
+            />
+            <Text fontSize={11} color="$coolGray400" mt="$1" ml="$1">
+              {silver.liveRate > 0
+                ? `${t('rate.liveIs') || 'Live rate'} ${formatCurrencyValue(silver.liveRate)} · ${t('rate.silverUnitNote') || 'Per gram of silver'}`
+                : (t('rate.silverUnitNote') || 'Per gram of silver')}
             </Text>
 
             <Pressable onPress={onSave} disabled={!canSave} style={{ marginTop: 20 }}>

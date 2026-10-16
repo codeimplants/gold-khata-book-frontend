@@ -15,10 +15,10 @@ should exist only in a chat, a temp folder or someone's memory.
 
 | | |
 | --- | --- |
-| **Phase** | 7 (verification and submission). All code work is done and pushed to `main` in both repos (2026-10-06, evening). Pre-submission audit done (section 10, "Pre-submission audit") |
-| **Next action** | Owner, in this order:<br>1. **Deploy the backend to prod**: `bash scripts/deploy.sh --env prod --yes` in the backend repo, then `--inspect` must show prod on `5ab4119`. Dev is DONE (2026-10-06: `5ab4119`, health check 200, `GET /retailer-account` 200; prod answered 404, the control). A Claude session is blocked from deploying prod, so the owner runs it.<br>2. Redeploy the web app (`npm run deploy`) so the public privacy and terms pages match `en.ts`.<br>3. Run the production demo seed (section 9, item 5), `--dry-run` first; then sign in on a phone with 1234567890 / 123456 and check the Khata tab shows the sample retailers.<br>4. On the Mac: `git pull`, then `scripts/release-ios.sh --bump`. The project now records build **2** (already in App Store Connect), so `--bump` makes **3**; confirm 3 is unused. Commit and push the bumped `project.pbxproj` afterwards.<br>5. Real-device checks from `CLAUDE.md` (7.3), including an iPad.<br>6. In App Store Connect: category (Finance, or Business if SoneBill is in Finance), the 9 iPhone and 6 iPad screenshots (numbered 01 to 09), the copy, privacy labels and age rating; then submit with the reply in `store-assets/listing/LISTING.md`. |
+| **Phase** | Done: the owner reports build 3 live on iOS (2026-10-16). New work since: **silver** (section 12), on `main` in both repos, **not committed yet**, waiting on the owner's local test |
+| **Next action** | **Silver (2026-10-16):** the owner tests it on the local stack (section 7, web on http://localhost:8082 because SoneBill's dev server holds 8081), and decides on the new tile item picker. Then commit both repos, deploy the backend before any app build (an older backend rejects silver lines and `silverRate`), then ship the app.<br><br>Earlier, for build 3 (kept for the record), owner, in this order:<br>1. **Deploy the backend to prod**: `bash scripts/deploy.sh --env prod --yes` in the backend repo, then `--inspect` must show prod on `5ab4119`. Dev is DONE (2026-10-06: `5ab4119`, health check 200, `GET /retailer-account` 200; prod answered 404, the control). A Claude session is blocked from deploying prod, so the owner runs it.<br>2. Redeploy the web app (`npm run deploy`) so the public privacy and terms pages match `en.ts`.<br>3. Run the production demo seed (section 9, item 5), `--dry-run` first; then sign in on a phone with 1234567890 / 123456 and check the Khata tab shows the sample retailers.<br>4. On the Mac: `git pull`, then `scripts/release-ios.sh --bump`. The project now records build **2** (already in App Store Connect), so `--bump` makes **3**; confirm 3 is unused. Commit and push the bumped `project.pbxproj` afterwards.<br>5. Real-device checks from `CLAUDE.md` (7.3), including an iPad.<br>6. In App Store Connect: category (Finance, or Business if SoneBill is in Finance), the 9 iPhone and 6 iPad screenshots (numbered 01 to 09), the copy, privacy labels and age rating; then submit with the reply in `store-assets/listing/LISTING.md`. |
 | **Blocked on owner** | Steps 1 to 6 above: deploys, the production seed, the Mac build and App Store Connect |
-| **Last updated** | 2026-10-06 (night) |
+| **Last updated** | 2026-10-16 |
 
 ---
 
@@ -591,6 +591,13 @@ fails quietly) and the gold advance save fails with an error.
 
 Newest first. One entry per working session: what changed and what comes next.
 
+- **2026-10-16.** Silver, at the owner's request (section 12), and a tile layout for the item picker.
+  - Backend: silver lines on orders, a separate silver account (grams of silver), silver receipts (`settles: 'silver'`), `silverRate` on the shop rate, `defaultMetal` on the shop. `npm run verify:pricing`, `verify:order`, `verify:dues` and the new `verify:silver` all pass against the local API on the demo book.
+  - App: Gold | Silver tabs on New sale (gold form unchanged), Settings switch "Start sales on Silver", silver rate in Today's Rate, silver dues on the Khata home, retailer list, statement (screen, WhatsApp, PDF), sale detail ("Receive silver") and Day Book. Strings in four languages. `tsc` clean, jest maths tests pass (49).
+  - Item picker: recent picks as chips, groups as tiles, a group opens to its ornaments as tiles; silver lines see only ornaments the package tags as silver. The owner's reference was purple; built in Ledger green and gold instead (4.3(a)). The owner wants to see it before it is final, and may want it moved into `@codeimplants/jewellery-catalog`.
+  - Walked through on the local web build: silver-only sale, part paid in cash, the rest received as silver, completed. Found and fixed the sale screen pricing silver lines at the gold rate (`calculateAdvanceSettlement`).
+  - Next: owner tests; commit; deploy backend first.
+
 - **2026-10-06 (late night).** Backend deployed to **dev** and verified (`5ab4119`; the new list route answers 200 on dev and 404 on prod, the control). The prod deploy was blocked for the session by Claude Code's safety check: the owner runs it, then the web deploy and the prod seed, in that order (backend first: the live web app talks to prod).
 - **2026-10-06 (night).** Full / Half one-tap use of held gold and cash. Pre-submission audit (section 10): SoneBill's fonts removed, build recorded as 2, placeholder reworded, the reply to Apple corrected (SoneBill has its own Day Book and supplier khata). Store images recaptured. Both repos committed and pushed to `main` for the Mac.
 - **2026-10-06 (evening).** The owner's three requests are done (section 10).
@@ -679,3 +686,34 @@ Newest first. One entry per working session: what changed and what comes next.
   - Added `scripts/store-screenshots/`.
   - Wrote this plan.
   - Next: Phase 1.
+
+## 12. Silver (owner request, 2026-10-16)
+
+The owner's brief: New sale gets two tabs, **Gold** (default, unchanged) and
+**Silver**; a setting makes Silver the default for silver wholesalers. A silver
+line is Item name (catalogue or free text), Quantity, Gross weight, Packet
+weight, Net weight (gross less packet, typed over if needed), Rate per gram
+(today's silver rate, pre-filled) and Total amount (net x rate). A retailer can
+owe gold, silver and cash, and one sale can carry gold, silver or both.
+
+**The model.** Silver is a third account beside gold grams and cash, in grams
+of silver, never added to gold:
+
+- An order line has `metal: 'gold' | 'silver'` (missing = gold). On a silver
+  line `weight` is the net weight, the grams owed, and there is no purity or
+  wastage. `quantity`, `grossWeight`, `packetWeight` and `silverValue` are
+  kept for the bill. Pricing: `src/common/utils/silverPricing.ts` (backend),
+  mirrored in `src/utils/silverPricing.ts` (app).
+- The order carries `totalSilverWeight`, `silverWeightPaid`,
+  `remainingSilverWeight`. Gold's `totalWeight` and its weighted rate now read
+  gold lines only. An order completes when gold, cash AND silver are clear.
+- A receipt against silver is a payment with `settles: 'silver'`: its cash buys
+  silver grams at `goldRate` (on that payment, the silver rate), and
+  `silverWeight` is silver handed over, gram for gram.
+- `ShopRate.silverRate` beside `goldRate`; either can be set alone.
+  `ShopDetail.defaultMetal` is the Settings switch.
+
+**Not done yet (tell the owner before building):** silver advances and silver
+held for a retailer (the retailer account holds gold and cash only); an
+overpaid silver receipt is not turned into held credit the way gold's is;
+printed bills show silver lines but their payment table has one weight column.
