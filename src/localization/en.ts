@@ -744,6 +744,12 @@ export default {
   },
 
   orders: {
+    weightShort: 'Weight',
+    purityShort: 'Purity',
+    wastageShort: 'Wastage',
+    rateShort: 'Rate',
+    fineShort: 'Fine',
+    lineTotal: 'line total',
     pieceWord: 'Piece',
     totalWeightGrams: 'Total weight (grams)',
     totalNet: 'Total net',

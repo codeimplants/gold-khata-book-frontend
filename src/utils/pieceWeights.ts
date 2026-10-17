@@ -18,16 +18,37 @@
 /** Above this many pieces, a line is weighed as one lot. */
 export const MAX_PIECE_ROWS = 50;
 
-/** One piece as it is typed. `packet` is used on silver lines only. */
+/**
+ * One piece as it is typed. `packet` is used on silver lines only.
+ *
+ * A gold piece carries its own purity, wastage and rate, because two pieces
+ * on one line are not always alike (a 22K ring and an 18K one). Pieces that
+ * agree on all three are saved as one line with their weights; a piece that
+ * differs is saved as its own line, so each is priced by the same rules as
+ * any other line and nothing in goldPricing changes.
+ */
 export interface PieceDraft {
   weight: string;
   packet: string;
+  purity?: string;
+  wastage?: string;
+  rate?: string;
+  /** Follows the live rate, as the line-level tick does. */
+  useLiveRate?: boolean;
 }
 
 const num = (v: string) => Number(String(v ?? '').trim()) || 0;
 const round3 = (n: number) => Number((Number(n) || 0).toFixed(3));
 
-export const blankPiece = (): PieceDraft => ({ weight: '', packet: '' });
+/** A new piece: no weight yet, the rest copied from `like` when given, so a
+ *  line of identical pieces only needs its weights typed. */
+export const blankPiece = (like?: PieceDraft): PieceDraft => ({
+  weight: '',
+  packet: '',
+  ...(like
+    ? { purity: like.purity, wastage: like.wastage, rate: like.rate, useLiveRate: like.useLiveRate }
+    : {}),
+});
 
 /** The quantity as a whole number of pieces, at least 1. */
 export const pieceCount = (quantity: string): number => {
@@ -41,9 +62,12 @@ export const weighsEach = (quantity: string, together: boolean): boolean => {
   return n > 1 && n <= MAX_PIECE_ROWS && !together;
 };
 
-/** The pieces grown or shrunk to `n`, keeping what was already typed. */
-export const resizePieces = (pieces: PieceDraft[], n: number): PieceDraft[] =>
-  Array.from({ length: n }, (_, i) => pieces[i] ?? blankPiece());
+/** The pieces grown or shrunk to `n`, keeping what was already typed. New
+ *  rows copy the last existing one's purity, wastage and rate. */
+export const resizePieces = (pieces: PieceDraft[], n: number): PieceDraft[] => {
+  const like = pieces[pieces.length - 1];
+  return Array.from({ length: n }, (_, i) => pieces[i] ?? blankPiece(like));
+};
 
 /** A gold line's weight: the pieces' weights, summed. */
 export const goldTotal = (pieces: PieceDraft[]): number =>

@@ -135,10 +135,22 @@ const piecesWeighed = (quantity: string, together: boolean, pieces: PieceDraft[]
 const silverDone = (s: SilverDraft) =>
   s.itemName.trim().length > 0 && num(s.netWeight) > 0 && piecesWeighed(s.quantity, s.together, s.pieces);
 
-/** A gold line can be priced once it has a weight and purity, and every piece
- *  is weighed. */
+/** A gold line can be priced once it has a weight and purity. Weighed piece
+ *  by piece, every piece needs both: each is priced on its own. */
 const goldReady = (i: DraftItem) =>
-  isLinePriceable({ weight: i.weight, purity: i.purity }) && piecesWeighed(i.quantity, i.together, i.pieces);
+  weighsEach(i.quantity, i.together)
+    ? i.pieces.length > 0 && i.pieces.every(p => isLinePriceable({ weight: p.weight, purity: p.purity }))
+    : isLinePriceable({ weight: i.weight, purity: i.purity });
+
+/** The line's own pricing, as the first piece of a line about to get rows. */
+const pieceFromLine = (i: DraftItem): PieceDraft => ({
+  weight: i.weight,
+  packet: '',
+  purity: i.purity,
+  wastage: i.wastage,
+  rate: i.rate,
+  useLiveRate: i.useLiveRate,
+});
 
 const NewOrderScreen = () => {
   const navigation: any = useNavigation();
@@ -264,10 +276,16 @@ const NewOrderScreen = () => {
    */
   React.useEffect(() => {
     if (!liveRate) return;
+    // A piece follows the same rules as its line: ticked follows the rate,
+    // and an empty rate takes the shop's own when the shop has set one.
+    const follow = <T extends { useLiveRate?: boolean; rate?: string }>(x: T): T => {
+      if (x.useLiveRate) return { ...x, rate: String(liveRate) };
+      if (shopRate.isOverride && !String(x.rate ?? '').trim()) return { ...x, rate: String(shopRate.rate) };
+      return x;
+    };
     setItems(prev => prev.map(i => {
-      if (i.useLiveRate) return { ...i, rate: String(liveRate) };
-      if (shopRate.isOverride && !i.rate.trim()) return { ...i, rate: String(shopRate.rate) };
-      return i;
+      const next = follow(i);
+      return i.pieces.length ? { ...next, pieces: i.pieces.map(follow) } : next;
     }));
   }, [liveRate, shopRate.isOverride, shopRate.rate]);
 
@@ -337,18 +355,22 @@ const NewOrderScreen = () => {
   const fillFromCatalog = (key: string, productId: string) => {
     const saved: any = catalogProducts.find((p: any) => p.id === productId);
     if (!saved) return;
+    // Catalog purity is a karat label on older rows ("22K"); take the number
+    // out of it rather than dropping a string into a numeric field.
+    const catalogPurity = (() => {
+      const n = parseFloat(String(saved.purity ?? '').replace(/[^0-9.]/g, ''));
+      return Number.isFinite(n) && n > 0 ? String(n) : '';
+    })();
     setItems(prev => prev.map(i => i.key === key ? {
       ...i,
       itemName: saved.name || i.itemName,
-      // Catalog purity is a karat label on older rows ("22K"); take the number
-      // out of it rather than dropping a string into a numeric field.
-      purity: (() => {
-        const raw = String(saved.purity ?? '');
-        const n = parseFloat(raw.replace(/[^0-9.]/g, ''));
-        return Number.isFinite(n) && n > 0 ? String(n) : i.purity;
-      })(),
+      purity: catalogPurity || i.purity,
       // Not over a line weighed piece by piece: its weight is the pieces' sum.
       weight: saved.grossWt && !weighsEach(i.quantity, i.together) ? String(saved.grossWt) : i.weight,
+      // Pieces without a purity yet take the product's.
+      pieces: catalogPurity
+        ? i.pieces.map(p => (String(p.purity ?? '').trim() ? p : { ...p, purity: catalogPurity }))
+        : i.pieces,
     } : i));
   };
 
@@ -406,32 +428,62 @@ const NewOrderScreen = () => {
       const next = { ...i, quantity: q };
       if (!q.trim()) return next;
       if (weighsEach(q, i.together)) {
-        const seed = i.pieces.length ? i.pieces : (num(i.weight) > 0 ? [{ weight: i.weight, packet: '' }] : []);
+        // The line's own figures become piece 1, and new pieces copy them.
+        const seed = i.pieces.length ? i.pieces : [pieceFromLine(i)];
         next.pieces = resizePieces(seed, pieceCount(q));
         next.weight = asField(goldTotal(next.pieces));
       } else {
         // Back to one weight (one piece, a lot, or too many rows): the total
-        // stays in the field, editable.
+        // stays in the field, editable, and the line takes piece 1's
+        // purity, wastage and rate, which is what was last typed.
+        if (i.pieces[0]) Object.assign(next, linePricingFrom(i.pieces[0], i));
         next.pieces = [];
       }
       return next;
     }));
 
+  /**
+   * One piece changed. Purity, wastage and rate fill DOWN: the rows below
+   * that still hold the edited row's old value take the new one, so a line
+   * of identical pieces needs those typed once, wherever the counter starts.
+   * A row whose value was changed on its own keeps it.
+   */
   const setGoldPiece = (key: string, index: number, change: Partial<PieceDraft>) =>
     setItems(prev => prev.map(i => {
       if (i.key !== key) return i;
-      const pieces = i.pieces.map((p, j) => (j === index ? { ...p, ...change } : p));
+      const before = i.pieces[index] || ({} as PieceDraft);
+      const fills = (['purity', 'wastage', 'rate', 'useLiveRate'] as const).filter(f => f in change);
+      const pieces = i.pieces.map((p, j) => {
+        if (j === index) return { ...p, ...change };
+        if (j < index || fills.length === 0) return p;
+        const next: PieceDraft = { ...p };
+        for (const f of fills) {
+          if ((p[f] ?? '') === (before[f] ?? '')) (next as any)[f] = (change as any)[f];
+        }
+        return next;
+      });
       return { ...i, pieces, weight: asField(goldTotal(pieces)) };
     }));
 
-  /** Weigh the lot together (one total) or each piece (fresh rows). */
+  /** Weigh the lot together (one total) or each piece (fresh rows, priced
+   *  like the line). */
   const setGoldTogether = (key: string, together: boolean) =>
     setItems(prev => prev.map(i => {
       if (i.key !== key) return i;
-      if (together) return { ...i, together: true, pieces: [] };
-      const pieces = resizePieces([], pieceCount(i.quantity));
+      if (together) {
+        return { ...i, ...(i.pieces[0] ? linePricingFrom(i.pieces[0], i) : {}), together: true, pieces: [] };
+      }
+      const pieces = resizePieces([{ ...pieceFromLine(i), weight: '' }], pieceCount(i.quantity));
       return { ...i, together: false, pieces, weight: asField(goldTotal(pieces)) };
     }));
+
+  /** A piece's purity, wastage and rate, as line fields. */
+  const linePricingFrom = (p: PieceDraft, i: DraftItem): Partial<DraftItem> => ({
+    purity: p.purity ?? i.purity,
+    wastage: p.wastage ?? i.wastage,
+    rate: p.rate ?? i.rate,
+    useLiveRate: p.useLiveRate ?? i.useLiveRate,
+  });
 
   /** A silver line's gross, packet and net from its pieces. */
   const withPieceTotals = (s: SilverDraft): SilverDraft => {
@@ -468,10 +520,14 @@ const NewOrderScreen = () => {
 
   const pieceLabels = {
     piece: t('orders.pieceWord') || 'Piece',
-    weight: t('orders.weightGrams') || 'Weight (grams)',
+    weight: t('orders.weightShort') || 'Weight',
     gross: t('orders.grossShort') || 'Gross',
     packet: t('orders.packetShort') || 'Pkt',
     net: t('orders.netShort') || 'Net',
+    purity: t('orders.purityShort') || 'Purity',
+    wastage: t('orders.wastageShort') || 'Wastage',
+    rate: t('orders.rateShort') || 'Rate',
+    fine: t('orders.fineShort') || 'Fine',
   };
 
   const addSilverItem = () => {
@@ -511,26 +567,42 @@ const NewOrderScreen = () => {
   }, [paySilverCash, paySilver, silverHeldApplied, silverTotals]);
 
   const priced = React.useMemo(
-    () => items.map(i => ({
-      key: i.key,
-      priceable: goldReady(i),
-      ...priceLine({ weight: num(i.weight), purity: num(i.purity), wastage: num(i.wastage) }),
-      // `|| liveRate` mirrors what onSave sends for a line with no rate typed.
-      // Without it a blank rate showed VALUE Rs.0 on screen while the order
-      // saved at the live rate — the screen and the stored bill disagreeing
-      // about the same order.
-      value: cashValueOfFine995(
-        priceLine({ weight: num(i.weight), purity: num(i.purity), wastage: num(i.wastage) }).fine995,
-        num(i.rate) || liveRate,
-      ),
-    })),
+    () => items.map(i => {
+      // Weighed piece by piece: each piece priced on its own, as its own line
+      // will be when saved (see goldLinesFor), and the line is their sum.
+      if (weighsEach(i.quantity, i.together)) {
+        let fine995 = 0;
+        let value = 0;
+        for (const piece of i.pieces) {
+          const pr = priceLine({ weight: num(piece.weight), purity: num(piece.purity ?? ''), wastage: num(piece.wastage ?? '') });
+          fine995 += pr.fine995;
+          value += cashValueOfFine995(pr.fine995, num(piece.rate ?? '') || liveRate);
+        }
+        return {
+          key: i.key, priceable: goldReady(i), piecewise: true,
+          chargedPurity: 0, effectivePercent: 0, fine999: 0,
+          fine995: Number(fine995.toFixed(3)), value,
+        };
+      }
+      const pr = priceLine({ weight: num(i.weight), purity: num(i.purity), wastage: num(i.wastage) });
+      return {
+        key: i.key,
+        priceable: goldReady(i),
+        piecewise: false,
+        ...pr,
+        // `|| liveRate` mirrors what onSave sends for a line with no rate typed.
+        // Without it a blank rate showed VALUE Rs.0 on screen while the order
+        // saved at the live rate — the screen and the stored bill disagreeing
+        // about the same order.
+        value: cashValueOfFine995(pr.fine995, num(i.rate) || liveRate),
+      };
+    }),
     [items, liveRate],
   );
 
   const totals = React.useMemo(() => {
-    const fine = totalFine995(items.map(i => ({
-      weight: num(i.weight), purity: num(i.purity), wastage: num(i.wastage),
-    })));
+    // The lines' own fine weights, which are the pieces' where there are any.
+    const fine = Number(priced.reduce((sum, p) => sum + p.fine995, 0).toFixed(3));
     const value = priced.reduce((sum, p) => sum + p.value, 0);
     // GST is on the whole sale, silver included, as the server charges it.
     const gst = includeGST ? (value + silverTotals.value) * 0.03 : 0;
@@ -599,6 +671,47 @@ const NewOrderScreen = () => {
   const canSave = !!customerId && (hasGold || hasSilver) && !saving && !meltOverdrawn && !heldOverdrawn
     && !(hasSilver && silverHeldOverdrawn);
 
+  /**
+   * A gold line as it is saved. As typed, or, weighed piece by piece, one
+   * line per set of pieces that agree on purity, wastage and rate, each set
+   * carrying its pieces' weights. Two rings, one 22K and one 18K, are two
+   * lines: each priced by the same rules as any other line, so the server's
+   * pricing is unchanged by pieces having their own figures.
+   */
+  const goldLinesFor = (i: DraftItem) => {
+    const itemName = i.itemName?.trim() || t('orders.itemsFallback') || 'Item';
+    if (!weighsEach(i.quantity, i.together)) {
+      return [{
+        itemName,
+        weight: num(i.weight),
+        purity: num(i.purity),
+        wastage: num(i.wastage),
+        rate: num(i.rate) || liveRate,
+        quantity: pieceCount(i.quantity),
+      }];
+    }
+    const sets = new Map<string, { purity: number; wastage: number; rate: number; weights: number[] }>();
+    for (const p of i.pieces) {
+      const purity = num(p.purity ?? '');
+      const wastage = num(p.wastage ?? '');
+      const rate = num(p.rate ?? '') || liveRate;
+      const k = `${purity}|${wastage}|${rate}`;
+      const set = sets.get(k) ?? { purity, wastage, rate, weights: [] };
+      set.weights.push(num(p.weight));
+      sets.set(k, set);
+    }
+    return [...sets.values()].map(set => ({
+      itemName,
+      weight: Number(set.weights.reduce((sum, w) => sum + w, 0).toFixed(3)),
+      purity: set.purity,
+      wastage: set.wastage,
+      rate: set.rate,
+      quantity: set.weights.length,
+      // The pieces, when there are several; the server sums them.
+      ...(set.weights.length > 1 ? { pieceWeights: set.weights.map(w => ({ weight: w })) } : {}),
+    }));
+  };
+
   const onSave = async () => {
     if (!customerId) { toast.error(t('orders.selectRetailerFirst') || 'Choose a retailer first'); return; }
     const usable = items.filter(goldReady);
@@ -615,18 +728,7 @@ const NewOrderScreen = () => {
     const action = await dispatch(createWholesaleOrder({
       customerId,
       orderDate,
-      items: usable.map(i => ({
-        itemName: i.itemName?.trim() || t('orders.itemsFallback') || 'Item',
-        weight: num(i.weight),
-        purity: num(i.purity),
-        wastage: num(i.wastage),
-        rate: num(i.rate) || liveRate,
-        quantity: pieceCount(i.quantity),
-        // The pieces, when weighed one by one; the server sums them.
-        ...(weighsEach(i.quantity, i.together)
-          ? { pieceWeights: i.pieces.map(p => ({ weight: num(p.weight) })) }
-          : {}),
-      })).concat(silverUsable.map(s => ({
+      items: usable.flatMap(goldLinesFor).concat(silverUsable.map(s => ({
         metal: 'silver' as const,
         itemName: s.itemName.trim(),
         // On a silver line `weight` is the net weight: the grams owed.
@@ -958,7 +1060,10 @@ const NewOrderScreen = () => {
                   {/* The summary line the collapsed row is worth having. */}
                   {done && !expanded && (
                     <Text fontSize={12} color="$coolGray500" mt="$1">
-                      {pieceCount(item.quantity) > 1 ? `${pieceCount(item.quantity)} ${t('orders.pcsShort') || 'pcs'} · ` : ''}{num(item.weight)} {gramShort} · {num(item.purity)}% {t('orders.purityWord') || 'purity'} · {num(item.wastage)}% {t('orders.wastageWord') || 'wastage'} · {formatCurrencyValue(num(item.rate))}/{gramShort}
+                      {p?.piecewise
+                        // Pieces may differ, so the summary is what they come to.
+                        ? `${pieceCount(item.quantity)} ${t('orders.pcsShort') || 'pcs'} · ${num(item.weight)} ${gramShort} · ${t('orders.fineShort') || 'Fine'} ${formatGrams(p.fine995, gramShort)} · ${formatCurrencyValue(p.value)}`
+                        : `${pieceCount(item.quantity) > 1 ? `${pieceCount(item.quantity)} ${t('orders.pcsShort') || 'pcs'} · ` : ''}${num(item.weight)} ${gramShort} · ${num(item.purity)}% ${t('orders.purityWord') || 'purity'} · ${num(item.wastage)}% ${t('orders.wastageWord') || 'wastage'} · ${formatCurrencyValue(num(item.rate))}/${gramShort}`}
                     </Text>
                   )}
                 </Pressable>
@@ -1003,6 +1108,8 @@ const NewOrderScreen = () => {
                       onChange={(index, change) => setGoldPiece(item.key, index, change)}
                       gramShort={gramShort}
                       labels={pieceLabels}
+                      liveRate={liveRate}
+                      liveLabel={shopRate.isOverride ? (t('rate.shopRateShort') || 'Shop') : (t('orders.liveRate') || 'Live')}
                     />
                   )}
                   {pieceCount(item.quantity) > 1 && (pieceCount(item.quantity) > MAX_PIECE_ROWS
@@ -1020,6 +1127,9 @@ const NewOrderScreen = () => {
                       />
                     ))}
 
+                  {/* Purity, wastage and rate for the line, unless each piece
+                      carries its own (in its row, above). */}
+                  {!weighsEach(item.quantity, item.together) && (<>
                   <HStack space="md">
                     {/* The wholesaler types the ROUNDED purity they charge on —
                         92 for 22K, 84 for 20K — not the metal's real fineness.
@@ -1087,6 +1197,7 @@ const NewOrderScreen = () => {
                       )}
                     </VStack>
                   </HStack>
+                  </>)}
 
                   {/* What this line actually costs, the moment it can be priced.
                       Purity is shown as charged, not as entered, because the
@@ -1095,7 +1206,9 @@ const NewOrderScreen = () => {
                     <Box bg="#FBF6EA" p="$3" rounded="$xl" borderWidth={1} borderColor="#EBD9AE">
                       <HStack justifyContent="space-between">
                         <Text fontSize={12} color={AMBER}>
-                          {p.chargedPurity} + {num(item.wastage)} = {p.effectivePercent}%
+                          {p.piecewise
+                            ? `${pieceCount(item.quantity)} ${t('orders.pcsShort') || 'pcs'} · ${t('orders.lineTotal') || 'line total'}`
+                            : `${p.chargedPurity} + ${num(item.wastage)} = ${p.effectivePercent}%`}
                         </Text>
                         <Text fontSize={13} fontWeight="$bold" color={AMBER}>
                           {formatGrams(p.fine995, gramShort)}

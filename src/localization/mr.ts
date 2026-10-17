@@ -764,6 +764,12 @@ export default {
   },
 
   orders: {
+    weightShort: 'वजन',
+    purityShort: 'शुद्धता',
+    wastageShort: 'वेस्टेज',
+    rateShort: 'दर',
+    fineShort: 'शुद्ध',
+    lineTotal: 'एकूण',
     pieceWord: 'नग',
     totalWeightGrams: 'एकूण वजन (ग्रॅम)',
     totalNet: 'एकूण निव्वळ',

@@ -726,6 +726,12 @@ export default {
   },
 
   orders: {
+    weightShort: 'વજન',
+    purityShort: 'શુદ્ધતા',
+    wastageShort: 'વેસ્ટેજ',
+    rateShort: 'ભાવ',
+    fineShort: 'શુદ્ધ',
+    lineTotal: 'કુલ',
     pieceWord: 'નંગ',
     totalWeightGrams: 'કુલ વજન (ગ્રામ)',
     totalNet: 'કુલ ચોખ્ખું',
