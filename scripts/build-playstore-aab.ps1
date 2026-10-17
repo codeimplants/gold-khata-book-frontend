@@ -164,7 +164,17 @@ if ($SkipStoreGuard) {
         Write-Host "store-guard failed - see above. Each failure is something Play will" -ForegroundColor Red
         Write-Host "reject or refuse to accept. Fix, or re-run with -SkipStoreGuard if you" -ForegroundColor Red
         Write-Host "have judged a specific failure acceptable." -ForegroundColor Red
-        exit 1
+        # At a terminal, ask instead of stopping: the owner runs this by
+        # double-click, where re-running with a flag is not an option. Never
+        # prompt when input is redirected (automated runs), or Read-Host hangs.
+        if ([Environment]::UserInteractive -and -not [Console]::IsInputRedirected) {
+            Write-Host ""
+            $skip = Read-Host "Skip store-guard and build the AAB anyway? y/n (default: n)"
+            if ($skip -ne "y") { exit 1 }
+            Write-Host "Continuing without store-guard, at your call." -ForegroundColor Yellow
+        } else {
+            exit 1
+        }
     }
 }
 
