@@ -3,7 +3,6 @@ import { Platform } from 'react-native';
 
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { startImpersonation } from '../store/auth/authSlice';
-import { clearUserData } from '../store/data/dataSlice';
 import { adminService } from '../services/authService';
 import { toast } from '../components/common/Toast';
 
@@ -74,7 +73,6 @@ export function useImpersonationDeepLink() {
                     return;
                 }
 
-                dispatch(clearUserData());
                 dispatch(startImpersonation({
                     userId: String(match._id),
                     phone: String(match.phone),

@@ -50,7 +50,6 @@ import {
   addCatalogProduct,
   deleteCatalogProduct,
   updateCatalogProduct,
-  clearUserData,
 } from "../../store/data/dataSlice";
 import { endImpersonation } from "../../store/auth/authSlice";
 import { toast } from "../../components/common/Toast";
@@ -298,7 +297,6 @@ const ItemsProductsScreen = () => {
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     (navigation as any).navigate('AdminDashboard');
   };
 

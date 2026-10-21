@@ -2,12 +2,13 @@ import { configureStore, createListenerMiddleware, isAnyOf } from '@reduxjs/tool
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import authReducer, { loginAsGuest, logout, setPhone, verifyOtp, requestOtp, resetOtpState, startImpersonation, endImpersonation, completeRegistration, skipRegistration } from './auth/authSlice';
 import dataReducer from './data/dataSlice';
-import uiReducer from './ui/uiSlice';
+import uiReducer, { resetGlobalLoading } from './ui/uiSlice';
 import securityReducer, { setBiometricLockEnabled, setBiometricPromptSeen } from './security/securitySlice';
 import configReducer from './config/configSlice';
 import printPrefsReducer, { setPrintMode, setThermalDevice, markPrinterChosen, setPaperPrefs, PRINT_PREFS_KEY } from './printPrefs/printPrefsSlice';
 import type { PaperPrefs } from '../constants/bill';
-import { injectStore } from '../api/apiClient';
+import { injectStore, abortAllPendingRequests } from '../api/apiClient';
+import { clearPerUserStorage } from './perUserStorage';
 
 const AUTH_STATE_KEY = '@auth_state_v1';
 const SECURITY_PREFS_KEY = '@security_prefs_v1';
@@ -57,6 +58,28 @@ authPersistenceListener.startListening({
       AUTH_STATE_KEY,
       JSON.stringify({ isLoggedIn, isGuest, phone, token, hash, sessionId, otpRequestedAt, userType, impersonateUserId, impersonatePhone, needsRegistration, registrationSkipped })
     );
+  },
+});
+
+// Everything a logout does besides the reducers, for every logout path: the
+// Settings button, account deletion, "back to login" on the registration form,
+// and the 401 handler in apiClient. Keyed on the action rather than added at
+// each call site, because a missed call site is how one shop's details reached
+// the next account on 2026-10-21 (see the reset in dataSlice.ts).
+//   - In-flight requests are cancelled, so a response for the old account
+//     cannot land in the emptied store. Only the 401 path used to do this,
+//     and that path never actually ran (see apiClient.ts).
+//   - The global loader is reset with them, since a cancelled request may never
+//     report back to stop it.
+//   - The old account's keys on disk are removed (perUserStorage.ts).
+const sessionEndListener = createListenerMiddleware();
+
+sessionEndListener.startListening({
+  actionCreator: logout,
+  effect: async (_, api) => {
+    abortAllPendingRequests();
+    api.dispatch(resetGlobalLoading());
+    await clearPerUserStorage();
   },
 });
 
@@ -130,6 +153,7 @@ export const store = configureStore({
   middleware: getDefaultMiddleware =>
     getDefaultMiddleware()
       .prepend(authPersistenceListener.middleware)
+      .prepend(sessionEndListener.middleware)
       .prepend(deviceRegistrationPersistenceListener.middleware)
       .prepend(securityPersistenceListener.middleware)
       .prepend(printPrefsPersistenceListener.middleware),

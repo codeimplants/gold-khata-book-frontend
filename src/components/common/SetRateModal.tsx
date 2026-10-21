@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Platform, Keyboard, KeyboardAvoidingView, StyleSheet } from 'react-native';
+import { Modal, Platform, Keyboard, KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 import {
   Box, HStack, Text, Pressable, Icon,
 } from '@gluestack-ui/themed';
@@ -129,10 +129,8 @@ const SetRateModal = ({
         >
           <Pressable
             bg="$white"
-            p="$6"
             style={[
               styles.sheet,
-              { paddingBottom: bottomInset },
               LAYOUT.isWeb && LAYOUT.contentContainerStyle,
               LAYOUT.isWeb && { alignSelf: 'center', width: '100%', borderRadius: 24 },
             ]}
@@ -147,106 +145,125 @@ const SetRateModal = ({
               // backdrop's Keyboard.dismiss while being shielded by nothing.
             }}
           >
-            <HStack justifyContent="center" alignItems="center" mb="$4">
-              <Text fontSize={20} fontWeight="$bold">
-                {t('rate.title') || 'Today’s Rate'}
-              </Text>
-              <Pressable position="absolute" right={0} onPress={onClose}>
-                <Icon as={X} size="md" />
-              </Pressable>
-            </HStack>
+            {/* Scrolls only when it has to. The sheet opens with the gold field
+                focused, so the keyboard is up from the start. Once both fields
+                had their real height (see the note on the gold field), the
+                sheet no longer fit above the keyboard on most phones, and its
+                title and close button went off the top of the screen. The sheet
+                is capped at the space left (styles.sheet) and this takes up the
+                rest, so nothing is cut off and nothing is drawn over.
 
-            {/* The market figure, so the shopkeeper is deciding against
-                something rather than typing into a vacuum. */}
-            {liveRate > 0 && (
-              <HStack
-                bg="#FBF6EA"
-                borderWidth={1}
-                borderColor="#EBD9AE"
-                rounded="$xl"
-                p="$3"
-                mb="$4"
-                alignItems="center"
-                space="sm"
-              >
-                <Icon as={TrendingUp} size="xs" color="#87661F" />
-                <Text fontSize={13} color="#6F5318" flex={1}>
-                  {t('rate.liveIs') || 'Live rate'} ({t('rate.fineness') || '99.50'})
+                keyboardShouldPersistTaps: without it the first tap on "Set
+                today's rate" would only close the keyboard, and the shopkeeper
+                would have to tap again to save. */}
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              contentContainerStyle={{ padding: 24, paddingBottom: bottomInset }}
+            >
+              <HStack justifyContent="center" alignItems="center" mb="$4">
+                <Text fontSize={20} fontWeight="$bold">
+                  {t('rate.title') || 'Today’s Rate'}
                 </Text>
-                <Text fontSize={14} fontWeight="$bold" color="#87661F">
-                  {formatCurrencyValue(liveRate)}
-                </Text>
+                <Pressable position="absolute" right={0} onPress={onClose}>
+                  <Icon as={X} size="md" />
+                </Pressable>
               </HStack>
-            )}
 
-            {/* containerStyle resets the field's default `flex: 1`. That default
-                suits the order screens, where fields share an HStack; here the
-                field is a child of a COLUMN, so `flex: 1` stretched it down the
-                sheet and drew the value over the two unit hints below.
+              {/* The market figure, so the shopkeeper is deciding against
+                  something rather than typing into a vacuum. */}
+              {liveRate > 0 && (
+                <HStack
+                  bg="#FBF6EA"
+                  borderWidth={1}
+                  borderColor="#EBD9AE"
+                  rounded="$xl"
+                  p="$3"
+                  mb="$4"
+                  alignItems="center"
+                  space="sm"
+                >
+                  <Icon as={TrendingUp} size="xs" color="#87661F" />
+                  <Text fontSize={13} color="#6F5318" flex={1}>
+                    {t('rate.liveIs') || 'Live rate'} ({t('rate.fineness') || '99.50'})
+                  </Text>
+                  <Text fontSize={14} fontWeight="$bold" color="#87661F">
+                    {formatCurrencyValue(liveRate)}
+                  </Text>
+                </HStack>
+              )}
 
-                Longhands, not `flex: 0`. On native `flex: 0` means "size to
-                content", but react-native-web passes it to CSS as `flex: 0`,
-                which is `0 1 0%`: a zero basis that may shrink. In this
-                fixed-height card the field collapsed to nothing, its box drew
-                anyway, and the two hints below were laid out on top of the
-                value (seen on web, 2026-10-06). Basis auto and no shrink mean
-                "size to content" on both. */}
-            <FloatingLabelInput
-              ref={inputRef}
-              containerStyle={{ flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch' }}
-              // "Gold rate" rather than "Your rate" now that silver's field sits
-              // under it: with two rates in one sheet, "yours" names neither.
-              label={`${t('rate.goldRateField') || 'Gold rate'} (${t('rate.perGram') || '₹/gram'})`}
-              keyboardType="decimal-pad"
-              value={value}
-              onChangeText={setValue}
-            />
-            {/* The unit, said explicitly. Everything in this app is
-                denominated in fine gold at 99.50 and a shopkeeper typing a
-                rate has no way to know that unless it is written down — a
-                figure entered as a 22K rate would misprice every bill. */}
-            <Text fontSize={11} color="$coolGray400" mt="$1" ml="$1">
-              {t('rate.unitNote') || 'Per gram of 99.50 fine gold'}
-            </Text>
-            <Text fontSize={11} color="$coolGray400" mt="$0.5" ml="$1">
-              {t('rate.hint') || 'Used for every order raised today'}
-            </Text>
+              {/* `column` drops the field's default `flex: 1`. That default suits
+                  the order screens, where fields share an HStack; here the field
+                  is a child of a COLUMN. Overriding it from outside failed every
+                  way it was tried, each time with the hints drawn over the value:
+                    - `flex: 1` as-is stretched the field down the sheet.
+                    - `flex: 0` works on native, but react-native-web passes it to
+                      CSS as `0 1 0%`, and the field collapsed on web (2026-10-06).
+                    - The longhands that fixed web (grow 0, shrink 0, basis auto)
+                      collapsed it on Android and iOS instead (2026-10-21). Yoga
+                      treats an explicit `auto` basis as unset, and the `flex: 1`
+                      still in the style supplied a basis of 0.
+                  FloatingLabelInput has the details. */}
+              <FloatingLabelInput
+                ref={inputRef}
+                column
+                // "Gold rate" rather than "Your rate" now that silver's field sits
+                // under it: with two rates in one sheet, "yours" names neither.
+                label={`${t('rate.goldRateField') || 'Gold rate'} (${t('rate.perGram') || '₹/gram'})`}
+                keyboardType="decimal-pad"
+                value={value}
+                onChangeText={setValue}
+              />
+              {/* The unit, said explicitly. Everything in this app is
+                  denominated in fine gold at 99.50 and a shopkeeper typing a
+                  rate has no way to know that unless it is written down — a
+                  figure entered as a 22K rate would misprice every bill. */}
+              <Text fontSize={11} color="$coolGray400" mt="$1" ml="$1">
+                {t('rate.unitNote') || 'Per gram of 99.50 fine gold'}
+              </Text>
+              <Text fontSize={11} color="$coolGray400" mt="$0.5" ml="$1">
+                {t('rate.hint') || 'Used for every order raised today'}
+              </Text>
 
-            {/* Silver, set on its own. It fills the rate on every silver line
-                today, the way the gold rate fills gold lines. */}
-            <FloatingLabelInput
-              containerStyle={{ flexGrow: 0, flexShrink: 0, flexBasis: 'auto', alignSelf: 'stretch', marginTop: 16 }}
-              label={`${t('rate.silverRate') || 'Silver rate'} (${t('rate.perGram') || '₹/gram'})`}
-              keyboardType="decimal-pad"
-              value={silverValue}
-              onChangeText={setSilverValue}
-            />
-            <Text fontSize={11} color="$coolGray400" mt="$1" ml="$1">
-              {silver.liveRate > 0
-                ? `${t('rate.liveIs') || 'Live rate'} ${formatCurrencyValue(silver.liveRate)} · ${t('rate.silverUnitNote') || 'Per gram of silver'}`
-                : (t('rate.silverUnitNote') || 'Per gram of silver')}
-            </Text>
+              {/* Silver, set on its own. It fills the rate on every silver line
+                  today, the way the gold rate fills gold lines. */}
+              <FloatingLabelInput
+                column
+                containerStyle={{ marginTop: 16 }}
+                label={`${t('rate.silverRate') || 'Silver rate'} (${t('rate.perGram') || '₹/gram'})`}
+                keyboardType="decimal-pad"
+                value={silverValue}
+                onChangeText={setSilverValue}
+              />
+              <Text fontSize={11} color="$coolGray400" mt="$1" ml="$1">
+                {silver.liveRate > 0
+                  ? `${t('rate.liveIs') || 'Live rate'} ${formatCurrencyValue(silver.liveRate)} · ${t('rate.silverUnitNote') || 'Per gram of silver'}`
+                  : (t('rate.silverUnitNote') || 'Per gram of silver')}
+              </Text>
 
-            <Pressable onPress={onSave} disabled={!canSave} style={{ marginTop: 20 }}>
-              <Box height={52} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
-                {canSave
-                  ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={12} />
-                  : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
-                <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
-                  {saving ? (t('common.saving') || 'Saving…') : (t('rate.save') || 'Set today’s rate')}
-                </Text>
-              </Box>
-            </Pressable>
+              <Pressable onPress={onSave} disabled={!canSave} style={{ marginTop: 20 }}>
+                <Box height={52} rounded="$xl" overflow="hidden" justifyContent="center" alignItems="center">
+                  {canSave
+                    ? <GradientSurface colors={['#0E4D3C', '#0A3A2D']} borderRadius={12} />
+                    : <Box position="absolute" top={0} left={0} right={0} bottom={0} bg="#DCE2D8" />}
+                  <Text color={canSave ? '$white' : '$coolGray400'} fontWeight="$bold" fontSize={16}>
+                    {saving ? (t('common.saving') || 'Saving…') : (t('rate.save') || 'Set today’s rate')}
+                  </Text>
+                </Box>
+              </Pressable>
 
-            {/* Dismissing is an answer, not an escape — so it is a labelled
-                choice rather than only the X in the corner. */}
-            <Pressable onPress={onUseLive} disabled={saving} style={{ marginTop: 12 }}>
-              <Box bg="$coolGray100" rounded="$xl" py="$3" alignItems="center">
-                <Text fontWeight="$medium" color="$coolGray700">
-                  {t('rate.useLive') || 'Use the live rate'}
-                </Text>
-              </Box>
-            </Pressable>
+              {/* Dismissing is an answer, not an escape — so it is a labelled
+                  choice rather than only the X in the corner. */}
+              <Pressable onPress={onUseLive} disabled={saving} style={{ marginTop: 12 }}>
+                <Box bg="$coolGray100" rounded="$xl" py="$3" alignItems="center">
+                  <Text fontWeight="$medium" color="$coolGray700">
+                    {t('rate.useLive') || 'Use the live rate'}
+                  </Text>
+                </Box>
+              </Pressable>
+            </ScrollView>
           </Pressable>
         </Pressable>
       </KeyboardAvoidingView>
@@ -255,7 +272,9 @@ const SetRateModal = ({
 };
 
 const styles = StyleSheet.create({
-  sheet: { borderTopLeftRadius: 25, borderTopRightRadius: 25 },
+  // maxHeight: never taller than the space above the keyboard. The ScrollView
+  // inside scrolls whatever does not fit.
+  sheet: { borderTopLeftRadius: 25, borderTopRightRadius: 25, maxHeight: '100%', overflow: 'hidden' },
 });
 
 export default SetRateModal;

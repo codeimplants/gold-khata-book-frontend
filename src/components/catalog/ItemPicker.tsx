@@ -28,6 +28,7 @@ import {
 import { useTranslation } from '../../hooks/useTranslation';
 import { useShopTaxonomy } from '../../hooks/useShopTaxonomy';
 import { Brand } from '../../theme/brand';
+import { ITEM_PICKER_RECENT_PREFIX } from '../../store/perUserStorage';
 
 /** The slice of a saved catalogue product the picker shows and searches. */
 export interface PickerProduct {
@@ -62,7 +63,10 @@ const RECENT_MAX = 10;
  * gold should see each where it uses it. On the device, like the shop's own
  * additions to the list (useShopTaxonomy).
  */
-const recentKey = (metal?: MetalCode) => `@itemPicker_recent_v1:${metal || 'any'}`;
+// The prefix lives in perUserStorage.ts so a logout can find and remove these:
+// recent picks name the shop's own catalogue, and must not follow the phone to
+// the next account.
+const recentKey = (metal?: MetalCode) => `${ITEM_PICKER_RECENT_PREFIX}${metal || 'any'}`;
 
 const pickKey = (p: ItemPick) =>
   p.kind === 'product' ? `p:${p.productId}` : p.kind === 'itemType' ? `t:${p.code}` : `x:${normalise(p.name)}`;

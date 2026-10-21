@@ -41,14 +41,26 @@ interface Props {
   hint?: string;
   autoFocus?: boolean;
   /**
-   * Overrides the wrapper's layout. Needed because the default is `flex: 1`,
-   * which is right in the order screens — the fields sit in HStacks and share
-   * the row evenly — and wrong anywhere the field is a child of a COLUMN, where
-   * `flex: 1` makes it grow to fill the sheet and overlap whatever follows.
+   * The field sits in a COLUMN (a sheet or form stacked top to bottom), not in
+   * an HStack row it shares with other fields. Drops the wrapper's default
+   * `flex: 1`, so the field is exactly as tall as its content.
    *
-   * That is not hypothetical: it stretched the rate field down SetRateModal and
-   * drew the value on top of the two unit hints beneath it.
+   * `flex: 1` is right in the order screens, where fields share a row evenly. In
+   * a column it is wrong, and overriding it from outside has failed twice, both
+   * times in SetRateModal:
+   *   - Merged as-is, `flex: 1` stretched the field down the sheet and drew the
+   *     value over the unit hints beneath it.
+   *   - Overridden with `flexGrow: 0, flexShrink: 0, flexBasis: 'auto'`
+   *     (2026-10-06, a web fix), it collapsed to zero height on Android and
+   *     iOS. The shorthand was still in the style, and Yoga reads an explicit
+   *     `auto` basis as unset, so it fell back to the shorthand's basis of 0.
+   *     With grow and shrink at 0 nothing gave it height back. The box still
+   *     drew, and the hints and the next field were laid on top of it
+   *     (reported on a phone, 2026-10-21).
+   * Leaving the shorthand out altogether means one meaning on native and web.
    */
+  column?: boolean;
+  /** Extra wrapper style, such as a top margin. Layout belongs to `column`. */
   containerStyle?: object;
 }
 
@@ -104,6 +116,7 @@ const FloatingLabelInput = React.forwardRef<FloatingLabelInputHandle, Props>(({
   error,
   hint,
   autoFocus,
+  column,
   containerStyle,
 }: Props, ref) => {
   const [focused, setFocused] = React.useState(false);
@@ -132,7 +145,7 @@ const FloatingLabelInput = React.forwardRef<FloatingLabelInputHandle, Props>(({
   const borderColor = error ? DANGER : focused ? ACCENT : REST_BORDER;
 
   return (
-    <View style={[styles.wrap, containerStyle]}>
+    <View style={[column ? styles.wrapColumn : styles.wrap, containerStyle]}>
       <Pressable onPress={() => inputRef.current?.focus()}>
         <View style={[styles.box, { borderColor, backgroundColor: editable ? FILL : FILL_DISABLED }]}>
           <Animated.Text
@@ -190,6 +203,8 @@ FloatingLabelInput.displayName = 'FloatingLabelInput';
 
 const styles = StyleSheet.create({
   wrap: { flex: 1 },
+  // No flex at all: a View then sizes to its content on native and on web.
+  wrapColumn: { alignSelf: 'stretch' },
   box: {
     borderWidth: 1.5,
     borderRadius: 14,

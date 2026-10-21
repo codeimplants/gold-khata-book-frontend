@@ -65,7 +65,6 @@ import {
   uploadInvoiceOrnamentPhotos,
   removeOrnamentPhoto,
   deleteInvoice,
-  clearUserData,
 } from '../../store/data/dataSlice';
 import { endImpersonation } from '../../store/auth/authSlice';
 import { toast } from '../../components/common/Toast';
@@ -177,7 +176,6 @@ export default function OrderDetailsScreen() {
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     navigation.navigate('AdminDashboard');
   };
 

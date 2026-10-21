@@ -63,12 +63,34 @@ const CompleteRegistrationScreen = () => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showSkipModal, setShowSkipModal] = useState(false);
 
+  /**
+   * This account's shop, loaded fresh before the form uses any of it.
+   *
+   * On 2026-10-21 a phone logged out of one shop and into another, and this
+   * screen opened pre-filled with the PREVIOUS shop's name, address and phone.
+   * Save then sent them to that shop's id. The plain fetchShopDetails() had
+   * been skipped: the old shop's details were 16 seconds old, inside the
+   * 60-second freshness window, and nothing had cleared them at logout. The
+   * data slice is now emptied on every logout and login (dataSlice.ts). This
+   * screen does not rely on that alone. It forces the fetch, and neither
+   * prefills nor saves until the fetch has answered. The id and phone it saves
+   * with can then only be this account's.
+   *
+   * A failed fetch still lets them save. The slice is empty, so the save has
+   * no id and goes out as a create, which the server applies to the signed-in
+   * account's own shop.
+   */
+  const [shopLoaded, setShopLoaded] = useState(false);
   useEffect(() => {
-    dispatch(fetchShopDetails());
+    let live = true;
+    dispatch(fetchShopDetails({ force: true })).finally(() => {
+      if (live) setShopLoaded(true);
+    });
+    return () => { live = false; };
   }, []);
 
   useEffect(() => {
-    if (shopDetails) {
+    if (shopLoaded && shopDetails) {
       setForm((prev) => ({
         ...prev,
         ownerName: String((shopDetails as any).ownerName || ""),
@@ -76,14 +98,15 @@ const CompleteRegistrationScreen = () => {
         address: String(shopDetails.address || ""),
       }));
     }
-  }, [shopDetails]);
+  }, [shopLoaded, shopDetails]);
 
-  const phone = String(shopDetails?.phone || authPhone || "");
+  const phone = String((shopLoaded && shopDetails?.phone) || authPhone || "");
 
   const set = (k: keyof typeof form, v: string) =>
     setForm((prev) => ({ ...prev, [k]: v }));
 
   const handleSubmit = async () => {
+    if (!shopLoaded) return;
     const ownerName = form.ownerName.trim();
     const shopName = form.shopName.trim();
     const address = form.address.trim();
@@ -237,7 +260,7 @@ const CompleteRegistrationScreen = () => {
                 <GradientButton
                   label={loading ? t("auth.register.submitting") : t("auth.register.submit")}
                   onPress={handleSubmit}
-                  disabled={loading}
+                  disabled={loading || !shopLoaded}
                 />
               </Box>
 

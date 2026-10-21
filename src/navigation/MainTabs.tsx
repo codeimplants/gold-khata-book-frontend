@@ -6,7 +6,6 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { endImpersonation } from "../store/auth/authSlice";
-import { clearUserData } from "../store/data/dataSlice";
 
 import DashboardScreen from "../screens/dashboard/DashboardScreen";
 import DayBookScreen from "../screens/dayBook/DayBookScreen";
@@ -214,7 +213,6 @@ export default function MainTabs() {
               topInset={insets.top}
               onEnd={() => {
                 dispatch(endImpersonation());
-                dispatch(clearUserData());
                 navigation.navigate('AdminHome');
               }}
             />

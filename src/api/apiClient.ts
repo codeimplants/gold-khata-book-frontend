@@ -1,6 +1,6 @@
 import { ApiClient, AuthInterceptor, Logger, ContentTypeInterceptor } from '@codeimplants/app-core';
 import { API_BASE_URL } from '@config';
-import { startGlobalLoading, stopGlobalLoading, resetGlobalLoading } from '../store/ui/uiSlice';
+import { startGlobalLoading, stopGlobalLoading } from '../store/ui/uiSlice';
 
 const logger = new Logger('Api');
 
@@ -152,11 +152,28 @@ apiClient.addInterceptor({
       }
     }
 
-    if (error?.response?.status === 401 && _store) {
+    // A 401 while signed in means the session is gone (the backend sends 401
+    // only for a missing, invalid or expired token), so it logs out.
+    //
+    // The status is read from `statusCode`. app-core hands onError its own
+    // APIError, which carries the status there and has no `response`. This used
+    // to read `error.response.status` alone, so it never matched: a 401 never
+    // logged anyone out, and every request just kept failing with "Token
+    // expired" (found 2026-10-21 while checking the account-switch fix).
+    // `response.status` is still read for any error that is not app-core's.
+    //
+    // Only while signed in. Before sign-in a 401 says nothing about a session,
+    // and logout() would wipe the OTP screen's phone and session mid-login. The
+    // launch-time session check runs before isLoggedIn is set, and hydrateAuth
+    // handles its own failure.
+    //
+    // logout() is all this dispatches. Cancelling in-flight requests, resetting
+    // the loader and clearing the old account's data happen on every logout
+    // path (store/index.ts and dataSlice.ts).
+    const status = error?.statusCode ?? error?.response?.status;
+    if (status === 401 && _store?.getState().auth.isLoggedIn) {
       const { logout } = await import('../store/auth/authSlice');
       _store.dispatch(logout());
-      _store.dispatch(resetGlobalLoading()); // Reset all loaders on logout
-      abortAllPendingRequests(); // Cancel everything on logout
     }
     
     // Check if it was a cancellation error

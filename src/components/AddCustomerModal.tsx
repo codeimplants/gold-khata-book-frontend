@@ -15,7 +15,7 @@ import { ToastViewport } from "./common/Toast";
 import { useNavigation } from "@react-navigation/native";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
-import { addCustomer, clearUserData } from "../store/data/dataSlice";
+import { addCustomer } from "../store/data/dataSlice";
 import { endImpersonation } from "../store/auth/authSlice";
 import { useSheetBottomInset } from "../hooks/useSheetBottomInset";
 import ImpersonationBlockModal from "./ImpersonationBlockModal";
@@ -92,7 +92,6 @@ const AddCustomerModal = ({ isOpen, onClose }: AddCustomerModalProps) => {
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     navigation.navigate('AdminDashboard');
   };
 

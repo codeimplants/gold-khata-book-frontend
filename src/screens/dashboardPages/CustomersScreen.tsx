@@ -39,7 +39,6 @@ import {
   fetchCustomers,
   fetchOrders,
   deleteCustomer,
-  clearUserData,
   fetchRetailerAccounts,
 } from "../../store/data/dataSlice";
 import { endImpersonation } from "../../store/auth/authSlice";
@@ -422,7 +421,6 @@ export default function CustomersScreen() {
 
   const handleEndSession = useCallback(() => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     navigation.navigate('AdminDashboard');
   }, [dispatch, navigation]);
 

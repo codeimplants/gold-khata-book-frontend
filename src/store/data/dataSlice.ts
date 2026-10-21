@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AnalyticsSDK from '@codeimplants/analytics';
 import { AppReview } from '@codeimplants/app-review';
 import { RootState } from '../index';
+import { logout, verifyOtp, startImpersonation, endImpersonation } from '../auth/authSlice';
 import { apiClient } from '../../api/apiClient';
 import { splitGstAmount } from '../../utils/gst';
 import { SETTLEMENT_FINENESS } from '../../utils/goldPricing';
@@ -536,6 +537,22 @@ const CATALOG_PRODUCTS_KEY = '@catalog_products';
 const PURCHASES_KEY = '@purchases';
 const DECLARATIONS_KEY = '@old_gold_declarations';
 const DELETED_ORDERS_KEY = '@deleted_orders';
+
+/**
+ * Every key above. They all hold one shop's book, so a logout removes them
+ * (store/perUserStorage.ts). Most are guest mode's local copy: guest mode is
+ * gone, but a phone that used it still has them on disk.
+ */
+export const DATA_STORAGE_KEYS = [
+    CUSTOMERS_KEY,
+    ORDERS_KEY,
+    SHOP_DETAILS_KEY,
+    METAL_RATES_KEY,
+    CATALOG_PRODUCTS_KEY,
+    PURCHASES_KEY,
+    DECLARATIONS_KEY,
+    DELETED_ORDERS_KEY,
+];
 
 type FetchArgs = { force?: boolean; staleTimeMs?: number };
 type SalesReportArgs = string | { range: string; force?: boolean; staleTimeMs?: number };
@@ -4357,37 +4374,41 @@ const dataSlice = createSlice({
             delete state.deletedOrderIds[action.payload];
             state.orders = state.orders.filter(o => o.id !== action.payload);
         },
-        clearUserData(state) {
-            state.customers = [];
-            state.orders = [];
-            state.shopDetails = null;
-            state.purchases = [];
-            // Declarations carry customer ID-proof numbers and bank details —
-            // they must not survive a logout or the end of an impersonation
-            // session into the next user's view.
-            state.purchaseOldGold = [];
-            // A retailer's held cash and melt credit is this shop's ledger, and
-            // must not survive a logout or the end of an impersonation session
-            // into the next user's view.
-            state.retailerAccounts = {};
-            state.meltLots = [];
-            state.shopRates = {};
-            state.gstReport = null;
-            state.lastFetched = {
-                customers: null,
-                orders: null,
-                shopDetails: null,
-                metalRates: null,
-                catalogProducts: null,
-                purchases: null,
-                purchaseOldGold: null,
-                retailerAccounts: {},
-                salesReport: {},
-            };
-        },
     },
     extraReducers: (builder) => {
         builder
+            /**
+             * Everything in this slice is one shop's book, so it is emptied
+             * whenever the account it belongs to changes: logout (by any path,
+             * the 401 handler included), a new login, and the start or end of
+             * an admin's impersonation.
+             *
+             * Here rather than at each call site, because a call site is what
+             * gets missed. On 2026-10-21 a phone logged out of one shop and
+             * into another; no logout path cleared this slice (only ending an
+             * impersonation did). The registration screen's fetch was skipped,
+             * because the previous shop's details had been loaded 16 seconds
+             * earlier and looked fresh. So the form opened with that shop's
+             * name, address and phone, and saved them against its id. The
+             * server applied the save to the signed-in shop and refused it
+             * (409, phone already in use), so no data was harmed that time.
+             *
+             * The whole slice resets, lastFetched included, so the next account
+             * fetches everything fresh. That covers what clearUserData used to
+             * clear by hand: customers' ID proof and bank details on old
+             * declarations, and each retailer's held cash and melt credit.
+             * Those must never reach the next person's screen. It also covers
+             * what it missed: the item catalogue, the sales report and the
+             * soft-deleted order ids.
+             *
+             * A login resets too, as well as a logout. A slow response for the
+             * old account can still land after the logout, and this wipes it
+             * before the new account loads.
+             */
+            .addCase(logout, () => initialState)
+            .addCase(verifyOtp.fulfilled, () => initialState)
+            .addCase(startImpersonation, () => initialState)
+            .addCase(endImpersonation, () => initialState)
             .addCase(fetchCustomers.pending, (state) => {
                 state.loading = true;
             })
@@ -4916,5 +4937,5 @@ const dataSlice = createSlice({
     },
 });
 
-export const { removeOrderLocally, clearUserData } = dataSlice.actions;
+export const { removeOrderLocally } = dataSlice.actions;
 export default dataSlice.reducer;

@@ -36,7 +36,7 @@ import { HELP_TOPICS } from "../../tutorials/catalog";
 import GradientButton from "../../components/GradientButton";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
-import { fetchShopDetails, updateShopDetails, clearUserData } from "../../store/data/dataSlice";
+import { fetchShopDetails, updateShopDetails } from "../../store/data/dataSlice";
 import { endImpersonation, logout } from "../../store/auth/authSlice";
 import { toast } from "../../components/common/Toast";
 import ImpersonationBlockModal from "../../components/ImpersonationBlockModal";
@@ -283,7 +283,6 @@ const AddShopDetailsScreen = () => {
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     (navigation as any).navigate('AdminDashboard');
   };
 

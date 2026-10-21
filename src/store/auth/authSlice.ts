@@ -70,7 +70,7 @@ type PersistedAuthState = Pick<
   'isLoggedIn' | 'isGuest' | 'phone' | 'token' | 'hash' | 'sessionId' | 'otpRequestedAt' | 'userType' | 'impersonateUserId' | 'impersonatePhone' | 'needsRegistration' | 'registrationSkipped'
 >;
 
-export const hydrateAuth = createAsyncThunk('auth/hydrate', async () => {
+export const hydrateAuth = createAsyncThunk('auth/hydrate', async (_, { dispatch }) => {
   const raw = await AsyncStorage.getItem(AUTH_STATE_KEY);
   if (!raw) return null as PersistedAuthState | null;
   try {
@@ -118,6 +118,12 @@ export const hydrateAuth = createAsyncThunk('auth/hydrate', async () => {
       const validation = await authService.validateSession(token);
       if (!validation.success) {
         await AsyncStorage.removeItem(AUTH_STATE_KEY);
+        // A session dropped here is a logout like any other, so it goes through
+        // the logout action. That runs the clean-up keyed on it in store/index.ts,
+        // which removes the old account's keys from disk. apiClient's 401 logout
+        // does not cover this: the check runs before isLoggedIn is set. Nor does
+        // it cover a check that failed for another reason, such as no network.
+        dispatch(authSlice.actions.logout());
         return null;
       }
       if (validation.userType === 'dukandar') {
@@ -207,6 +213,11 @@ const authSlice = createSlice({
       state.impersonateUserId = null;
       state.impersonatePhone = null;
       state.needsRegistration = false;
+      // "Already asked and declined" belongs to the account that declined, like
+      // needsRegistration above. Left set, the next account to sign in on this
+      // phone inherited it, and a new shop was let past a registration form it
+      // had never seen.
+      state.registrationSkipped = false;
     },
     startImpersonation(state, action: PayloadAction<{ userId: string; phone: string }>) {
       state.impersonateUserId = action.payload.userId;

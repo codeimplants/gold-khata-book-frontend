@@ -8,7 +8,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../../navigation/types';
 import { useAppDispatch } from '../../store/hooks';
 import { logout, startImpersonation } from '../../store/auth/authSlice';
-import { clearUserData } from '../../store/data/dataSlice';
 import { adminService, ApiDukandarStats } from '../../services/authService';
 import { INPUT_LIMITS } from '../../constants/inputLimits';
 
@@ -64,9 +63,9 @@ const AdminHomeScreen: React.FC<Props> = () => {
   }, [users, search]);
 
   const impersonate = (user: ApiDukandarStats) => {
-    // Clear first: the previous session's cached shop data must not bleed into
-    // the one being opened.
-    dispatch(clearUserData());
+    // startImpersonation also empties the data slice (see the reset in
+    // dataSlice.ts): the previous session's cached shop data must not bleed
+    // into the one being opened.
     dispatch(startImpersonation({ userId: String(user._id), phone: String(user.phone) }));
   };
 

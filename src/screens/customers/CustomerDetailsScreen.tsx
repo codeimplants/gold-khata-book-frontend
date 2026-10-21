@@ -24,7 +24,6 @@ import { capitalizeWords } from '../../utils/textUtils';
 import {
   updateCustomer,
   deleteCustomer,
-  clearUserData,
   fetchRetailerAccount,
   allocateCash,
   applyMeltCredit,
@@ -92,7 +91,6 @@ export default function CustomerDetailsScreen() {
 
   const handleEndSession = () => {
     dispatch(endImpersonation());
-    dispatch(clearUserData());
     navigation.navigate('AdminDashboard');
   };
 

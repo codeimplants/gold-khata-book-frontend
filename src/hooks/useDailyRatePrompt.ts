@@ -3,8 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppSelector } from '../store/hooks';
 import { todayKey } from '../store/data/dataSlice';
 import { useShopRate } from './useShopRate';
+import { RATE_PROMPTED_KEY } from '../store/perUserStorage';
 
-const ASKED_KEY = 'shop_rate_prompted_on';
+const ASKED_KEY = RATE_PROMPTED_KEY;
 
 /**
  * Asks for today's rate once a day, and then leaves the shopkeeper alone.
@@ -22,6 +23,9 @@ const ASKED_KEY = 'shop_rate_prompted_on';
  * asked on this screen today", which is a property of the sitting rather than
  * of the shop — and the rate itself is on the server, so a second device that
  * asks and gets an answer still sees the rate the first one set.
+ *
+ * For the same reason a logout removes it (perUserStorage.ts): the sitting is
+ * over, and the next shopkeeper on this phone has not been asked.
  */
 export const useDailyRatePrompt = () => {
   const isGuest = useAppSelector(s => s.auth.isGuest);
