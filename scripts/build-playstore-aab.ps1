@@ -192,9 +192,9 @@ try {
     $ErrorActionPreference = 'Continue'
     try {
         if ($Clean) {
-            & .\gradlew.bat --no-daemon "-Pkotlin.compiler.execution.strategy=in-process" clean bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
+            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" clean bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
         } else {
-            & .\gradlew.bat --no-daemon "-Pkotlin.compiler.execution.strategy=in-process" bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
+            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
         }
         $exit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previousEap }
