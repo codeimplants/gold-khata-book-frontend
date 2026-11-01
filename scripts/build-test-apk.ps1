@@ -91,9 +91,9 @@ try {
     $ErrorActionPreference = 'Continue'
     try {
         if ($Clean) {
-            & .\gradlew.bat clean assembleRelease "-PreactNativeArchitectures=arm64-v8a" --parallel
+            & .\gradlew.bat --no-daemon "-Pkotlin.compiler.execution.strategy=in-process" clean assembleRelease "-PreactNativeArchitectures=arm64-v8a" --parallel
         } else {
-            & .\gradlew.bat assembleRelease "-PreactNativeArchitectures=arm64-v8a" --parallel
+            & .\gradlew.bat --no-daemon "-Pkotlin.compiler.execution.strategy=in-process" assembleRelease "-PreactNativeArchitectures=arm64-v8a" --parallel
         }
         $exit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previousEap }
