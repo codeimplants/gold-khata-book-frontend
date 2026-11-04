@@ -1,6 +1,7 @@
 import { ApiClient, AuthInterceptor, Logger, ContentTypeInterceptor } from '@codeimplants/app-core';
 import { API_BASE_URL } from '@config';
 import { startGlobalLoading, stopGlobalLoading } from '../store/ui/uiSlice';
+import { reportServerError } from '../crash/crashReporter';
 
 const logger = new Logger('Api');
 
@@ -151,6 +152,10 @@ apiClient.addInterceptor({
         ongoingRequests.delete(id);
       }
     }
+
+    // A 5xx goes to Crash reports, unless the backend answered it itself (it
+    // records those, with the stack). Best effort; never throws.
+    reportServerError(error);
 
     // A 401 while signed in means the session is gone (the backend sends 401
     // only for a missing, invalid or expired token), so it logs out.

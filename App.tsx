@@ -44,6 +44,12 @@ import {
 import { APP_ENV, APP_VERSION, ANALYTICS_ENABLED } from '@env';
 import { appCore } from './src/appCore';
 import { store } from './src/store';
+import {
+  configureCrashReporter,
+  installCrashHandlers,
+  reportError,
+  setCrashScreen,
+} from './src/crash/crashReporter';
 import RootNavigator from './src/navigation/RootNavigator';
 import { getDecision } from './src/utils/sdk';
 import {
@@ -79,6 +85,11 @@ Analytics.init({
 // over WhatsApp — the one place a wrong version actively misleads a human who
 // is trying to reproduce a bug.
 initializeUIKit({ appVersion: getVersionName() || APP_VERSION || '0.0.1' });
+
+// Crash reports (Nexus › Gold Khata Book › Crash reports): unhandled errors and
+// promise rejections, sent with the shop's token when there is one.
+configureCrashReporter({ getToken: () => store.getState().auth.token });
+installCrashHandlers();
 
 // Rating prompts. No-ops on web, where there is no store to review in.
 //
@@ -179,6 +190,7 @@ class AppErrorBoundary extends Component<
       stack: error.stack,
       component: errorInfo.componentStack ?? undefined,
     });
+    reportError(error, { kind: 'render', componentStack: errorInfo.componentStack });
     this.setState({ errorDetails: errorInfo.componentStack ?? null });
   }
 
@@ -775,12 +787,14 @@ function AppContent() {
             const route = navigationRef.current?.getCurrentRoute();
             if (route?.name) {
               Analytics.screen(route.name);
+              setCrashScreen(route.name);
             }
           }}
           onReady={() => {
             const route = navigationRef.current?.getCurrentRoute();
             if (route?.name) {
               Analytics.screen(route.name);
+              setCrashScreen(route.name);
             }
           }}>
           <RootNavigator />
