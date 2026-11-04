@@ -1,5 +1,6 @@
 import { ApiClient, AuthInterceptor, Logger, ContentTypeInterceptor } from '@codeimplants/app-core';
 import { API_BASE_URL } from '@config';
+import { reportServerError } from '../crash/crashReporter';
 import { startGlobalLoading, stopGlobalLoading, resetGlobalLoading } from '../store/ui/uiSlice';
 
 const logger = new Logger('Api');
@@ -151,6 +152,10 @@ apiClient.addInterceptor({
         ongoingRequests.delete(id);
       }
     }
+
+    // A 5xx goes to Crash reports, unless the backend answered it itself (it
+    // records those, with the stack). Best effort; never throws.
+    reportServerError(error);
 
     if (error?.response?.status === 401 && _store) {
       const { logout } = await import('../store/auth/authSlice');
