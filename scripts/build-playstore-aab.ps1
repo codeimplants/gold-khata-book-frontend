@@ -1,5 +1,6 @@
 # Builds a signed release AAB (Android App Bundle) for PLAY STORE UPLOAD.
-# Includes all CPU architectures (armeabi-v7a, arm64-v8a, x86, x86_64) -> slower.
+# ARM CPU architectures only (armeabi-v7a, arm64-v8a): every real Android phone/tablet. x86/x86_64 (emulators,
+# a few Chromebooks) are left out: they doubled the native build time.
 # Upload the resulting .aab at https://play.google.com/console
 #
 # Run from anywhere:
@@ -192,9 +193,9 @@ try {
     $ErrorActionPreference = 'Continue'
     try {
         if ($Clean) {
-            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" clean bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
+            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" clean bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a" --parallel
         } else {
-            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64" --parallel
+            & .\gradlew.bat --no-daemon "-Dkotlin.compiler.execution.strategy=in-process" bundleRelease "-PreactNativeArchitectures=armeabi-v7a,arm64-v8a" --parallel
         }
         $exit = $LASTEXITCODE
     } finally { $ErrorActionPreference = $previousEap }
@@ -208,7 +209,7 @@ if ($exit -eq 0 -and (Test-Path $aab)) {
     try {
         Assert-ArtifactShipsGeneratedBundle -Root $root -Artifact $aab -Variant "release"
     } catch {
-        Add-Content $logFile ("{0} | AAB  | FAILED (stale JS bundle) | all-abis | {1} min" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $mins) -Encoding utf8
+        Add-Content $logFile ("{0} | AAB  | FAILED (stale JS bundle) | arm-abis | {1} min" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $mins) -Encoding utf8
         Write-Host "`nBUILD REJECTED after $mins min - $_" -ForegroundColor Red
         Write-Host "The .aab exists but ships the wrong JavaScript. Do NOT upload it." -ForegroundColor Red
         exit 1
@@ -216,12 +217,12 @@ if ($exit -eq 0 -and (Test-Path $aab)) {
 
     Save-BuiltAppEnv -Root $root -AppEnv "prod"
     $sizeMb = [math]::Round((Get-Item $aab).Length / 1MB, 1)
-    Add-Content $logFile ("{0} | AAB  | SUCCESS | all-abis | {1} min | {2} MB" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $mins, $sizeMb) -Encoding utf8
+    Add-Content $logFile ("{0} | AAB  | SUCCESS | arm-abis | {1} min | {2} MB" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $mins, $sizeMb) -Encoding utf8
     Write-Host "`nBUILD SUCCESSFUL in $mins min ($sizeMb MB)" -ForegroundColor Green
     Write-Host "AAB: $aab" -ForegroundColor Green
     Write-Host "Upload this file to the Google Play Console." -ForegroundColor Green
 } else {
-    Add-Content $logFile ("{0} | AAB  | FAILED (exit {1}) | all-abis | {2} min" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $exit, $mins) -Encoding utf8
+    Add-Content $logFile ("{0} | AAB  | FAILED (exit {1}) | arm-abis | {2} min" -f $start.ToString("yyyy-MM-dd HH:mm:ss"), $exit, $mins) -Encoding utf8
     Write-Host "`nBUILD FAILED (exit $exit) after $mins min" -ForegroundColor Red
 }
 exit $exit
